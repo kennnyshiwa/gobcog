@@ -16,6 +16,7 @@
     " lazy": [0.4, 0.9],
     " sick": [0.3, 0.9],
     " stupid": [1, 0.5],
+    " possessed": [1.8, 100],
     " flustered": [0.9, 1.1],
     " delirious": [0.6, 0.8],
     " sad-looking": [0.9, 0.8],
@@ -25,10 +26,12 @@
     " focused": [1.2, 1],
     " fat": [1.1, 0.9],
     " muscle-bound": [1.2, 0.7],
+    "n enlightened": [1.2, 1.8],
     " fairly intelligent": [1, 1.2],
     " dumb": [1, 0.8],
     "n old": [0.8, 1.5],
     "n ancient": [0.8, 2],
     " savage": [1.8, 0.9],
-    "n absolutely brutal-looking": [1.9, 1.1]
+    "n absolutely brutal-looking": [1.9, 1.1],
+    " panithied": [2, 2]
 }
