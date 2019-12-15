@@ -607,6 +607,44 @@ class Character(Item):
                 pass
         return stats
 
+    def _calculate_set_items_bonus(self):
+        set_names = {}
+        last_slot = ""
+        for slots in ORDER:
+            if slots == "two handed":
+                continue
+            if last_slot == "two handed":
+                last_slot = slots
+                continue
+            item = getattr(self, slots)
+            if item is None:
+                continue
+            if item.set and item.set not in set_names:
+                set_names.update({item.set: (item.parts, 1, item.bonus)})
+            elif item.set and item.set in set_names:
+                parts, count, bonus = set_names[item.set]
+                set_names[item.set] = (parts, count + 1, bonus)
+        valid_sets = [v[-1] for _, v in set_names.items() if v[1] >= v[0]]
+        self.sets = [s for s, _ in set_names.items() if s]
+        base = {
+            "att":      0,
+            "cha":      0,
+            "int":      0,
+            "dex":      0,
+            "luck":     0,
+            "statmult": 1,
+            "xpmult":   1,
+            "cpmult":   1,
+        }
+        for set_bonus in valid_sets:
+            for key, value in set_bonus.items():
+                if key not in ["cpmult", "xpmult", "statmult"]:
+                    base[key] += value
+                elif key in ["cpmult", "xpmult", "statmult"]:
+                    if value != 1:
+                        base[key] += value - 1
+        self.gear_set_bonus = base
+
     def __str__(self):
         """
             Define str to be our default look for the character sheet :thinkies:
