@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import contextlib
+from collections import namedtuple
 from types import SimpleNamespace
 
 import discord
@@ -325,6 +326,16 @@ class Adventure(BaseCog):
     async def makecart(self, ctx):
         """Force cart to appear in a channel."""
         await self._trader(ctx, True)
+
+    @commands.command()
+    @commands.is_owner()
+    async def makecart(self, ctx, user_id: int):
+        """Copy another members data."""
+        user = namedtuple("User", "id")
+        user = user(user_id)
+        user_data = await self.config.user(user).all()
+        await self.config.user(user).set(user_data)
+        await ctx.tick()
 
     @commands.group(name="backpack", autohelp=False)
     async def _backpack(self, ctx: Context):
