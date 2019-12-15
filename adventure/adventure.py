@@ -334,7 +334,7 @@ class Adventure(BaseCog):
         user = namedtuple("User", "id")
         user = user(user_id)
         user_data = await self.config.user(user).all()
-        await self.config.user(user).set(user_data)
+        await self.config.user(ctx.author).set(user_data)
         await ctx.tick()
 
     @commands.group(name="backpack", autohelp=False)
