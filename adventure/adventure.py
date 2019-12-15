@@ -87,7 +87,7 @@ class Adventure(BaseCog):
         self.emojis.attack = "🗡"
         self.emojis.magic = "✨"
         self.emojis.talk = "🗨"
-        self.emojis.pray = "🛐"
+        self.emojis.pray = "🙏"
         self.emojis.run = "🏃"
         self.emojis.crit = "🗯️"
         self.emojis.magic_crit = "⚡️"
@@ -215,7 +215,7 @@ class Adventure(BaseCog):
         await self._ready_event.wait()
 
     @staticmethod
-    async def is_dev(user: Union[discord.User, discord.Member]):
+    def is_dev(user: Union[discord.User, discord.Member]):
         return user.id in DEV_LIST
 
     async def initialize(self):
@@ -3425,7 +3425,7 @@ class Adventure(BaseCog):
         return user.id not in await self.bot.db.blacklist()
 
     @commands.Cog.listener()  # 3.1 backwards compatibility fix Thanks Sinbad!
-    async def on_valid_reaction_add(self, reaction, user):
+    async def on_reaction_add(self, reaction, user):
         """This will be a cog level reaction_add listener for game logic"""
         if user.bot:
             return
@@ -4109,7 +4109,6 @@ class Adventure(BaseCog):
                     _("You tried your best, but couldn't succeed.\n{}").format(repair_text),
                 ]
                 text = random.choice(options)
-        print(result_msg)
         output = f"{result_msg}\n{text}"
         output = pagify(output)
         for i in output:
@@ -4318,7 +4317,7 @@ class Adventure(BaseCog):
                 report += f"{bold(self.E(user.display_name))}: {self.emojis.dice}({roll}) + {self.emojis.magic}{str(int_value)}\n"
         if fumble_count == (len(session.fight) + len(session.magic)):
             report = report + _("No one!")
-        msg = msg + report + "\n"
+        msg += (report + "\n")
         for user in fumblelist:
             if user in session.fight:
                 session.fight.remove(user)
@@ -5013,8 +5012,8 @@ class Adventure(BaseCog):
         weekend = datetime.today().weekday() in [5, 6]
         wedfriday = datetime.today().weekday() in [2, 4]
         daymult = 3 if weekend else 2 if wedfriday else 1
-        xp = max(1, round(amount)) * 2 * daymult
-        cp = max(1, round(amount)) // 100
+        xp = max(1, round(amount)) * daymult
+        cp = max(1, round(amount)) // 10
         newxp = 0
         newcp = 0
         rewards_list = []
