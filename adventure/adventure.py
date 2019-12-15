@@ -1888,7 +1888,7 @@ class Adventure(BaseCog):
                     "ex. `{}give loot normal @locastan` "
                 ).format(ctx.prefix)
             )
-        if loot_type == "legendary" and not await ctx.bot.is_owner(ctx.author):
+        if loot_type in ["legendary", "set"] and not await ctx.bot.is_owner(ctx.author):
             return await ctx.maybe_send_embed(_("You are not worthy to award legendary loot."))
         async with self.get_lock(user):
             try:
@@ -1902,6 +1902,8 @@ class Adventure(BaseCog):
                 c.treasure[2] += number
             elif loot_type == "legendary":
                 c.treasure[3] += number
+            elif loot_type == "set":
+                c.treasure[4] += number
             else:
                 c.treasure[0] += number
             await self.config.user(user).set(c._to_json())
