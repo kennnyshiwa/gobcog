@@ -2736,7 +2736,7 @@ class Adventure(BaseCog):
                 cooldown_time = (c.heroclass["cooldown"]) + cooldown_time - time.time()
                 return await ctx.maybe_send_embed(
                     _(
-                        "Your hero still recovering from the last time they used this skill. Try again in {}"
+                        "Your hero is currently recovering from the last time they used this skill. Try again in {}"
                     ).format(humanize_timedelta(seconds=int(cooldown_time)))
                 )
 
@@ -2784,7 +2784,7 @@ class Adventure(BaseCog):
                 cooldown_time = (c.heroclass["cooldown"]) + cooldown_time - time.time()
                 return await ctx.maybe_send_embed(
                     _(
-                        "Your hero still recovering from the last time they used this skill. Try again in {}"
+                        "Your hero is currently recovering from the last time they used this skill. Try again in {}"
                     ).format(humanize_timedelta(seconds=int(cooldown_time)))
                 )
 
@@ -2832,7 +2832,7 @@ class Adventure(BaseCog):
                 cooldown_time = (c.heroclass["cooldown"]) + cooldown_time - time.time()
                 return await ctx.maybe_send_embed(
                     _(
-                        "Your hero still recovering from the last time they used this skill. Try again in {}"
+                        "Your hero is currently recovering from the last time they used this skill. Try again in {}"
                     ).format(humanize_timedelta(seconds=int(cooldown_time)))
                 )
 
@@ -2878,7 +2878,7 @@ class Adventure(BaseCog):
                 cooldown_time = (c.heroclass["cooldown"]) + cooldown_time - time.time()
                 return await ctx.maybe_send_embed(
                     _(
-                        "Your hero still recovering from the last time they used this skill. Try again in {}"
+                        "Your hero is currently recovering from the last time they used this skill. Try again in {}"
                     ).format(humanize_timedelta(seconds=int(cooldown_time)))
                 )
 
