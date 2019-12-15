@@ -3145,8 +3145,7 @@ class Adventure(BaseCog):
         if not await has_funds(ctx.author, 500):
             currency_name = await bank.get_currency_name(ctx.guild)
             return await ctx.maybe_send_embed(
-                f"You need {currency_name} to start an adventure, have you run "
-                f"`{ctx.prefix}payday`?"
+                _("You need {req} {name} to start an adventure.").format(req=500, name=currency_name)
             )
         cooldown = await self.config.guild(ctx.guild).cooldown()
         cooldown_time = 420
