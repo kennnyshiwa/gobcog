@@ -5758,9 +5758,9 @@ class Adventure(BaseCog):
             else:
                 user = self.bot.get_user(user_id)
                 if user is None:
-                    continue
-
-                username = user.name
+                    username = user_id
+                else:
+                    username = user.name
 
             if user_id == author.id:
                 # Highlight the author's position
@@ -5820,9 +5820,10 @@ class Adventure(BaseCog):
             else:
                 user = self.bot.get_user(user_id)
                 if user is None:
-                    continue
+                    username = user_id
+                else:
+                    username = user.name
 
-                username = user.name
             if user_id == author.id:
                 # Highlight the author's position
                 username = f"<<{username}>>"
