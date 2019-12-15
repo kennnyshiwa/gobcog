@@ -631,7 +631,7 @@ class Adventure(BaseCog):
             log.exception("Error with the new character sheet")
             return
         if not any([x for x in c.backpack if item.lower() in x.lower()]):
-            return await ctx.send(
+            return await ctx.maybe_send_embed(
                 _("{author}, you have to specify an item from your backpack to trade.").format(
                     author=self.E(ctx.author.display_name)
                 )
@@ -1156,7 +1156,9 @@ class Adventure(BaseCog):
     async def clear_user(self, ctx: Context, *, user: discord.User):
         """Lets you clear a users entire character sheet."""
         await self.config.user(user).clear()
-        await ctx.send(_("{user}'s character sheet has been erased.").format(user=user))
+        await ctx.maybe_send_embed(
+            _("{user}'s character sheet has been erased.").format(user=user)
+        )
 
     @adventureset.command(name="remove")
     @checks.is_owner()
@@ -1567,7 +1569,7 @@ class Adventure(BaseCog):
                     timeout_msg = _("I don't have all day you know, {}.").format(
                         self.E(ctx.author.display_name)
                     )
-                    return await ctx.send(timeout_msg)
+                    return await ctx.maybe_send_embed(timeout_msg)
                 new_ctx = await self.bot.get_context(reply)
                 item = await ItemConverter().convert(new_ctx, reply.content)
                 if item.rarity in ["forged", "set"]:
@@ -2530,7 +2532,7 @@ class Adventure(BaseCog):
                     c.heroclass["catch_cooldown"] = cooldown_time + 1
                 if c.heroclass["catch_cooldown"] + cooldown_time > time.time():
                     cooldown_time = (c.heroclass["catch_cooldown"]) + cooldown_time - time.time()
-                    return await ctx.send(
+                    return await ctx.maybe_send_embed(
                         _(
                             "You caught a pet recently, you will be able to go hunting in {}."
                         ).format(humanize_timedelta(seconds=cooldown_time))
@@ -2653,7 +2655,7 @@ class Adventure(BaseCog):
                 await self.config.user(ctx.author).set(c._to_json())
         else:
             cooldown_time = (c.heroclass["forage"] + 7200) - time.time()
-            return await ctx.send(
+            return await ctx.maybe_send_embed(
                 _("This command is on cooldown. Try again in {}.").format(
                     humanize_timedelta(seconds=cooldown_time)
                 )
@@ -2951,7 +2953,7 @@ class Adventure(BaseCog):
                 )
             )
         if spend is None:
-            await ctx.send(
+            await ctx.maybe_send_embed(
                 _(
                     "{author}, you currently have {skillpoints} unspent skillpoints.\n"
                     "If you want to put them towards a permanent attack, diplomacy or intelligence bonus, use "
@@ -2978,7 +2980,7 @@ class Adventure(BaseCog):
                 c.skill["int"] += amount
             async with self.get_lock(c.user):
                 await self.config.user(ctx.author).set(c._to_json())
-            await ctx.send(
+            await ctx.maybe_send_embed(
                 _("{author}, you permanently raised your {spend} value by {amount}.").format(
                     author=self.E(ctx.author.display_name), spend=spend, amount=amount
                 )
@@ -2993,7 +2995,9 @@ class Adventure(BaseCog):
         `[p]stats` without user will open your stats.
         """
         if not await self.allow_in_dm(ctx):
-            return await ctx.send(_("This command is not available in DM's on this bot."))
+            return await ctx.maybe_send_embed(
+                _("This command is not available in DM's on this bot.")
+            )
         if user is None:
             user = ctx.author
         if user.bot:
@@ -3507,8 +3511,11 @@ class Adventure(BaseCog):
                     # iterating through reactions here and removing them seems to be expensive
                     # so they can just keep their react on the adventures they can't join
                     if user_id not in self._react_messaged:
-                        await reaction.message.channel.send(
-                            f"{bold(self.E(user.display_name))}, you are already in an existing adventure. Wait for it to finish before joining another one."
+                        await reaction.message.channel.maybe_send_embed(
+                            _(
+                                "{c}, you are already in an existing adventure. "
+                                "Wait for it to finish before joining another one."
+                            ).format(c=bold(self.E(user.display_name)))
                         )
                         self._react_messaged.append(user_id)
                         return
@@ -3599,7 +3606,7 @@ class Adventure(BaseCog):
             with contextlib.suppress(discord.HTTPException):
                 await to_delete.delete()
                 await msg.delete()
-            await channel.send(
+            await channel.maybe_send_embed(
                 _("{author}, you do not have enough {currency_name}.").format(
                     author=self.E(user.display_name), currency_name=currency_name
                 )
