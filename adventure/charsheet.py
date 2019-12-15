@@ -526,6 +526,7 @@ class Character(Item):
         self.total_att = self.att + self.skill["att"]
         self.total_int = self.int + self.skill["int"]
         self.total_cha = self.cha + self.skill["cha"]
+        self.total_stats = self.total_att + self.total_int + self.total_cha + self.dex + self.luck
 
         self.adventures: dict = kwargs.pop("adventures")
         self.weekly_score: dict = kwargs.pop("weekly_score")
