@@ -1001,7 +1001,7 @@ class Character(Item):
         hero_data = {
             "adventures": adventures,
             "weekly_score": weekly,
-            "exp": data["exp"],
+            "exp": max(data["exp"], 0),
             "lvl": data["lvl"],
             "att": data["att"],
             "int": data["int"],
@@ -1128,7 +1128,7 @@ class Character(Item):
         return {
             "adventures": self.adventures,
             "weekly_score": self.weekly_score,
-            "exp": self.rebirths * -10000,
+            "exp": 0,
             "lvl": 1,
             "att": 0,
             "int": 0,
