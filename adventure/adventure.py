@@ -1120,7 +1120,7 @@ class Adventure(BaseCog):
     @adventureset.command(aliases=["chests"])
     @checks.is_owner()
     async def cartchests(self, ctx):
-        """[Admin] Set whether or not to use sell chests in the cart."""
+        """[Admin] Set whether or not to sell chests in the cart."""
         toggle = await self.config.enable_chests()
         await self.config.enable_chests.set(not toggle)
         await ctx.maybe_send_embed(_("Carts can sell chests: {}").format(not toggle))
