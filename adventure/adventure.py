@@ -99,9 +99,9 @@ class Adventure(BaseCog):
         self.emojis.talk = "🗨"
         self.emojis.pray = "🙏"
         self.emojis.run = "🏃"
-        self.emojis.crit = "🗯️"
+        self.emojis.crit = "💥"
         self.emojis.magic_crit = "⚡️"
-        self.emojis.berserk = "🗯"
+        self.emojis.berserk = "🤬"
         self.emojis.dice = "🎲"
 
         self._adventure_actions = [
@@ -4459,7 +4459,7 @@ class Adventure(BaseCog):
                 bonus = base_str + crit_str
                 report += (
                     f"{bold(self.E(user.display_name))}: "
-                    f"{self.emojis.dice}({roll}) + {self.emojis.magic_crit}{bonus} + {self.emojis.magic}{str(int_value)}\n"
+                    f"{self.emojis.dice}({roll}) + {bonus} + {self.emojis.magic}{str(int_value)}\n"
                 )
             else:
                 magic += int((roll + int_value) / mdef) + c.rebirths // 5
