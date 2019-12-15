@@ -10,7 +10,7 @@ import random
 import time
 import logging
 import os
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 from datetime import datetime, date
 
@@ -3216,7 +3216,7 @@ class Adventure(BaseCog):
             return
         possible_monsters = []
         for m, stats in self.MONSTER_NOW.items():
-            if (stats["hp"] + stats["dipl"]) > (c.total_stats * 30):
+            if (stats["hp"] + stats["dipl"]) > (c.total_stats * 15):
                 continue
             if not stats["boss"] and not stats["miniboss"]:
                 count = 0
@@ -5436,240 +5436,366 @@ class Adventure(BaseCog):
             log.debug(f"removing task {task}")
             task.cancel()
 
-    # async def get_leaderboard(
-    #     self, positions: int = None, guild: discord.Guild = None
-    # ) -> List[tuple]:
-    #     """
-    #     Gets the bank's leaderboard
-    #
-    #     Parameters
-    #     ----------
-    #     positions : `int`
-    #         The number of positions to get
-    #     guild : discord.Guild
-    #         The guild to get the leaderboard of. If the bank is global and this
-    #         is provided, get only guild members on the leaderboard
-    #
-    #     Returns
-    #     -------
-    #     `list` of `tuple`
-    #         The sorted leaderboard in the form of :code:`(user_id, raw_account)`
-    #
-    #     Raises
-    #     ------
-    #     TypeError
-    #         If the bank is guild-specific and no guild was specified
-    #
-    #     """
-    #     raw_accounts = await self.config.all_users()
-    #     if guild is not None:
-    #         tmp = raw_accounts.copy()
-    #         for acc in tmp:
-    #             if not guild.get_member(acc):
-    #                 del raw_accounts[acc]
-    #     raw_accounts_new = {}
-    #     for k, v in raw_accounts.items():
-    #         user_data = {}
-    #         for item in ["lvl", "rebirths", "set_items"]:
-    #             if item not in v:
-    #                 v.update({item: 0})
-    #         for vk, vi in v.items():
-    #             if vk in ["lvl", "rebirths", "set_items"]:
-    #                 user_data.update({vk: vi})
-    #
-    #         if user_data:
-    #             user_data = {k: user_data}
-    #         raw_accounts_new.update(user_data)
-    #     sorted_acc = sorted(
-    #         raw_accounts_new.items(),
-    #         key=lambda x: (x[1]["rebirths"], x[1]["lvl"], x[1]["set_items"]),
-    #         reverse=True,
-    #     )
-    #     if positions is None:
-    #         return sorted_acc
-    #     else:
-    #         return sorted_acc[:positions]
+    async def get_leaderboard(
+        self, positions: int = None, guild: discord.Guild = None
+    ) -> List[tuple]:
+        """
+        Gets the Adventure's leaderboard
 
-    # @commands.command(enabled=False)
-    # @commands.guild_only()
-    # async def aleaderboard(self, ctx: commands.Context):
-    #     """Print the leaderboard."""
-    #     guild = ctx.guild
-    #     rebirth_sorted = await self.get_leaderboard(guild=guild)
-    #     if rebirth_sorted:
-    #         await LeaderboardMenu.send_and_wait(ctx, accounts=rebirth_sorted, timeout=60.0)
-    #     else:
-    #         await ctxLogger.info(ctx, description="There are no adventurers in the server.")
-    #
-    # async def get_global_scoreboard(
-    #     self, positions: int = None, guild: discord.Guild = None, keyword: str = None
-    # ) -> List[tuple]:
-    #     """
-    #     Gets the bank's leaderboard
-    #
-    #     Parameters
-    #     ----------
-    #     positions : `int`
-    #         The number of positions to get
-    #     guild : discord.Guild
-    #         The guild to get the leaderboard of. If the bank is global and this
-    #         is provided, get only guild members on the leaderboard
-    #
-    #     Returns
-    #     -------
-    #     `list` of `tuple`
-    #         The sorted leaderboard in the form of :code:`(user_id, raw_account)`
-    #
-    #     Raises
-    #     ------
-    #     TypeError
-    #         If the bank is guild-specific and no guild was specified
-    #
-    #     """
-    #     if keyword is None:
-    #         keyword = "wins"
-    #     raw_accounts = await self.config.all_users()
-    #     if guild is not None:
-    #         tmp = raw_accounts.copy()
-    #         for acc in tmp:
-    #             if not guild.get_member(acc):
-    #                 del raw_accounts[acc]
-    #     raw_accounts_new = {}
-    #     for k, v in raw_accounts.items():
-    #         user_data = {}
-    #         for item in ["adventures", "rebirths"]:
-    #             if item not in v:
-    #                 if item == "adventures":
-    #                     v.update({item: {keyword: 0}})
-    #                 else:
-    #                     v.update({item: 0})
-    #
-    #         for vk, vi in v.items():
-    #             if vk in ["rebirths"]:
-    #                 user_data.update({vk: vi})
-    #             elif vk in ["adventures"]:
-    #                 for s, sv in vi.items():
-    #                     if s == keyword:
-    #                         user_data.update(vi)
-    #
-    #         if user_data:
-    #             user_data = {k: user_data}
-    #         raw_accounts_new.update(user_data)
-    #
-    #     sorted_acc = sorted(
-    #         raw_accounts_new.items(), key=lambda x: (x[1][keyword], x[1]["rebirths"]), reverse=True
-    #     )
-    #     if positions is None:
-    #         return sorted_acc
-    #     else:
-    #         return sorted_acc[:positions]
-    #
-    # @commands.command(enabled=False)
-    # @commands.guild_only()
-    # async def scoreboard(self, ctx: commands.Context, stats: Optional[str] = None, top: int = 10):
-    #     """Print the scoreboard.
-    #
-    #     Defaults to top 10 based on Wins
-    #     """
-    #     possible_stats = ["wins", "loses", "fight", "spell", "talk", "pray", "run", "fumbles"]
-    #     if stats and stats.lower() not in possible_stats:
-    #         return await ctx.maybe_send_embed(
-    #             f"Stats must be one of the following: {humanize_list(possible_stats)}"
-    #         )
-    #     elif stats is None:
-    #         stats = "wins"
-    #
-    #     guild = ctx.guild
-    #     rebirth_sorted = await self.get_global_scoreboard(guild=guild, keyword=stats.lower())
-    #     if rebirth_sorted:
-    #         await ScoreboardMenu.send_and_wait(
-    #             ctx, accounts=rebirth_sorted, timeout=60.0, stats=stats.lower()
-    #         )
-    #     else:
-    #         await ctxLogger.info(ctx, description="There are no adventurers in the server.")
-    #
-    # @commands.command(enabled=False)
-    # @commands.guild_only()
-    # async def wscoreboard(self, ctx: commands.Context):
-    #     """Print the weekly scoreboard.
-    #
-    #     Defaults to top 10 based on Wins
-    #     """
-    #
-    #     stats = "adventures"
-    #     guild = ctx.guild
-    #     adventures = await self.get_weekly_scoreboard(guild=guild)
-    #     if adventures:
-    #         await ScoreboardMenu.send_and_wait(
-    #             ctx, accounts=adventures, timeout=60.0, stats=stats.lower()
-    #         )
-    #     else:
-    #         await ctxLogger.info(ctx, description="No stats to show for this week.")
-    #
-    # async def get_weekly_scoreboard(
-    #     self, positions: int = None, guild: discord.Guild = None
-    # ) -> List[tuple]:
-    #     """
-    #     Gets the bank's leaderboard
-    #
-    #     Parameters
-    #     ----------
-    #     positions : `int`
-    #         The number of positions to get
-    #     guild : discord.Guild
-    #         The guild to get the leaderboard of. If the bank is global and this
-    #         is provided, get only guild members on the leaderboard
-    #
-    #     Returns
-    #     -------
-    #     `list` of `tuple`
-    #         The sorted leaderboard in the form of :code:`(user_id, raw_account)`
-    #
-    #     Raises
-    #     ------
-    #     TypeError
-    #         If the bank is guild-specific and no guild was specified
-    #
-    #     """
-    #     current_week = (
-    #         await self.config.guild(guild).currentweek()
-    #         if guild
-    #         else date.today().isocalendar()[1]
-    #     )
-    #     keyword = "adventures"
-    #     raw_accounts = await self.config.all_users()
-    #     if guild is not None:
-    #         tmp = raw_accounts.copy()
-    #         for acc in tmp:
-    #             if not guild.get_member(acc):
-    #                 del raw_accounts[acc]
-    #     raw_accounts_new = {}
-    #     for k, v in raw_accounts.items():
-    #         user_data = {}
-    #         for item in ["weekly_score"]:
-    #             if item not in v:
-    #                 if item == "weekly_score":
-    #                     v.update({item: {keyword: 0, "rebirths": 0}})
-    #
-    #         for vk, vi in v.items():
-    #             if vk in ["weekly_score"]:
-    #                 if vi.get("week", -1) == current_week:
-    #                     for s, sv in vi.items():
-    #                         if s in [keyword]:
-    #                             user_data.update(vi)
-    #
-    #         if user_data:
-    #             user_data = {k: user_data}
-    #         raw_accounts_new.update(user_data)
-    #
-    #     sorted_acc = sorted(
-    #         raw_accounts_new.items(), key=lambda x: (x[1][keyword], x[1]["rebirths"]), reverse=True
-    #     )
-    #     if positions is None:
-    #         return sorted_acc
-    #     else:
-    #         return sorted_acc[:positions]
-    #
+        Parameters
+        ----------
+        positions : `int`
+            The number of positions to get
+        guild : discord.Guild
+            The guild to get the leaderboard of. If this
+            is provided, get only guild members on the leaderboard
+
+        Returns
+        -------
+        `list` of `tuple`
+            The sorted leaderboard in the form of :code:`(user_id, raw_account)`
+
+        """
+        raw_accounts = await self.config.all_users()
+        if guild is not None:
+            tmp = raw_accounts.copy()
+            for acc in tmp:
+                if not guild.get_member(acc):
+                    del raw_accounts[acc]
+        raw_accounts_new = {}
+        for k, v in raw_accounts.items():
+            user_data = {}
+            for item in ["lvl", "rebirths", "set_items"]:
+                if item not in v:
+                    v.update({item: 0})
+            for vk, vi in v.items():
+                if vk in ["lvl", "rebirths", "set_items"]:
+                    user_data.update({vk: vi})
+
+            if user_data:
+                user_data = {k: user_data}
+            raw_accounts_new.update(user_data)
+        sorted_acc = sorted(
+            raw_accounts_new.items(),
+            key=lambda x: (x[1]["rebirths"], x[1]["lvl"], x[1]["set_items"]),
+            reverse=True,
+        )
+        if positions is None:
+            return sorted_acc
+        else:
+            return sorted_acc[:positions]
+
+    @commands.command(enabled=False)
+    @commands.guild_only()
+    async def aleaderboard(self, ctx: commands.Context, show_global: bool = False):
+        """Print the leaderboard."""
+        guild = ctx.guild
+        rebirth_sorted = await self.get_leaderboard(
+            guild=guild if not show_global else None, positions=40
+        )
+        if rebirth_sorted:
+            pages = await self._format_scoreboard_pages(ctx, accounts=rebirth_sorted)
+            await menu(ctx, pages, DEFAULT_CONTROLS, timeout=60)
+        else:
+            await ctx.maybe_send_embed(_("There are no adventurers in the server."))
+
+    async def get_global_scoreboard(
+        self, positions: int = None, guild: discord.Guild = None, keyword: str = None
+    ) -> List[tuple]:
+        """
+        Gets the bank's leaderboard
+
+        Parameters
+        ----------
+        positions : `int`
+            The number of positions to get
+        guild : discord.Guild
+            The guild to get the leaderboard of. If this
+            is provided, get only guild members on the leaderboard
+
+        Returns
+        -------
+        `list` of `tuple`
+            The sorted leaderboard in the form of :code:`(user_id, raw_account)`
+
+        Raises
+        ------
+        TypeError
+            If the bank is guild-specific and no guild was specified
+
+        """
+        if keyword is None:
+            keyword = "wins"
+        raw_accounts = await self.config.all_users()
+        if guild is not None:
+            tmp = raw_accounts.copy()
+            for acc in tmp:
+                if not guild.get_member(acc):
+                    del raw_accounts[acc]
+        raw_accounts_new = {}
+        for k, v in raw_accounts.items():
+            user_data = {}
+            for item in ["adventures", "rebirths"]:
+                if item not in v:
+                    if item == "adventures":
+                        v.update({item: {keyword: 0}})
+                    else:
+                        v.update({item: 0})
+
+            for vk, vi in v.items():
+                if vk in ["rebirths"]:
+                    user_data.update({vk: vi})
+                elif vk in ["adventures"]:
+                    for s, sv in vi.items():
+                        if s == keyword:
+                            user_data.update(vi)
+
+            if user_data:
+                user_data = {k: user_data}
+            raw_accounts_new.update(user_data)
+
+        sorted_acc = sorted(
+            raw_accounts_new.items(), key=lambda x: (x[1][keyword], x[1]["rebirths"]), reverse=True
+        )
+        if positions is None:
+            return sorted_acc
+        else:
+            return sorted_acc[:positions]
+
+    @commands.command(enabled=False)
+    @commands.guild_only()
+    async def scoreboard(
+        self, ctx: commands.Context, stats: Optional[str] = None, show_global: bool = False
+    ):
+        """Print the scoreboard.
+
+        Defaults to top 10 based on Wins
+        """
+        possible_stats = ["wins", "loses", "fight", "spell", "talk", "pray", "run", "fumbles"]
+        if stats and stats.lower() not in possible_stats:
+            return await ctx.maybe_send_embed(
+                _("Stats must be one of the following: {stats}").format(
+                    humanize_list(possible_stats)
+                )
+            )
+        elif stats is None:
+            stats = "wins"
+
+        guild = ctx.guild
+        rebirth_sorted = await self.get_global_scoreboard(
+            guild=guild if not show_global else None, keyword=stats.lower(), positions=40
+        )
+        if rebirth_sorted:
+            pages = await self._format_scoreboard_pages(
+                ctx, accounts=rebirth_sorted, stats=stats.lower()
+            )
+            await menu(ctx, pages, DEFAULT_CONTROLS, timeout=60)
+        else:
+            await ctx.maybe_send_embed(_("There are no adventurers in the server."))
+
+    @commands.command(enabled=False)
+    @commands.guild_only()
+    async def wscoreboard(self, ctx: commands.Context, show_global: bool = False):
+        """Print the weekly scoreboard.
+
+        Defaults to top 10 based on Wins
+        """
+
+        stats = "adventures"
+        guild = ctx.guild
+        adventures = await self.get_weekly_scoreboard(guild=guild if not show_global else None)
+        if adventures:
+            pages = await self._format_scoreboard_pages(
+                ctx, accounts=adventures, stats=stats.lower(), positions=40
+            )
+            await menu(ctx, pages, DEFAULT_CONTROLS, timeout=60)
+        else:
+            await ctx.maybe_send_embed(_("No stats to show for this week."))
+
+    async def get_weekly_scoreboard(
+        self, positions: int = None, guild: discord.Guild = None
+    ) -> List[tuple]:
+        """
+        Gets the bank's leaderboard
+
+        Parameters
+        ----------
+        positions : `int`
+            The number of positions to get
+        guild : discord.Guild
+            The guild to get the leaderboard of. If this
+            is provided, get only guild members on the leaderboard
+
+        Returns
+        -------
+        `list` of `tuple`
+            The sorted leaderboard in the form of :code:`(user_id, raw_account)`
+
+        Raises
+        ------
+        TypeError
+            If the bank is guild-specific and no guild was specified
+
+        """
+        current_week = (
+            await self.config.guild(guild).currentweek()
+            if guild
+            else date.today().isocalendar()[1]
+        )
+        keyword = "adventures"
+        raw_accounts = await self.config.all_users()
+        if guild is not None:
+            tmp = raw_accounts.copy()
+            for acc in tmp:
+                if not guild.get_member(acc):
+                    del raw_accounts[acc]
+        raw_accounts_new = {}
+        for k, v in raw_accounts.items():
+            user_data = {}
+            for item in ["weekly_score"]:
+                if item not in v:
+                    if item == "weekly_score":
+                        v.update({item: {keyword: 0, "rebirths": 0}})
+
+            for vk, vi in v.items():
+                if vk in ["weekly_score"]:
+                    if vi.get("week", -1) == current_week:
+                        for s, sv in vi.items():
+                            if s in [keyword]:
+                                user_data.update(vi)
+
+            if user_data:
+                user_data = {k: user_data}
+            raw_accounts_new.update(user_data)
+
+        sorted_acc = sorted(
+            raw_accounts_new.items(), key=lambda x: (x[1][keyword], x[1]["rebirths"]), reverse=True
+        )
+        if positions is None:
+            return sorted_acc
+        else:
+            return sorted_acc[:positions]
+
+    async def _format_leaderboard_pages(self, ctx: commands.Context, **kwargs) -> List[str]:
+        _accounts = kwargs.pop("accounts", {})
+        rebirth_len = len(humanize_number(_accounts[0][1]["rebirths"])) + 3
+        account_number = len(_accounts)
+        pos_len = len(humanize_number(account_number)) + 2
+
+        rebirth_len = (len("Rebirths") if len("Rebirths") > rebirth_len else rebirth_len) + 2
+        set_piece_len = len("Set Pieces") + 2
+        level_len = len("Level") + 2
+        header = f"{'#':{pos_len}}{'Rebirths':{rebirth_len}}{'Level':{level_len}}{'Set Pieces':{set_piece_len}}{'Name':2}"
+
+        if ctx is not None:
+            author = ctx.author
+        else:
+            author = None
+
+        if getattr(ctx, "guild"):
+            guild = ctx.guild
+        else:
+            guild = None
+        entries = [header]
+        pages = []
+        for pos, (user_id, account_data) in enumerate(_accounts, start=1):
+            if guild is not None:
+                member = guild.get_member(user_id)
+            else:
+                member = None
+
+            if member is not None:
+                username = member.display_name
+            else:
+                user = self.bot.get_user(user_id)
+                if user is None:
+                    continue
+
+                username = user.name
+
+            if user_id == author.id:
+                # Highlight the author's position
+                username = f"<<{username}>>"
+
+            pos_str = humanize_number(pos)
+            balance = humanize_number(account_data["rebirths"])
+            set_items = humanize_number(account_data["set_items"])
+            level = humanize_number(account_data["lvl"])
+
+            data = (
+                f"{f'{pos_str}.': <{pos_len}} "
+                f"{balance: <{rebirth_len}} "
+                f"{level: <{level_len}} "
+                f"{set_items: <{set_piece_len}} "
+                f"{username}"
+            )
+            entries.append(data)
+            if pos % 10 == 0:
+                pages.append(box("\n".join(entries), lang="md"))
+                entries = [header]
+            elif account_number == pos:
+                pages.append(box("\n".join(entries), lang="md"))
+        return pages
+
+    async def _format_scoreboard_pages(self, ctx: commands.Context, **kwargs) -> List[str]:
+        _accounts = kwargs.pop("accounts", {})
+        _importantStats = kwargs.pop("stats", "wins")
+        stats_len = len(humanize_number(_accounts[0][1][_importantStats])) + 3
+        account_number = len(_accounts)
+        pos_len = len(humanize_number(account_number)) + 2
+
+        stats_plural = _importantStats if _importantStats.endswith("s") else f"{_importantStats}s"
+        stats_len = (len(stats_plural) if len(stats_plural) > stats_len else stats_len) + 2
+        rebirth_len = len("Rebirths") + 2
+        header = f"{'#':{pos_len}}{stats_plural.title().ljust(stats_len)}{'Rebirths':{rebirth_len}}{'Name':2}"
+
+        if ctx is not None:
+            author = ctx.author
+        else:
+            author = None
+
+        if getattr(ctx, "guild"):
+            guild = ctx.guild
+        else:
+            guild = None
+        entries = [header]
+        pages = []
+        for pos, (user_id, account_data) in enumerate(_accounts, start=1):
+            if guild is not None:
+                member = guild.get_member(user_id)
+            else:
+                member = None
+
+            if member is not None:
+                username = member.display_name
+            else:
+                user = self.bot.get_user(user_id)
+                if user is None:
+                    continue
+
+                username = user.name
+            if user_id == author.id:
+                # Highlight the author's position
+                username = f"<<{username}>>"
+
+            pos_str = humanize_number(pos)
+            rebirths = humanize_number(account_data["rebirths"])
+            stats_value = humanize_number(account_data[self._importantStats.lower()])
+
+            data = (
+                f"{f'{pos_str}.': <{pos_len}} "
+                f"{stats_value: <{stats_len}} "
+                f"{rebirths: <{rebirth_len}} "
+                f"{username}"
+            )
+            entries.append(data)
+            if pos % 10 == 0:
+                pages.append(box("\n".join(entries), lang="md"))
+                entries = [header]
+            elif account_number == pos:
+                pages.append(box("\n".join(entries), lang="md"))
+        return pages
+
     # async def weekly_rewards(self):
     #     try:
     #         await self.bot.wait_until_ready()
