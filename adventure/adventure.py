@@ -249,7 +249,6 @@ class Adventure(BaseCog):
         for name, file in files.items():
             if not file.exists():
                 files[name] = bundled_data_path(self) / f"default/{file.name}"
-        self._ready_event.set()
         with files["pets"].open("r") as f:
             self.PETS = json.load(f)
         with files["attr"].open("r") as f:
@@ -283,6 +282,7 @@ class Adventure(BaseCog):
         adventure.charsheet.PETS = self.PETS
         adventure.charsheet.REBIRTH_LVL = REBIRTH_LVL
         adventure.charsheet.REBIRTH_STEP = REBIRTH_STEP
+        self._ready_event.set()
 
     async def cleanup_tasks(self):
         await self.bot.wait_until_ready()
@@ -4322,7 +4322,7 @@ class Adventure(BaseCog):
                 report += f"{bold(self.E(user.display_name))}: {self.emojis.dice}({roll}) + {self.emojis.magic}{str(int_value)}\n"
         if fumble_count == (len(session.fight) + len(session.magic)):
             report = report + _("No one!")
-        msg += (report + "\n")
+        msg += report + "\n"
         for user in fumblelist:
             if user in session.fight:
                 session.fight.remove(user)
