@@ -891,7 +891,7 @@ class Adventure(BaseCog):
                 await open_msg.edit(
                     content=(
                         box(
-                            _("{c} Congratulations with your rebirth.\n You paid {bal}").format(
+                            _("{c} Congratulations with your rebirth.\nYou paid {bal}").format(
                                 c=self.E(ctx.author.display_name), bal=humanize_number(bal)
                             ),
                             lang="css",
