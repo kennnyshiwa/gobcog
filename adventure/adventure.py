@@ -3135,8 +3135,8 @@ class Adventure(BaseCog):
         """
 
         if ctx.guild.id in self._sessions:
-            await ctx.maybe_send_embed(
-                _("There's already another adventure going on in this server.?")
+            return await ctx.maybe_send_embed(
+                _("There's already another adventure going on in this server.")
             )
 
         if not await has_funds(ctx.author, 500):
