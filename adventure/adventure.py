@@ -4093,6 +4093,48 @@ class Adventure(BaseCog):
                             await bank.withdraw_credits(user, loss)
                         else:
                             await bank.set_balance(user, 0)
+                if run_list:
+                    repair_list = []
+                    users = run_list
+                    for user in users:
+                        try:
+                            c = await Character._from_json(self.config, user)
+                        except Exception:
+                            log.exception("Error with the new character sheet")
+                            continue
+                        multiplier = 0.05
+                        if c.dex != 0:
+                            if c.dex < 0:
+                                dex = min(1 / abs(c.dex), 1)
+                            else:
+                                dex = max(abs(c.dex), 3)
+                            multiplier = multiplier / dex
+                        loss = round(c.bal * multiplier)
+                        if loss > c.bal:
+                            loss = c.bal
+                        balance = c.bal
+                        loss = min(min(loss, balance), 1000000000)
+                        if c.bal > 0:
+                            repair_list.append([user, loss])
+                            if c.bal > loss:
+                                await bank.withdraw_credits(user, loss)
+                            else:
+                                await bank.set_balance(user, 0)
+                    loss_list = []
+                    if len(repair_list) > 0:
+                        for user, loss in repair_list:
+                            loss_list.append(
+                                _("{user} used {loss} {currency_name}").format(
+                                    user=bold(self.E(user.display_name)),
+                                    loss=humanize_number(loss),
+                                    currency_name=currency_name,
+                                )
+                            )
+                    repair_text = (
+                        ""
+                        if not loss_list
+                        else _("{} to repair their gear.").format(humanize_list(loss_list))
+                    )
                 loss_list = []
                 if len(repair_list) > 0:
                     for user, loss in repair_list:
@@ -4116,6 +4158,7 @@ class Adventure(BaseCog):
                     _("You tried your best, but couldn't succeed.\n{}").format(repair_text),
                 ]
                 text = random.choice(options)
+
         output = f"{result_msg}\n{text}"
         output = pagify(output)
         for i in output:
@@ -4158,9 +4201,6 @@ class Adventure(BaseCog):
         session = self._sessions[guild_id]
         if len(list(session.run)) != 0:
             for user in session.run:
-                attack -= 1
-                diplomacy -= 1
-                magic -= 1
                 runners.append(self.E(user.display_name))
             msg += _("{} just ran away.\n").format(bold(humanize_list(runners)))
         return (attack, diplomacy, magic, msg)
