@@ -5576,9 +5576,7 @@ class Adventure(BaseCog):
         possible_stats = ["wins", "loses", "fight", "spell", "talk", "pray", "run", "fumbles"]
         if stats and stats.lower() not in possible_stats:
             return await ctx.maybe_send_embed(
-                _("Stats must be one of the following: {stats}").format(
-                    humanize_list(possible_stats)
-                )
+                _("Stats must be one of the following: {}").format(humanize_list(possible_stats))
             )
         elif stats is None:
             stats = "wins"
