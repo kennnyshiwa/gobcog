@@ -5477,7 +5477,7 @@ class Adventure(BaseCog):
             raw_accounts_new.update(user_data)
         sorted_acc = sorted(
             raw_accounts_new.items(),
-            key=lambda x: (x[1]["rebirths"], x[1]["lvl"], x[1]["set_items"]),
+            key=lambda x: (x[1].get("rebirths", 0), x[1].get("lvl", 1), x[1].get("set_items", 0)),
             reverse=True,
         )
         if positions is None:
@@ -5555,7 +5555,9 @@ class Adventure(BaseCog):
             raw_accounts_new.update(user_data)
 
         sorted_acc = sorted(
-            raw_accounts_new.items(), key=lambda x: (x[1][keyword], x[1]["rebirths"]), reverse=True
+            raw_accounts_new.items(),
+            key=lambda x: (x[1].get(keyword, 0), x[1].get("rebirths", 0)),
+            reverse=True,
         )
         if positions is None:
             return sorted_acc
@@ -5637,11 +5639,7 @@ class Adventure(BaseCog):
             If the bank is guild-specific and no guild was specified
 
         """
-        current_week = (
-            await self.config.guild(guild).currentweek()
-            if guild
-            else date.today().isocalendar()[1]
-        )
+        current_week = date.today().isocalendar()[1]
         keyword = "adventures"
         raw_accounts = await self.config.all_users()
         if guild is not None:
@@ -5669,7 +5667,9 @@ class Adventure(BaseCog):
             raw_accounts_new.update(user_data)
 
         sorted_acc = sorted(
-            raw_accounts_new.items(), key=lambda x: (x[1][keyword], x[1]["rebirths"]), reverse=True
+            raw_accounts_new.items(),
+            key=lambda x: (x[1].get(keyword, 0), x[1].get("rebirths", 0)),
+            reverse=True,
         )
         if positions is None:
             return sorted_acc
@@ -5780,7 +5780,7 @@ class Adventure(BaseCog):
 
             pos_str = humanize_number(pos)
             rebirths = humanize_number(account_data["rebirths"])
-            stats_value = humanize_number(account_data[self._importantStats.lower()])
+            stats_value = humanize_number(account_data[_importantStats.lower()])
 
             data = (
                 f"{f'{pos_str}.': <{pos_len}} "
