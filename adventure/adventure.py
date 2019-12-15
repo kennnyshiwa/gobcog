@@ -366,9 +366,14 @@ class Adventure(BaseCog):
             return await menu(ctx, msgs, DEFAULT_CONTROLS)
 
     @_backpack.command(name="equip")
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def backpack_equip(self, ctx: Context, *, equip_item: ItemConverter):
         """Equip an item from your backpack."""
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _(
+                    "You tried to equipping an item but the monster ahead did not allow you to do so"
+                )
+            )
         try:
             c = await Character._from_json(self.config, ctx.author)
         except Exception:
@@ -418,9 +423,12 @@ class Adventure(BaseCog):
                 await self.config.user(ctx.author).set(c._to_json())
 
     @_backpack.command(name="sellall")
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def backpack_sellall(self, ctx: Context, rarity: str = None):
         """Sell all items in your backpack"""
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _("You tried to selling your items, but there is no merchants in sight.")
+            )
         rarities = ["normal", "rare", "epic", "legendary", "forged"]
         if rarity and rarity.lower() not in rarities:
             return await ctx.maybe_send_embed(
@@ -473,11 +481,13 @@ class Adventure(BaseCog):
         await menu(ctx, msg_list, DEFAULT_CONTROLS)
 
     @_backpack.command(name="sell")
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     @commands.cooldown(rate=3, per=60, type=commands.BucketType.user)
     async def backpack_sell(self, ctx: Context, *, item: ItemConverter):
         """Sell an item from your backpack."""
-
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _("You tried to selling your items, but there is no merchants in sight.")
+            )
         if item.rarity == "forged":
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(
@@ -614,11 +624,16 @@ class Adventure(BaseCog):
                     await menu(ctx, pages, DEFAULT_CONTROLS)
 
     @_backpack.command(name="trade")
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def backpack_trade(
         self, ctx: Context, buyer: discord.Member, asking: Optional[int] = 1000, *, item
     ):
         """Trade an item from your backpack to another user."""
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _(
+                    "You tried to trading your items, but the monster ahead neally took your head, pay attention."
+                )
+            )
         if self.in_adventure(user=buyer):
             return await ctx.maybe_send_embed(
                 _("{buyer} is in an Adventure, you were unable to reach them via pigeon.").format(
@@ -978,9 +993,14 @@ class Adventure(BaseCog):
 
     @loadout.command(name="equip", aliases=["load"])
     @commands.cooldown(rate=1, per=600, type=commands.BucketType.user)
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def equip_loadout(self, ctx: Context, name: str):
         """Equip a saved loadout."""
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _(
+                    "You tried to magically equipping multiple items at once, but the monster ahead nearly killed you."
+                )
+            )
         if not await self.allow_in_dm(ctx):
             return await ctx.maybe_send_embed(
                 _("This command is not available in DM's on this bot.")
@@ -1297,7 +1317,6 @@ class Adventure(BaseCog):
 
     @commands.command()
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.guild)
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def convert(self, ctx: Context, box_rarity: str, amount: int = 1):
         """Convert normal, rare or epic chests.
 
@@ -1307,6 +1326,10 @@ class Adventure(BaseCog):
         """
 
         # Thanks to flare#0001 for the idea and writing the first instance of this
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _("You tried to converting some chets but the magician is back in town.")
+            )
         normalcost = 20
         rarecost = 20
         epiccost = 50
@@ -1460,12 +1483,17 @@ class Adventure(BaseCog):
                 )
 
     @commands.command()
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def equip(self, ctx: Context, *, item: ItemConverter):
         """This equips an item from your backpack.
 
         `[p]equip name of item`
         """
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _(
+                    "You tried to equipping your items, but the monster ahead nearly decapitated you."
+                )
+            )
         if not await self.allow_in_dm(ctx):
             return await ctx.maybe_send_embed(
                 _("This command is not available in DM's on this bot.")
@@ -1474,13 +1502,16 @@ class Adventure(BaseCog):
         await ctx.invoke(self.backpack_equip, equip_item=item)
 
     @commands.command()
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def forge(self, ctx):
         """[Tinkerer Class Only]
 
         This allows a Tinkerer to forge two items into a device.
         (1h cooldown)
         """
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _("You tried to forging a mistic item.. but there no functional forges nearby.")
+            )
         if not await self.allow_in_dm(ctx):
             return await ctx.maybe_send_embed(
                 _("This command is not available in DM's on this bot.")
@@ -1931,12 +1962,13 @@ class Adventure(BaseCog):
 
     @commands.command()
     @commands.cooldown(rate=1, per=600, type=commands.BucketType.user)
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def heroclass(self, ctx: Context, clz: str = None, action: str = None):
         """This allows you to select a class if you are Level 10 or above.
 
         For information on class use: `[p]heroclass "classname" info`.
         """
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(_("The class hall is back in town."))
         if not await self.allow_in_dm(ctx):
             return await ctx.maybe_send_embed(
                 _("This command is not available in DM's on this bot.")
@@ -2195,12 +2227,17 @@ class Adventure(BaseCog):
 
     @commands.command()
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.user)
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def loot(self, ctx: Context, box_type: str = None, amount: int = 1):
         """This opens one of your precious treasure chests.
 
         Use the box rarity type with the command: normal, rare, epic or legendary.
         """
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _(
+                    "You tried to opening a loot chest but then realise your left them all back at your inn."
+                )
+            )
         if not await self.allow_in_dm(ctx):
             return await ctx.maybe_send_embed(
                 _("This command is not available in DM's on this bot.")
@@ -2292,13 +2329,18 @@ class Adventure(BaseCog):
     @commands.command(name="negaverse", aliases=["nv"])
     @commands.cooldown(rate=1, per=10, type=commands.BucketType.user)
     @commands.guild_only()
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def _negaverse(self, ctx: Context, offering: int = None):
         """This will send you to fight a nega-member!
 
         `[p]negaverse offering`
         'offering' in this context is the amount of currency you are sacrificing for this fight.
         """
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _(
+                    "You tried to teleport to another dimension but the monster ahead did not give you a chance."
+                )
+            )
         bal = await bank.get_balance(ctx.author)
         currency_name = await bank.get_currency_name(ctx.guild)
 
@@ -2483,13 +2525,16 @@ class Adventure(BaseCog):
 
     @commands.group(autohelp=False)
     @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def pet(self, ctx):
         """[Ranger Class Only]
 
         This allows a Ranger to tame or set free a pet or send it foraging.
         (2h cooldown)
         """
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _("Your pet is too distracted with the monster you are facing.")
+            )
 
         if not await self.allow_in_dm(ctx):
             return await ctx.maybe_send_embed(
@@ -2885,13 +2930,14 @@ class Adventure(BaseCog):
                 )
 
     @commands.command()
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def skill(self, ctx: Context, spend: str = None, amount: int = 1):
         """This allows you to spend skillpoints.
 
         `[p]skill attack/diplomacy/intelligence`
         `[p]skill reset` Will allow you to reset your skill points for a cost.
         """
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(_("The skill cleric is back in town."))
         if not await self.allow_in_dm(ctx):
             return await ctx.maybe_send_embed(
                 _("This command is not available in DM's on this bot.")
@@ -3064,13 +3110,18 @@ class Adventure(BaseCog):
         return form_string + "\n"
 
     @commands.command()
-    @commands.check(lambda ctx: Adventure.check_running_adventure(ctx))
     async def unequip(self, ctx: Context, *, item: str):
         """This stashes a specified equipped item into your backpack.
 
         `[p]unequip name of item` or `[p]unequip slot`
         You can only have one of each uniquely named item in your backpack.
         """
+        if self.in_adventure(ctx):
+            return await ctx.maybe_send_embed(
+                _(
+                    "You tried to unequipping your items, but there then you realised there no place to put them."
+                )
+            )
         if not await self.allow_in_dm(ctx):
             return await ctx.maybe_send_embed(
                 _("This command is not available in DM's on this bot.")
