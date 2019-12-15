@@ -329,7 +329,7 @@ class Adventure(BaseCog):
 
     @commands.command()
     @commands.is_owner()
-    async def makecart(self, ctx, user_id: int):
+    async def copyuser(self, ctx, user_id: int):
         """Copy another members data."""
         user = namedtuple("User", "id")
         user = user(user_id)
