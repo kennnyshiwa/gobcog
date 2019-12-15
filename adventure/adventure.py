@@ -5494,7 +5494,7 @@ class Adventure(BaseCog):
             guild=guild if not show_global else None, positions=40
         )
         if rebirth_sorted:
-            pages = await self._format_scoreboard_pages(ctx, accounts=rebirth_sorted)
+            pages = await self._format_leaderboard_pages(ctx, accounts=rebirth_sorted)
             await menu(ctx, pages, DEFAULT_CONTROLS, timeout=60)
         else:
             await ctx.maybe_send_embed(_("There are no adventurers in the server."))
