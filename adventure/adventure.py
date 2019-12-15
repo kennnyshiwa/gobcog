@@ -5485,7 +5485,7 @@ class Adventure(BaseCog):
         else:
             return sorted_acc[:positions]
 
-    @commands.command(enabled=False)
+    @commands.command()
     @commands.guild_only()
     async def aleaderboard(self, ctx: commands.Context, show_global: bool = False):
         """Print the leaderboard."""
@@ -5562,7 +5562,7 @@ class Adventure(BaseCog):
         else:
             return sorted_acc[:positions]
 
-    @commands.command(enabled=False)
+    @commands.command()
     @commands.guild_only()
     async def scoreboard(
         self, ctx: commands.Context, stats: Optional[str] = None, show_global: bool = False
@@ -5593,7 +5593,7 @@ class Adventure(BaseCog):
         else:
             await ctx.maybe_send_embed(_("There are no adventurers in the server."))
 
-    @commands.command(enabled=False)
+    @commands.command()
     @commands.guild_only()
     async def wscoreboard(self, ctx: commands.Context, show_global: bool = False):
         """Print the weekly scoreboard.
