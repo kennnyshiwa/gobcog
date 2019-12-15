@@ -5166,7 +5166,7 @@ class Adventure(BaseCog):
         await self.mention_role(ctx, "cart", room=room)
         self.bot.dispatch("adventure_cart", ctx)  # dispatch after silent return
 
-        stockcount = 9
+        stockcount = random.randint(3, 9)
         controls = {em_list[i + 1]: i for i in range(stockcount)}
         self._curent_trader_stock[ctx.guild.id] = stockcount, controls
 
