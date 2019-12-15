@@ -898,7 +898,6 @@ class Adventure(BaseCog):
                     )
                 )
                 await self.config.user(ctx.author).set(await c._rebirth())
-                await self.config.member(ctx.author).automate.set(False)
 
     @loadout.command(name="delete", aliases=["del", "rem", "remove"])
     async def remove_loadout(self, ctx: Context, name: str):
@@ -3268,8 +3267,6 @@ class Adventure(BaseCog):
         else:
             timer = 60 * 2
 
-        automated_data = await self._parse_automated(ctx.guild)
-        self._sessions_auto[ctx.guild.id] = automated_data
         self._sessions[ctx.guild.id] = GameSession(
             challenge=challenge,
             attribute=attribute,
@@ -3278,9 +3275,6 @@ class Adventure(BaseCog):
             miniboss=self.MONSTER_NOW[challenge]["miniboss"],
             timer=timer,
             monster=self.MONSTER_NOW[challenge],
-            author=ctx.author,
-            owner=ctx.guild.get_member(208903205982044161),
-            automated=automated_data,
         )
         adventure_msg = (
             f"{adventure_msg}{text}\n{random.choice(self.LOCATIONS)}\n"
@@ -4148,10 +4142,7 @@ class Adventure(BaseCog):
                     special_action = "loses" if lost or user in participants["run"] else "wins"
                     current_val = c.adventures.get(special_action, 0)
                     c.adventures.update({special_action: current_val + 1})
-                    if user not in automated_users:
-                        c.weekly_score.update(
-                            {"adventures": c.weekly_score.get("adventures", 0) + 1}
-                        )
+                    c.weekly_score.update({"adventures": c.weekly_score.get("adventures", 0) + 1})
                     parsed_users.append(user)
                 await self.config.user(user).set(c._to_json())
 

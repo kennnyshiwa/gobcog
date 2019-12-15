@@ -477,28 +477,6 @@ class GameSession:
         self.talk: List[discord.Member] = []
         self.pray: List[discord.Member] = []
         self.run: List[discord.Member] = []
-        for action, users in kwargs.pop("automated", {}).items():
-            if action == "attack":
-                data = self.fight
-            elif action == "spell":
-                data = self.magic
-            elif action == "talk":
-                data = self.talk
-            elif action == "pray":
-                data = self.pray
-            else:
-                data = []
-
-            for user in users:
-                if user not in data:
-                    if action == "attack":
-                        self.fight.append(user)
-                    elif action == "spell":
-                        self.magic.append(user)
-                    elif action == "talk":
-                        self.talk.append(user)
-                    elif action == "pray":
-                        self.pray.append(user)
 
 
 def equip_level(char, item):
@@ -627,14 +605,14 @@ class Character(Item):
         valid_sets = [v[-1] for _, v in set_names.items() if v[1] >= v[0]]
         self.sets = [s for s, _ in set_names.items() if s]
         base = {
-            "att":      0,
-            "cha":      0,
-            "int":      0,
-            "dex":      0,
-            "luck":     0,
+            "att": 0,
+            "cha": 0,
+            "int": 0,
+            "dex": 0,
+            "luck": 0,
             "statmult": 1,
-            "xpmult":   1,
-            "cpmult":   1,
+            "xpmult": 1,
+            "cpmult": 1,
         }
         for set_bonus in valid_sets:
             for key, value in set_bonus.items():
