@@ -1132,7 +1132,6 @@ class Adventure(BaseCog):
             )
         else:
             await smart_embed(ctx, _("I will stop rewarding roles"))
-        await self.config.currentweek.set(date.today().isocalendar()[1])
 
     @adventureset.command()
     @checks.is_owner()

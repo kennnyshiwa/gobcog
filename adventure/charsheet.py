@@ -992,7 +992,7 @@ class Character(Item):
                 "run": 0,
                 "fumbles": 0,
             }
-        current_week = await config.currentweek() if user.guild else date.today().isocalendar()[1]
+        current_week = date.today().isocalendar()[1]
         if "weekly_score" in data and data["weekly_score"]["week"] >= current_week:
             weekly = data["weekly_score"]
         else:
