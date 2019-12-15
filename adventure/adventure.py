@@ -2821,7 +2821,7 @@ class Adventure(BaseCog):
                 c.heroclass["cooldown"] = time.time()
                 async with self.get_lock(c.user):
                     await self.config.user(ctx.author).set(c._to_json())
-                await ctx.send(
+                await ctx.maybe_send_embed(
                     _("⚡️ {} is focusing all of their energy...⚡️").format(
                         bold(self.E(ctx.author.display_name))
                     )
@@ -2851,12 +2851,12 @@ class Adventure(BaseCog):
             return
         if c.heroclass["name"] != "Bard":
             ctx.command.reset_cooldown(ctx)
-            return await ctx.send(
+            return await ctx.maybe_send_embed(
                 _("{}, you need to be a Bard to do this.").format(self.E(ctx.author.display_name))
             )
         else:
             if c.heroclass["ability"]:
-                return await ctx.send(
+                return await ctx.maybe_send_embed(
                     _("{}, ability already in use.").format(self.E(ctx.author.display_name))
                 )
             cooldown_time = max(300, (1200 - (c.luck - c.total_cha) * 5))
