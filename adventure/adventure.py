@@ -854,8 +854,9 @@ class Adventure(BaseCog):
             )
         open_msg = await ctx.maybe_send_embed(
             _(
-                "Note this will take all your money and items (except Legendary for 3 rebirths and Set items) "
-                "and set you back to level 1, "
+                "Note this will take all your money and items "
+                "(except Legendary for 3 rebirths and Set items) "
+                "and set you back to level 1 (keeping your current class), "
                 "in turn it will give you stats bonuses and higher chance at better items as "
                 "well as the ability to convert chests after the second rebirth"
             )
