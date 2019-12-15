@@ -3137,15 +3137,15 @@ class Adventure(BaseCog):
 
         if ctx.guild.id in self._sessions:
             await ctx.maybe_send_embed(
-                _(
-                    "There's already another adventure going on in this server.?"
-                )
+                _("There's already another adventure going on in this server.?")
             )
 
         if not await has_funds(ctx.author, 500):
             currency_name = await bank.get_currency_name(ctx.guild)
             return await ctx.maybe_send_embed(
-                _("You need {req} {name} to start an adventure.").format(req=500, name=currency_name)
+                _("You need {req} {name} to start an adventure.").format(
+                    req=500, name=currency_name
+                )
             )
         cooldown = await self.config.guild(ctx.guild).cooldown()
         cooldown_time = 420
@@ -3161,9 +3161,7 @@ class Adventure(BaseCog):
             )
 
         await self.mention_role(ctx, "adventure")
-        if challenge and not (
-            self.is_dev(ctx.author) or await ctx.bot.is_owner(ctx.author)
-        ):
+        if challenge and not (self.is_dev(ctx.author) or await ctx.bot.is_owner(ctx.author)):
             # Only let the bot owner specify a specific challenge
             challenge = None
 
@@ -3799,8 +3797,7 @@ class Adventure(BaseCog):
                     else:
                         await bank.set_balance(user, 0)
                 c.adventures.update({"loses": c.adventures.get("loses", 0) + 1})
-                if user not in automated_users:
-                    c.weekly_score.update({"adventures": c.weekly_score.get("adventures", 0) + 1})
+                c.weekly_score.update({"adventures": c.weekly_score.get("adventures", 0) + 1})
                 await self.config.user(user).set(c._to_json())
             loss_list = []
             result_msg += session.miniboss["defeat"]
@@ -3816,7 +3813,7 @@ class Adventure(BaseCog):
                 result_msg += _(
                     "\n{loss_list} to repay a passing cleric that unfroze the group."
                 ).format(loss_list=humanize_list(loss_list))
-            return await ctx.send(result_msg)
+            return await ctx.maybe_send_embed(result_msg)
         if session.miniboss and not slain and not persuaded:
             lost = True
             session.participants = set(
@@ -4112,7 +4109,8 @@ class Adventure(BaseCog):
                     _("You tried your best, but couldn't succeed.\n{}").format(repair_text),
                 ]
                 text = random.choice(options)
-        output = result_msg + "\n" + text
+        print(result_msg)
+        output = f"{result_msg}\n{text}"
         output = pagify(output)
         for i in output:
             await ctx.maybe_send_embed(i)
