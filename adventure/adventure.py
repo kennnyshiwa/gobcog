@@ -61,7 +61,6 @@ BaseCog = getattr(commands, "Cog", object)
 _ = Translator("Adventure", __file__)
 
 log = logging.getLogger("red.cogs.adventure")
-listener = getattr(commands.Cog, "listener", None)
 
 REBIRTH_LVL = 20
 REBIRTH_STEP = 5
@@ -3400,16 +3399,19 @@ class Adventure(BaseCog):
         """
         if await self.bot.is_owner(user):
             return True
-        guild_settings = self.bot.db.guild(user.guild)
-        local_blacklist = await guild_settings.blacklist()
-        local_whitelist = await guild_settings.whitelist()
+        try:
+            guild_settings = self.bot.db.guild(user.guild)
+            local_blacklist = await guild_settings.blacklist()
+            local_whitelist = await guild_settings.whitelist()
 
-        _ids = [r.id for r in user.roles if not r.is_default()]
-        _ids.append(user.id)
-        if local_whitelist:
-            return any(i in local_whitelist for i in _ids)
+            _ids = [r.id for r in user.roles if not r.is_default()]
+            _ids.append(user.id)
+            if local_whitelist:
+                return any(i in local_whitelist for i in _ids)
 
-        return not any(i in local_blacklist for i in _ids)
+            return not any(i in local_blacklist for i in _ids)
+        except:
+            return True
 
     async def global_perms(self, user):
         """Check the user is/isn't globally whitelisted/blacklisted.
@@ -3417,12 +3419,14 @@ class Adventure(BaseCog):
         """
         if await self.bot.is_owner(user):
             return True
+        try:
+            whitelist = await self.bot.db.whitelist()
+            if whitelist:
+                return user.id in whitelist
 
-        whitelist = await self.bot.db.whitelist()
-        if whitelist:
-            return user.id in whitelist
-
-        return user.id not in await self.bot.db.blacklist()
+            return user.id not in await self.bot.db.blacklist()
+        except:
+            return True
 
     @commands.Cog.listener()  # 3.1 backwards compatibility fix Thanks Sinbad!
     async def on_reaction_add(self, reaction, user):
@@ -3440,7 +3444,6 @@ class Adventure(BaseCog):
         if str(reaction.emoji) not in emojis:
             log.debug("emoji not in pool")
             return
-        guild = user.guild
         if guild.id in self._sessions:
             if reaction.message.id == self._sessions[guild.id].message_id:
                 await self._handle_adventure(reaction, user)
@@ -3483,7 +3486,7 @@ class Adventure(BaseCog):
                             "as you are too embarrassed to tell them you are broke!"
                         )
                     )
-            if restricted:
+            elif restricted:
                 all_users = []
                 for guild_id, guild_session in self._sessions.items():
                     guild_users_in_game = (
