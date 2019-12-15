@@ -844,13 +844,13 @@ class Adventure(BaseCog):
             return await ctx.maybe_send_embed(
                 _("You need to be Level `{c.maxlevel}` to rebirth").format(c=c)
             )
-        rebirthcost = 1000 * c.rebirths
+        rebirthcost = 5000 * c.rebirths
         has_fund = await has_funds(ctx.author, rebirthcost)
         if not has_fund:
             currency_name = await bank.get_currency_name(ctx.guild)
             return await ctx.maybe_send_embed(
-                _("You need {cost} {currency_name} to be able to rebirth").format(
-                    cost=humanize_number(rebirthcost), currency_name=currency_name
+                _("You need more {currency_name} to be able to rebirth").format(
+                    currency_name=currency_name
                 )
             )
         open_msg = await ctx.maybe_send_embed(
@@ -3136,17 +3136,18 @@ class Adventure(BaseCog):
         """
 
         if ctx.guild.id in self._sessions:
-            msg = await ctx.send(
+            await ctx.maybe_send_embed(
                 _(
-                    "There's already another adventure going on in this server. Would you like to cancel it?"
+                    "There's already another adventure going on in this server.?"
                 )
             )
-            if not await has_funds(ctx.author, 500):
-                currency_name = await bank.get_currency_name(ctx.guild)
-                return await ctx.maybe_send_embed(
-                    f"You need {currency_name} to start an adventure, have you run "
-                    f"`{ctx.prefix}payday`?"
-                )
+
+        if not await has_funds(ctx.author, 500):
+            currency_name = await bank.get_currency_name(ctx.guild)
+            return await ctx.maybe_send_embed(
+                f"You need {currency_name} to start an adventure, have you run "
+                f"`{ctx.prefix}payday`?"
+            )
         cooldown = await self.config.guild(ctx.guild).cooldown()
         cooldown_time = 420
 
@@ -3162,7 +3163,7 @@ class Adventure(BaseCog):
 
         await self.mention_role(ctx, "adventure")
         if challenge and not (
-            ctx.author.id == 208903205982044161 or await ctx.bot.is_owner(ctx.author)
+            self.is_dev(ctx.author) or await ctx.bot.is_owner(ctx.author)
         ):
             # Only let the bot owner specify a specific challenge
             challenge = None
@@ -3211,6 +3212,8 @@ class Adventure(BaseCog):
             return
         possible_monsters = []
         for m, stats in self.MONSTER_NOW.items():
+            if (stats["hp"] + stats["dipl"]) > (c.total_stats * 30):
+                continue
             if not stats["boss"] and not stats["miniboss"]:
                 count = 0
                 break_at = random.randint(1, 10)
