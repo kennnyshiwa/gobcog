@@ -3502,19 +3502,16 @@ class Adventure(BaseCog):
         """
         if await self.bot.is_owner(user):
             return True
-        try:
-            guild_settings = self.bot.db.guild(user.guild)
-            local_blacklist = await guild_settings.blacklist()
-            local_whitelist = await guild_settings.whitelist()
+        guild_settings = self.bot.db.guild(user.guild)
+        local_blacklist = await guild_settings.blacklist()
+        local_whitelist = await guild_settings.whitelist()
 
-            _ids = [r.id for r in user.roles if not r.is_default()]
-            _ids.append(user.id)
-            if local_whitelist:
-                return any(i in local_whitelist for i in _ids)
+        _ids = [r.id for r in user.roles if not r.is_default()]
+        _ids.append(user.id)
+        if local_whitelist:
+            return any(i in local_whitelist for i in _ids)
 
-            return not any(i in local_blacklist for i in _ids)
-        except:
-            return True
+        return not any(i in local_blacklist for i in _ids)
 
     async def global_perms(self, user):
         """Check the user is/isn't globally whitelisted/blacklisted.
@@ -3522,14 +3519,17 @@ class Adventure(BaseCog):
         """
         if await self.bot.is_owner(user):
             return True
-        try:
-            whitelist = await self.bot.db.whitelist()
-            if whitelist:
-                return user.id in whitelist
+        whitelist = await self.bot.db.whitelist()
+        if whitelist:
+            return user.id in whitelist
 
-            return user.id not in await self.bot.db.blacklist()
-        except:
-            return True
+        return user.id not in await self.bot.db.blacklist()
+
+    async def has_perm(self, user):
+        if hasattr(self.bot, "allowed_by_whitelist_blacklist"):
+            return await self.bot.allowed_by_whitelist_blacklist(user)
+        else:
+            return await self.local_perms(user) or await self.global_perms(user)
 
     @commands.Cog.listener()  # 3.1 backwards compatibility fix Thanks Sinbad!
     async def on_reaction_add(self, reaction, user):
@@ -3540,7 +3540,7 @@ class Adventure(BaseCog):
             guild = user.guild
         except AttributeError:
             return
-        if not await self.local_perms(user) or not await self.global_perms(user):
+        if not await self.has_perm(user):
             return
         log.debug("reactions working")
         emojis = ReactionPredicate.NUMBER_EMOJIS + self._adventure_actions
