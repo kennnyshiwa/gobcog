@@ -28,7 +28,7 @@ try:
 except ImportError:
 
     def humanize_number(val: int) -> str:
-        return f"{val}"
+        return "{:,}".format(val)
 
 
 ORDER = [
