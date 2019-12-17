@@ -3273,7 +3273,7 @@ class Adventure(BaseCog):
             cooldown_time = cooldown + cooldown_time - time.time()
             return await smart_embed(
                 ctx,
-                _("No heros are ready to depart in an adventure, Try again in {}").format(
+                _("No heroes are ready to depart in an adventure, Try again in {}").format(
                     humanize_timedelta(seconds=int(cooldown_time))
                 ),
             )
