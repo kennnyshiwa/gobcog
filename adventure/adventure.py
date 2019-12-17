@@ -3325,8 +3325,8 @@ class Adventure(BaseCog):
             log.exception("Error with the new character sheet", exc_info=True)
             return
         possible_monsters = []
-        for m, stats in self.MONSTER_NOW.items():
-            if (stats["hp"] + stats["dipl"]) > (c.total_stats * 15):
+        for e, (m, stats) in enumerate(self.MONSTER_NOW.items(), 1):
+            if e not in range(10) and (stats["hp"] + stats["dipl"]) > (c.total_stats * 15):
                 continue
             if not stats["boss"] and not stats["miniboss"]:
                 count = 0
