@@ -325,15 +325,13 @@ class Adventure(BaseCog):
 
     def in_adventure(self, ctx=None, user=None):
         author = user or ctx.author
-        if not getattr(author, "guild", None):
+        sessions = self._sessions
+        if not sessions:
             return False
-        session = self._sessions.get(author.guild.id, None)
-        if session is None:
-            return False
-        for x in ["fight", "magic", "talk", "pray", "run"]:
-            if author in getattr(session, x, []):
-                return True
-        return False
+        participants_ids = set(
+            [p.id for _loop, session in self._sessions.items() for p in session.participants]
+        )
+        return bool(author.id in participants_ids)
 
     async def allow_in_dm(self, ctx):
         """Checks if the bank is global and allows the command in dm."""
@@ -381,13 +379,13 @@ class Adventure(BaseCog):
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
         if not ctx.invoked_subcommand:
             backpack_contents = _("[{author}'s backpack] \n\n{backpack}\n").format(
-                author=self.escape(ctx.author.display_name), backpack=c.__backpack__()
+                author=self.escape(ctx.author.display_name), backpack=c.get_backpack()
             )
             msgs = []
             for page in pagify(backpack_contents, delims=["\n"], shorten_by=20):
@@ -405,7 +403,7 @@ class Adventure(BaseCog):
                 ),
             )
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -446,12 +444,12 @@ class Adventure(BaseCog):
             await ctx.send(equip_msg)
             async with self.get_lock(c.user):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
-                c = await c._equip_item(equip, True, self.is_dev(ctx.author))  # FIXME:
-                await self.config.user(ctx.author).set(c._to_json())
+                c = await c.equip_item(equip, True, self.is_dev(ctx.author))  # FIXME:
+                await self.config.user(ctx.author).set(c.to_json())
 
     @_backpack.command(name="sellall")
     async def backpack_sellall(self, ctx: Context, rarity: str = None):
@@ -472,7 +470,7 @@ class Adventure(BaseCog):
         async with self.get_lock(ctx.author):
             msg = ""
             try:
-                c = await Character._from_json(self.config, ctx.author)
+                c = await Character.from_json(self.config, ctx.author)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -499,7 +497,7 @@ class Adventure(BaseCog):
                     await asyncio.sleep(0.1)
                     with contextlib.suppress(BalanceTooHigh):
                         await bank.deposit_credits(ctx.author, item_price)
-            await self.config.user(ctx.author).set(c._to_json())
+            await self.config.user(ctx.author).set(c.to_json())
         msg_list = []
         new_msg = _("{author} sold all their{rarity} items for {price}.\n\n{items}").format(
             author=self.escape(ctx.author.display_name),
@@ -541,7 +539,7 @@ class Adventure(BaseCog):
                 )
             )
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             ctx.command.reset_cooldown(ctx)
             log.exception("Error with the new character sheet")
@@ -557,7 +555,7 @@ class Adventure(BaseCog):
 
         async with self.get_lock(ctx.author):
             try:
-                c = await Character._from_json(self.config, ctx.author)
+                c = await Character.from_json(self.config, ctx.author)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -665,7 +663,7 @@ class Adventure(BaseCog):
             msg = _("Not selling those items.")
 
         if msg:
-            await self.config.user(ctx.author).set(character._to_json())
+            await self.config.user(ctx.author).set(character.to_json())
             pages = [page for page in pagify(msg, delims=["\n"])]
             if pages:
                 await menu(ctx, pages, DEFAULT_CONTROLS)
@@ -690,7 +688,7 @@ class Adventure(BaseCog):
                 ),
             )
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -777,7 +775,7 @@ class Adventure(BaseCog):
                     if await bank.can_spend(buyer, asking):
                         async with self.get_lock(c.user):
                             try:
-                                buy_user = await Character._from_json(self.config, buyer)
+                                buy_user = await Character.from_json(self.config, buyer)
                             except Exception:
                                 log.exception("Error with the new character sheet")
                                 return
@@ -799,10 +797,10 @@ class Adventure(BaseCog):
                             c.backpack[item.name].owned -= 1
                             if c.backpack[item.name].owned <= 0:
                                 del c.backpack[item.name]
-                            await self.config.user(ctx.author).set(c._to_json())
+                            await self.config.user(ctx.author).set(c.to_json())
                         async with self.get_lock(buyer):
                             try:
-                                buy_user = await Character._from_json(self.config, buyer)
+                                buy_user = await Character.from_json(self.config, buyer)
                             except Exception:
                                 log.exception("Error with the new character sheet")
                                 return
@@ -811,7 +809,7 @@ class Adventure(BaseCog):
                             else:
                                 item.owned = 1
                                 buy_user.backpack[item.name] = item
-                                await self.config.user(buyer).set(buy_user._to_json())
+                                await self.config.user(buyer).set(buy_user.to_json())
                         await trade_msg.edit(
                             content=(
                                 box(
@@ -853,7 +851,7 @@ class Adventure(BaseCog):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         name = name.lower()
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -868,13 +866,13 @@ class Adventure(BaseCog):
         else:
             async with self.get_lock(c.user):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
-                loadout = await Character._save_loadout(c)
+                loadout = await Character.save_loadout(c)
                 c.loadouts[name] = loadout
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
             await smart_embed(
                 ctx,
                 _("{author}, your current equipment has been saved to {name}.").format(
@@ -894,7 +892,7 @@ class Adventure(BaseCog):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
 
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -944,7 +942,7 @@ class Adventure(BaseCog):
 
             async with self.get_lock(ctx.author):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
@@ -962,7 +960,7 @@ class Adventure(BaseCog):
                         )
                     )
                 )
-                await self.config.user(ctx.author).set(await c._rebirth())
+                await self.config.user(ctx.author).set(await c.rebirth())
 
     @loadout.command(name="delete", aliases=["del", "rem", "remove"])
     async def remove_loadout(self, ctx: Context, name: str):
@@ -971,7 +969,7 @@ class Adventure(BaseCog):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         name = name.lower()
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -986,12 +984,12 @@ class Adventure(BaseCog):
         else:
             async with self.get_lock(c.user):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
                 del c.loadouts[name]
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
             await smart_embed(
                 ctx,
                 _("{author}, loadout {name} has been deleted.").format(
@@ -1005,7 +1003,7 @@ class Adventure(BaseCog):
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -1055,7 +1053,7 @@ class Adventure(BaseCog):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         name = name.lower()
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -1071,11 +1069,11 @@ class Adventure(BaseCog):
         else:
             async with self.get_lock(c.user):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
-                c = await c._equip_loadout(name)
+                c = await c.equip_loadout(name)
                 current_stats = box(
                     _(
                         "{author}'s new stats: "
@@ -1086,19 +1084,19 @@ class Adventure(BaseCog):
                         "Luck: {stat_luck}."
                     ).format(
                         author=self.escape(ctx.author.display_name),
-                        stat_att=c.__stat__("att"),
+                        stat_att=c.get_stat_value("att"),
                         skill_att=c.skill["att"],
-                        stat_int=c.__stat__("int"),
+                        stat_int=c.get_stat_value("int"),
                         skill_int=c.skill["int"],
-                        stat_cha=c.__stat__("cha"),
+                        stat_cha=c.get_stat_value("cha"),
                         skill_cha=c.skill["cha"],
-                        stat_dex=c.__stat__("dex"),
-                        stat_luck=c.__stat__("luck"),
+                        stat_dex=c.get_stat_value("dex"),
+                        stat_luck=c.get_stat_value("luck"),
                     ),
                     lang="css",
                 )
                 await ctx.send(current_stats)
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
         return
 
     @commands.group()
@@ -1221,7 +1219,7 @@ class Adventure(BaseCog):
         async with self.get_lock(user):
             item = None
             try:
-                c = await Character._from_json(self.config, user)
+                c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -1233,7 +1231,7 @@ class Adventure(BaseCog):
                     item = equipped_item
             if item:
                 with contextlib.suppress(Exception):
-                    await c._unequip_item(item)
+                    await c.unequip_item(item)
             else:
                 try:
                     item = c.backpack[full_item_name]
@@ -1243,7 +1241,7 @@ class Adventure(BaseCog):
                     )
             with contextlib.suppress(KeyError):
                 del c.backpack[item.name]
-            await self.config.user(user).set(c._to_json())
+            await self.config.user(user).set(c.to_json())
         await ctx.send(
             _("{item} removed from {user}.").format(item=box(str(item), lang="css"), user=user)
         )
@@ -1361,7 +1359,7 @@ class Adventure(BaseCog):
             plural = ""
         async with self.get_lock(ctx.author):
             try:
-                c = await Character._from_json(self.config, ctx.author)
+                c = await Character.from_json(self.config, ctx.author)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -1413,7 +1411,7 @@ class Adventure(BaseCog):
                             lang="css",
                         )
                     )
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                 else:
                     await smart_embed(
                         ctx,
@@ -1450,7 +1448,7 @@ class Adventure(BaseCog):
                             lang="css",
                         )
                     )
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                 else:
                     await smart_embed(
                         ctx,
@@ -1486,7 +1484,7 @@ class Adventure(BaseCog):
                             lang="css",
                         )
                     )
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                 else:
                     await smart_embed(
                         ctx,
@@ -1539,7 +1537,7 @@ class Adventure(BaseCog):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         async with self.get_lock(ctx.author):
             try:
-                c = await Character._from_json(self.config, ctx.author)
+                c = await Character.from_json(self.config, ctx.author)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -1577,7 +1575,7 @@ class Adventure(BaseCog):
                     "[{author}'s forgeables]\n{bc}\n"
                     "(Reply with the full or partial name "
                     "of item 1 to select for forging. Try to be specific.)"
-                ).format(author=self.escape(ctx.author.display_name), bc=c.__backpack__(True))
+                ).format(author=self.escape(ctx.author.display_name), bc=c.get_backpack(True))
                 for page in pagify(forgeables, delims=["\n"], shorten_by=20):
                     await ctx.send(box(page, lang="css"))
 
@@ -1648,12 +1646,12 @@ class Adventure(BaseCog):
                     c.backpack[x.name].owned -= 1
                     if c.backpack[x.name].owned <= 0:
                         del c.backpack[x.name]
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                 # save so the items are eaten up already
                 log.debug("tambourine" in c.backpack)
-                for items in c.current_equipment():
+                for items in c.get_current_equipment():
                     if item.rarity in ["forged"]:
-                        c = await c._unequip_item(items)
+                        c = await c.unequip_item(items)
                 lookup = list(i for n, i in c.backpack.items() if i.rarity in ["forged"])
                 if len(lookup) > 0:
                     forge_str = box(
@@ -1692,7 +1690,7 @@ class Adventure(BaseCog):
                             del c.backpack[item.name]
                         await ctx.send(created_item)
                         c.backpack[newitem.name] = newitem
-                        await self.config.user(ctx.author).set(c._to_json())
+                        await self.config.user(ctx.author).set(c.to_json())
                     else:
                         mad_forge = box(
                             _(
@@ -1703,7 +1701,7 @@ class Adventure(BaseCog):
                         return await ctx.send(mad_forge)
                 else:
                     c.backpack[newitem.name] = newitem
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                     forged_item = box(
                         _("{author}, your new {newitem} is lurking in your backpack.").format(
                             author=self.escape(ctx.author.display_name), newitem=newitem
@@ -1836,7 +1834,7 @@ class Adventure(BaseCog):
                 "rarity": _("forged"),
             }
         }
-        item = Item._from_json(item)
+        item = Item.from_json(item)
         return item
 
     @commands.group()
@@ -1906,10 +1904,10 @@ class Adventure(BaseCog):
         if user is None:
             user = ctx.author
         new_item = {item_name: stats}
-        item = Item._from_json(new_item)
+        item = Item.from_json(new_item)
         async with self.get_lock(user):
             try:
-                c = await Character._from_json(self.config, user)
+                c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -1917,7 +1915,7 @@ class Adventure(BaseCog):
                 c.backpack[item.name].owned += 1
             else:
                 c.backpack[item.name] = item
-            await self.config.user(user).set(c._to_json())
+            await self.config.user(user).set(c.to_json())
         await ctx.send(
             box(
                 _(
@@ -1952,7 +1950,7 @@ class Adventure(BaseCog):
             return await smart_embed(ctx, _("You are not worthy to award legendary loot."))
         async with self.get_lock(user):
             try:
-                c = await Character._from_json(self.config, user)
+                c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -1966,7 +1964,7 @@ class Adventure(BaseCog):
                 c.treasure[4] += number
             else:
                 c.treasure[0] += number
-            await self.config.user(user).set(c._to_json())
+            await self.config.user(user).set(c.to_json())
             await ctx.send(
                 box(
                     _(
@@ -2100,7 +2098,7 @@ class Adventure(BaseCog):
                 lang="css",
             )
             try:
-                c = await Character._from_json(self.config, ctx.author)
+                c = await Character.from_json(self.config, ctx.author)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -2137,7 +2135,7 @@ class Adventure(BaseCog):
             if clz in classes and action is None:
                 async with self.get_lock(ctx.author):
                     try:
-                        c = await Character._from_json(self.config, ctx.author)
+                        c = await Character.from_json(self.config, ctx.author)
                     except Exception:
                         log.exception("Error with the new character sheet")
                         return
@@ -2179,15 +2177,15 @@ class Adventure(BaseCog):
                             if pred.result:  # user reacted with Yes.
                                 if c.heroclass["name"] == "Tinkerer":
                                     tinker_wep = []
-                                    for item in c.current_equipment():
+                                    for item in c.get_current_equipment():
                                         if item.rarity == "forged":
-                                            c = await c._unequip_item(item)
+                                            c = await c.unequip_item(item)
                                     for name, item in c.backpack.items():
                                         if item.rarity == "forged":
                                             tinker_wep.append(item)
                                     for item in tinker_wep:
                                         del c.backpack[item.name]
-                                    await self.config.user(ctx.author).set(c._to_json())
+                                    await self.config.user(ctx.author).set(c.to_json())
                                     if tinker_wep:
                                         await class_msg.edit(
                                             content=box(
@@ -2202,7 +2200,7 @@ class Adventure(BaseCog):
                                     c.heroclass["ability"] = False
                                     c.heroclass["pet"] = {}
                                     c.heroclass = classes[clz]
-                                    await self.config.user(ctx.author).set(c._to_json())
+                                    await self.config.user(ctx.author).set(c.to_json())
                                     await self._clear_react(class_msg)
                                     await class_msg.edit(
                                         content=box(
@@ -2215,7 +2213,7 @@ class Adventure(BaseCog):
                                 if c.skill["pool"] < 0:
                                     c.skill["pool"] = 0
                                 c.heroclass = classes[clz]
-                                await self.config.user(ctx.author).set(c._to_json())
+                                await self.config.user(ctx.author).set(c.to_json())
                                 await self._clear_react(class_msg)
                                 return await class_msg.edit(
                                     content=class_msg.content + box(now_class_msg, lang="css")
@@ -2228,7 +2226,7 @@ class Adventure(BaseCog):
                             if c.skill["pool"] < 0:
                                 c.skill["pool"] = 0
                             c.heroclass = classes[clz]
-                            await self.config.user(ctx.author).set(c._to_json())
+                            await self.config.user(ctx.author).set(c.to_json())
                             await self._clear_react(class_msg)
                             return await class_msg.edit(content=box(now_class_msg, lang="css"))
                     else:
@@ -2270,7 +2268,7 @@ class Adventure(BaseCog):
         if amount < 1 or amount > 20:
             return await smart_embed(ctx, _("Nice try :smirk:"))
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -2321,12 +2319,12 @@ class Adventure(BaseCog):
                 # atomically save reduced loot count then lock again when saving inside
                 # open chests
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
                 c.treasure[redux.index(1)] -= amount
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
             if amount > 1:
                 items = await self._open_chests(ctx, ctx.author, box_type, amount)
                 msg = _(
@@ -2571,7 +2569,7 @@ class Adventure(BaseCog):
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -2598,7 +2596,7 @@ class Adventure(BaseCog):
                 )
             async with self.get_lock(ctx.author):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
@@ -2672,7 +2670,7 @@ class Adventure(BaseCog):
                         await user_msg.edit(content=f"{pet_msg}\n{pet_msg2}\n{pet_msg3}")
                         c.heroclass["pet"] = self.PETS[pet]
                         c.heroclass["catch_cooldown"] = time.time()
-                        await self.config.user(ctx.author).set(c._to_json())
+                        await self.config.user(ctx.author).set(c.to_json())
                     elif roll == 1:
                         bonus = _("But they stepped on a twig and scared it away.")
                         pet_msg3 = box(
@@ -2704,7 +2702,7 @@ class Adventure(BaseCog):
     async def _forage(self, ctx: Context):
         """Use your pet to forage for items!"""
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -2726,12 +2724,12 @@ class Adventure(BaseCog):
             await self._open_chest(ctx, c.heroclass["pet"]["name"], "pet")
             async with self.get_lock(ctx.author):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
                 c.heroclass["cooldown"] = time.time()
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
         else:
             cooldown_time = (c.heroclass["cooldown"] + 7200) - time.time()
             return await smart_embed(
@@ -2745,7 +2743,7 @@ class Adventure(BaseCog):
     async def _free(self, ctx: Context):
         """Free your pet :cry:"""
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -2761,7 +2759,7 @@ class Adventure(BaseCog):
         if c.heroclass["pet"]:
             async with self.get_lock(ctx.author):
                 c.heroclass["pet"] = {}
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
             return await ctx.send(
                 box(
                     _("{} released their pet into the wild.").format(
@@ -2784,7 +2782,7 @@ class Adventure(BaseCog):
         """
 
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -2809,7 +2807,7 @@ class Adventure(BaseCog):
                 c.heroclass["ability"] = True
                 c.heroclass["cooldown"] = time.time()
                 async with self.get_lock(c.user):
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
 
                 await smart_embed(
                     ctx,
@@ -2838,7 +2836,7 @@ class Adventure(BaseCog):
         """
 
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -2863,7 +2861,7 @@ class Adventure(BaseCog):
                 c.heroclass["ability"] = True
                 c.heroclass["cooldown"] = time.time()
                 async with self.get_lock(c.user):
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                 await smart_embed(
                     ctx,
                     _("🗯️{skill} {c} is starting to froth at the mouth... {skill}🗯️").format(
@@ -2890,7 +2888,7 @@ class Adventure(BaseCog):
         """
 
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -2915,7 +2913,7 @@ class Adventure(BaseCog):
                 c.heroclass["ability"] = True
                 c.heroclass["cooldown"] = time.time()
                 async with self.get_lock(c.user):
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                 await smart_embed(
                     ctx,
                     _("{skill} {c} is focusing all of their energy...{skill}").format(
@@ -2943,7 +2941,7 @@ class Adventure(BaseCog):
         """
 
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -2968,7 +2966,7 @@ class Adventure(BaseCog):
                 c.heroclass["ability"] = True
                 c.heroclass["cooldown"] = time.time()
                 async with self.get_lock(c.user):
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                     await smart_embed(
                         ctx,
                         _("{skill} {c} is whipping up a performance...{skill}").format(
@@ -2999,7 +2997,7 @@ class Adventure(BaseCog):
         if amount < 1:
             return await smart_embed(ctx, _("Nice try :smirk:"))
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -3033,7 +3031,7 @@ class Adventure(BaseCog):
                 c.skill["cha"] = 0
                 c.skill["int"] = 0
                 async with self.get_lock(c.user):
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                 await bank.withdraw_credits(ctx.author, offering)
                 await smart_embed(
                     ctx,
@@ -3085,7 +3083,7 @@ class Adventure(BaseCog):
                 c.skill["pool"] -= amount
                 c.skill["int"] += amount
             async with self.get_lock(c.user):
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
             await smart_embed(
                 ctx,
                 _("{author}, you permanently raised your {spend} value by {amount}.").format(
@@ -3107,7 +3105,7 @@ class Adventure(BaseCog):
         if user.bot:
             return
         try:
-            c = await Character._from_json(self.config, user)
+            c = await Character.from_json(self.config, user)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -3144,7 +3142,7 @@ class Adventure(BaseCog):
                 last_slot = slot
                 form_string += _("\n\n {} slot").format(slot.title())
                 continue
-            item = Item._from_json(data)
+            item = Item.from_json(data)
             slot_name = userdata["items"][slot]["".join(i for i in data.keys())]["slot"]
             slot_name = slot_name[0] if len(slot_name) < 2 else _("two handed")
             form_string += _("\n\n {} slot").format(slot_name.title())
@@ -3185,7 +3183,7 @@ class Adventure(BaseCog):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         async with self.get_lock(ctx.author):
             try:
-                c = await Character._from_json(self.config, ctx.author)
+                c = await Character.from_json(self.config, ctx.author)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -3211,14 +3209,14 @@ class Adventure(BaseCog):
                         "{author}, you do not have an item equipped in the {item} slot."
                     ).format(author=self.escape(ctx.author.display_name), item=item)
                     return await ctx.send(box(msg, lang="css"))
-                await c._unequip_item(current_item)
+                await c.unequip_item(current_item)
                 msg = _(
                     "{author} removed the {current_item} and put it into their backpack."
                 ).format(author=self.escape(ctx.author.display_name), current_item=current_item)
             else:
-                for current_item in c.current_equipment():
+                for current_item in c.get_current_equipment():
                     if item.lower() in current_item.name.lower():
-                        await c._unequip_item(current_item)
+                        await c.unequip_item(current_item)
                         msg = _(
                             "{author} removed the {current_item} and put it into their backpack."
                         ).format(
@@ -3229,7 +3227,7 @@ class Adventure(BaseCog):
                         break
             if msg:
                 await ctx.send(box(msg, lang="css"))
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
             else:
                 await smart_embed(
                     ctx,
@@ -3309,20 +3307,20 @@ class Adventure(BaseCog):
             for user in participants:  # reset activated abilities
                 async with self.get_lock(user):
                     try:
-                        c = await Character._from_json(self.config, user)
+                        c = await Character.from_json(self.config, user)
                     except Exception:
                         log.exception("Error with the new character sheet")
                         continue
                     if c.heroclass["name"] != "Ranger" and c.heroclass["ability"]:
                         c.heroclass["ability"] = False
-                        await self.config.user(user).set(c._to_json())
+                        await self.config.user(user).set(c.to_json())
 
         while ctx.guild.id in self._sessions:
             del self._sessions[ctx.guild.id]
 
     async def get_challenge(self, ctx: Context):
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet", exc_info=True)
             return
@@ -3346,7 +3344,7 @@ class Adventure(BaseCog):
     async def update_monster_roster(self, user):
 
         try:
-            c = await Character._from_json(self.config, user)
+            c = await Character.from_json(self.config, user)
         except Exception:
             log.exception("Error with the new character sheet")
             self.monster_stats = 1
@@ -3676,7 +3674,7 @@ class Adventure(BaseCog):
             await bank.withdraw_credits(spender, int(items["price"]) * pred.result)
             async with self.get_lock(user):
                 try:
-                    c = await Character._from_json(self.config, user)
+                    c = await Character.from_json(self.config, user)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
@@ -3696,7 +3694,7 @@ class Adventure(BaseCog):
                         c.backpack[item.name].owned += pred.result
                     else:
                         c.backpack[item.name] = item
-                await self.config.user(user).set(c._to_json())
+                await self.config.user(user).set(c.to_json())
                 with contextlib.suppress(discord.HTTPException):
                     await to_delete.delete()
                     await msg.delete()
@@ -3902,7 +3900,7 @@ class Adventure(BaseCog):
             repair_list = []
             for user in session.participants:
                 try:
-                    c = await Character._from_json(self.config, user)
+                    c = await Character.from_json(self.config, user)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     continue
@@ -3926,7 +3924,7 @@ class Adventure(BaseCog):
                         await bank.set_balance(user, 0)
                 c.adventures.update({"loses": c.adventures.get("loses", 0) + 1})
                 c.weekly_score.update({"adventures": c.weekly_score.get("adventures", 0) + 1})
-                await self.config.user(user).set(c._to_json())
+                await self.config.user(user).set(c.to_json())
             loss_list = []
             result_msg += session.miniboss["defeat"]
             if len(repair_list) > 0:
@@ -3951,7 +3949,7 @@ class Adventure(BaseCog):
             currency_name = await bank.get_currency_name(ctx.guild)
             for user in session.participants:
                 try:
-                    c = await Character._from_json(self.config, user)
+                    c = await Character.from_json(self.config, user)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     continue
@@ -4018,7 +4016,7 @@ class Adventure(BaseCog):
                 users = fight_list + magic_list + talk_list + pray_list + fumblelist
                 for user in users:
                     try:
-                        c = await Character._from_json(self.config, user)
+                        c = await Character.from_json(self.config, user)
                     except Exception:
                         log.exception("Error with the new character sheet")
                         continue
@@ -4192,7 +4190,7 @@ class Adventure(BaseCog):
                 users = fight_list + magic_list + talk_list + pray_list + fumblelist
                 for user in users:
                     try:
-                        c = await Character._from_json(self.config, user)
+                        c = await Character.from_json(self.config, user)
                     except Exception:
                         log.exception("Error with the new character sheet")
                         continue
@@ -4219,7 +4217,7 @@ class Adventure(BaseCog):
                     users = run_list
                     for user in users:
                         try:
-                            c = await Character._from_json(self.config, user)
+                            c = await Character.from_json(self.config, user)
                         except Exception:
                             log.exception("Error with the new character sheet")
                             continue
@@ -4302,7 +4300,7 @@ class Adventure(BaseCog):
         for action_name, action in participants.items():
             for user in action:
                 try:
-                    c = await Character._from_json(self.config, user)
+                    c = await Character.from_json(self.config, user)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     continue
@@ -4314,7 +4312,7 @@ class Adventure(BaseCog):
                     c.adventures.update({special_action: current_val + 1})
                     c.weekly_score.update({"adventures": c.weekly_score.get("adventures", 0) + 1})
                     parsed_users.append(user)
-                await self.config.user(user).set(c._to_json())
+                await self.config.user(user).set(c.to_json())
 
     async def handle_run(self, guild_id, attack, diplomacy, magic):
         runners = []
@@ -4367,7 +4365,7 @@ class Adventure(BaseCog):
 
         for user in session.fight:
             try:
-                c = await Character._from_json(self.config, user)
+                c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 continue
@@ -4427,7 +4425,7 @@ class Adventure(BaseCog):
                 report += f"{bold(self.escape(user.display_name))}: {self.emojis.dice}({roll}) + {self.emojis.attack}{str(att_value)}\n"
         for user in session.magic:
             try:
-                c = await Character._from_json(self.config, user)
+                c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 continue
@@ -4510,7 +4508,7 @@ class Adventure(BaseCog):
         failed_emoji = self.emojis.fumble
         for user in pray_list:
             try:
-                c = await Character._from_json(self.config, user)
+                c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 continue
@@ -4617,7 +4615,7 @@ class Adventure(BaseCog):
         failed_emoji = self.emojis.fumble
         for user in session.talk:
             try:
-                c = await Character._from_json(self.config, user)
+                c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 continue
@@ -4695,7 +4693,7 @@ class Adventure(BaseCog):
                     fight_list + magic_list + talk_list + pray_list
                 ):  # check if any fighter has an equipped mirror shield to give them a chance.
                     try:
-                        c = await Character._from_json(self.config, user)
+                        c = await Character.from_json(self.config, user)
                     except Exception:
                         log.exception("Error with the new character sheet")
                         continue
@@ -4717,7 +4715,7 @@ class Adventure(BaseCog):
     async def _add_rewards(self, ctx: Context, user, exp, cp, special):
         async with self.get_lock(user):
             try:
-                c = await Character._from_json(self.config, user)
+                c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -4780,7 +4778,7 @@ class Adventure(BaseCog):
                         special = False
             if special is not False:
                 c.treasure = [sum(x) for x in zip(c.treasure, special)]
-            await self.config.user(user).set(c._to_json())
+            await self.config.user(user).set(c.to_json())
 
     async def _adv_countdown(self, ctx: Context, seconds, title) -> asyncio.Task:
         await self._data_check(ctx)
@@ -4921,13 +4919,13 @@ class Adventure(BaseCog):
             # not sure why this was put here but just incase someone
             # tries to add a new loot type we give them normal loot instead
         itemname = random.choice(list(chance.keys()))
-        return Item._from_json({itemname: chance[itemname]})
+        return Item.from_json({itemname: chance[itemname]})
 
     async def _open_chests(self, ctx: Context, user: discord.Member, chest_type: str, amount: int):
         """This allows you you to open multiple chests at once and put them in your inventory."""
         async with self.get_lock(user):
             try:
-                c = await Character._from_json(self.config, ctx.author)
+                c = await Character.from_json(self.config, ctx.author)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -4944,7 +4942,7 @@ class Adventure(BaseCog):
                     c.backpack[item.name].owned += item.owned
                 else:
                     c.backpack[item.name] = item
-            await self.config.user(ctx.author).set(c._to_json())
+            await self.config.user(ctx.author).set(c.to_json())
             return items
 
     async def _open_chest(self, ctx: Context, user, chest_type):
@@ -4957,7 +4955,7 @@ class Adventure(BaseCog):
                 user=self.escape(ctx.author.display_name), f=(user[:1] + user[1:])
             )
         try:
-            c = await Character._from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -5054,12 +5052,12 @@ class Adventure(BaseCog):
             await self._clear_react(open_msg)
             async with self.get_lock(ctx.author):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
 
-                await c._add_backpack(item)
+                await c.add_to_backpack(item)
                 await open_msg.edit(
                     content=(
                         box(
@@ -5070,7 +5068,7 @@ class Adventure(BaseCog):
                         )
                     )
                 )
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
                 return
         await self._clear_react(open_msg)
         if self._treasure_controls[react.emoji] == "sell":
@@ -5094,11 +5092,11 @@ class Adventure(BaseCog):
                 )
             )
             await self._clear_react(open_msg)
-            await self.config.user(ctx.author).set(c._to_json())
+            await self.config.user(ctx.author).set(c.to_json())
         elif self._treasure_controls[react.emoji] == "equip":
             async with self.get_lock(ctx.author):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
@@ -5111,7 +5109,7 @@ class Adventure(BaseCog):
                         c.backpack[item.name].owned += 1
                     else:
                         c.backpack[item.name] = item
-                    await self.config.user(ctx.author).set(c._to_json())
+                    await self.config.user(ctx.author).set(c.to_json())
                     return await smart_embed(
                         ctx,
                         f"{self.escape(ctx.author.display_name)}, You need to be level `{equiplevel}` to equip this item, I've put it in your backpack",
@@ -5137,16 +5135,16 @@ class Adventure(BaseCog):
                         lang="css",
                     )
                 await open_msg.edit(content=equip_msg)
-                c = await c._equip_item(item, False, self.is_dev(ctx.author))
-                await self.config.user(ctx.author).set(c._to_json())
+                c = await c.equip_item(item, False, self.is_dev(ctx.author))
+                await self.config.user(ctx.author).set(c.to_json())
         else:
             async with self.get_lock(ctx.author):
                 try:
-                    c = await Character._from_json(self.config, ctx.author)
+                    c = await Character.from_json(self.config, ctx.author)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
-                await c._add_backpack(item)
+                await c.add_to_backpack(item)
                 await open_msg.edit(
                     content=(
                         box(
@@ -5158,7 +5156,7 @@ class Adventure(BaseCog):
                     )
                 )
                 await self._clear_react(open_msg)
-                await self.config.user(ctx.author).set(c._to_json())
+                await self.config.user(ctx.author).set(c.to_json())
 
     @staticmethod
     async def _remaining(epoch):
@@ -5192,7 +5190,7 @@ class Adventure(BaseCog):
         for user in userlist:
             self._rewards[user.id] = {}
             try:
-                c = await Character._from_json(self.config, user)
+                c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
@@ -5483,7 +5481,7 @@ class Adventure(BaseCog):
 
             if chance is not None:
                 itemname = random.choice(list(chance.keys()))
-                item = Item._from_json({itemname: chance[itemname]})
+                item = Item.from_json({itemname: chance[itemname]})
                 if len(item.slot) == 2:  # two handed weapons add their bonuses twice
                     att = item.att * 2
                     cha = item.cha * 2
