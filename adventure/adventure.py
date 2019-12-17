@@ -2725,10 +2725,10 @@ class Adventure(BaseCog):
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
-                c.heroclass["forage"] = time.time()
+                c.heroclass["cooldown"] = time.time()
                 await self.config.user(ctx.author).set(c._to_json())
         else:
-            cooldown_time = (c.heroclass["forage"] + 7200) - time.time()
+            cooldown_time = (c.heroclass["cooldown"] + 7200) - time.time()
             return await smart_embed(
                 ctx,
                 _("This command is on cooldown. Try again in {}.").format(
