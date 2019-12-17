@@ -1,24 +1,20 @@
-from copy import copy
-
-import discord
+# -*- coding: utf-8 -*-
 import asyncio
 import logging
 import re
+from copy import copy
+from datetime import date, timedelta
+from typing import Dict, List, Optional, Set
 
-from typing import List, Set, Dict, Optional
-from datetime import timedelta, date
-
+import discord
 from discord.ext.commands import check
-
-from redbot.core import commands
-from redbot.core import Config, bank
-from redbot.core.i18n import Translator
-from redbot.core.utils.chat_formatting import box
-from redbot.core.utils.predicates import ReactionPredicate
-from redbot.core.utils.menus import start_adding_reactions
-
 from discord.ext.commands.converter import Converter
 from discord.ext.commands.errors import BadArgument
+from redbot.core import Config, bank, commands
+from redbot.core.i18n import Translator
+from redbot.core.utils.chat_formatting import box
+from redbot.core.utils.menus import start_adding_reactions
+from redbot.core.utils.predicates import ReactionPredicate
 
 log = logging.getLogger("red.cogs.adventure")
 _ = Translator("Adventure", __file__)
@@ -79,7 +75,7 @@ INT = re.compile(r"([\d]*) (int(?:elligence)?)")
 LUCK = re.compile(r"([\d]*) (luck)")
 DEX = re.compile(r"([\d]*) (dex(?:terity)?)")
 SLOT = re.compile(r"(head|neck|chest|gloves|belt|legs|boots|left|right|ring|charm|twohanded)")
-RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?)")
+RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged)")
 
 
 def get_item_db(rarity):
@@ -138,18 +134,8 @@ def get_true_name(rarity, name):
 
 
 class Stats(Converter):
-    """
-    This will parse a string for specific keywords like attack and dexterity followed by a number
-    to create an item object to be added to a users inventory
-    """
-
-    ATT = re.compile(r"([\-\d]*) (att(?:ack)?)")
-    CHA = re.compile(r"([\-\d]*) (cha(?:risma)?|dip(?:lo?(?:macy)?)?)")
-    INT = re.compile(r"([\-\d]*) (int(?:elligence)?)")
-    LUCK = re.compile(r"([\-\d]*) (luck)")
-    DEX = re.compile(r"([\-\d]*) (dex(?:terity)?)")
-    SLOT = re.compile(r"(head|neck|chest|gloves|belt|legs|boots|left|right|ring|charm|twohanded)")
-    RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?)")
+    """This will parse a string for specific keywords like attack and dexterity followed by a
+    number to create an item object to be added to a users inventory."""
 
     async def convert(self, ctx: commands.Context, argument: str) -> Dict[str, int]:
         result = {
@@ -162,11 +148,11 @@ class Stats(Converter):
             "rarity": "normal",
         }
         possible_stats = dict(
-            att=self.ATT.search(argument),
-            cha=self.CHA.search(argument),
-            int=self.INT.search(argument),
-            dex=self.DEX.search(argument),
-            luck=self.LUCK.search(argument),
+            att=ATT.search(argument),
+            cha=CHA.search(argument),
+            int=INT.search(argument),
+            dex=DEX.search(argument),
+            luck=LUCK.search(argument),
         )
         try:
             slot = [self.SLOT.search(argument).group(0)]
@@ -176,7 +162,7 @@ class Stats(Converter):
         except AttributeError:
             raise BadArgument(_("No slot position was provided."))
         try:
-            result["rarity"] = self.RARITY.search(argument).group(0)
+            result["rarity"] = RARITY.search(argument).group(0)
         except AttributeError:
             raise BadArgument(_("No rarity was provided."))
         for key, value in possible_stats.items():
@@ -202,7 +188,7 @@ def parse_timedelta(argument: str) -> Optional[timedelta]:
 
 
 class Item:
-    """An object to represent an item in the game world"""
+    """An object to represent an item in the game world."""
 
     def __init__(self, **kwargs):
         self.name: str = kwargs.pop("name")
@@ -283,13 +269,9 @@ class Item:
 
     @classmethod
     def _from_json(cls, data: dict):
-        # try:
         name = "".join(data.keys())
         data = data[name]
-        # except KeyError:
-        # return cls(**data)
         rarity = "normal"
-        # data = data[name]
         if name.startswith("."):
             name = name.replace("_", " ").replace(".", "")
             rarity = "rare"
@@ -405,7 +387,6 @@ class ItemConverter(Converter):
         except Exception:
             log.exception("Error with the new character sheet")
             return
-        lookup = []
         no_markdown = Item._remove_markdowns(argument)
         lookup = list(i for x, i in c.backpack.items() if no_markdown.lower() in x.lower())
         lookup_m = list(i for x, i in c.backpack.items() if argument.lower() == str(i).lower())
@@ -443,7 +424,7 @@ class ItemConverter(Converter):
 
 
 class GameSession:
-    """A class to represent and hold current game sessions per server"""
+    """A class to represent and hold current game sessions per server."""
 
     challenge: str
     attribute: str
@@ -480,13 +461,11 @@ class GameSession:
 
 
 def equip_level(char, item):
-    if char.rebirths >= 30 and item.set:
-        return 1
     return max((item.lvl - min(max(char.rebirths // 2 - 1, 0), 50)), 1)
 
 
 class Character(Item):
-    """An class to represent the characters stats"""
+    """An class to represent the characters stats."""
 
     def __init__(self, **kwargs):
         self.exp: int = kwargs.pop("exp")
@@ -545,9 +524,7 @@ class Character(Item):
         }
 
     def __stat__(self, stat: str):
-        """
-        Calculates the stats dynamically for each slot of equipment
-        """
+        """Calculates the stats dynamically for each slot of equipment."""
         extrapoints = 0
         rebirths = copy(self.rebirths)
 
@@ -575,7 +552,6 @@ class Character(Item):
                 continue
             try:
                 item = getattr(self, slot)
-                # log.debug(item)
                 if item:
                     stats += int(
                         (getattr(item, stat) * self.gear_set_bonus.get("statmult", 1))
@@ -583,7 +559,6 @@ class Character(Item):
                     )
             except Exception:
                 log.error(f"error calculating {stat}", exc_info=True)
-                pass
         return stats
 
     def _calculate_set_items_bonus(self):
@@ -625,9 +600,7 @@ class Character(Item):
         self.gear_set_bonus = base
 
     def __str__(self):
-        """
-            Define str to be our default look for the character sheet :thinkies:
-        """
+        """Define str to be our default look for the character sheet :thinkies:"""
         next_lvl = int((self.lvl + 1) ** 3)
 
         if self.heroclass != {} and "name" in self.heroclass:
@@ -676,9 +649,7 @@ class Character(Item):
         )
 
     def __equipment__(self):
-        """
-            Define a secondary like __str__ to show our equipment
-        """
+        """Define a secondary like __str__ to show our equipment."""
         form_string = ""
         last_slot = ""
         rjust = max([len(str(getattr(self, i))) for i in ORDER if i != "two handed"])
@@ -697,8 +668,6 @@ class Character(Item):
             slot_name = item.slot[0] if len(item.slot) < 2 else "two handed"
             form_string += _("\n\n {} slot").format(slot_name.title())
             last_slot = slot_name
-            # rjust = max([len(i) for i in item.name])
-            # for name, stats in data.items():
             att = int(
                 (
                     (item.att * 2 if slot_name == "two handed" else item.att)
@@ -820,7 +789,6 @@ class Character(Item):
             form_string += f"\n\n {slot_name.title()} slot"
             rjust = max([len(str(i[1])) for i in slot_group])
             for item in slot_group:
-                # log.debug(item[1])
                 if forging and (item[1].rarity == "forged" or item[1] in consumed_list):
                     continue
                 settext = ""
@@ -843,19 +811,15 @@ class Character(Item):
         return form_string + "\n"
 
     async def _equip_item(self, item: Item, from_backpack: bool = True, dev=False):
-        """This handles moving an item from backpack to equipment"""
-        # log.debug(self.backpack)
+        """This handles moving an item from backpack to equipment."""
         equiplevel = equip_level(self, item)
         if equiplevel > self.lvl:
             if not dev:
                 await self._add_backpack(item)
                 return self
         if from_backpack and item.name in self.backpack:
-            # self.backpack[item.name].owned -= 1
-            # log.debug("removing one from backpack")
             log.debug("removing from backpack")
             del self.backpack[item.name]
-        # log.debug(item)
         for slot in item.slot:
             log.debug(f"Equipping {slot}")
             current = getattr(self, slot)
@@ -898,9 +862,7 @@ class Character(Item):
 
     @staticmethod
     async def _save_loadout(char):
-        """
-            Return a dict of currently equipped items for loadouts
-        """
+        """Return a dict of currently equipped items for loadouts."""
         return {
             "head": char.head._to_json() if char.head else {},
             "neck": char.neck._to_json() if char.neck else {},
@@ -916,9 +878,7 @@ class Character(Item):
         }
 
     def current_equipment(self):
-        """
-        returns a list of Items currently equipped
-        """
+        """returns a list of Items currently equipped."""
         equipped = []
         for slot in ORDER:
             if slot == "two handed":
@@ -929,11 +889,10 @@ class Character(Item):
         return equipped
 
     async def _unequip_item(self, item: Item):
-        """This handles moving an item equipment to backpack"""
+        """This handles moving an item equipment to backpack."""
         if item.name in self.backpack:
             self.backpack[item.name].owned += 1
         else:
-            # item.owned += 1
             self.backpack[item.name] = item
             log.debug(f"storing {item} in backpack")
         for slot in item.slot:
@@ -943,7 +902,7 @@ class Character(Item):
 
     @classmethod
     async def _from_json(cls, config: Config, user: discord.Member):
-        """Return a Character object from config and user"""
+        """Return a Character object from config and user."""
         data = await config.user(user).all()
         balance = await bank.get_balance(user)
         equipment = {
@@ -972,7 +931,6 @@ class Character(Item):
                 backpack[item.name] = item
         else:
             backpack = {n: Item._from_json({n: i}) for n, i in data["backpack"].items()}
-        # log.debug(data["items"]["backpack"])
         while len(data["treasure"]) < 5:
             data["treasure"].append(0)
 
@@ -1018,7 +976,6 @@ class Character(Item):
         }
         for k, v in equipment.items():
             hero_data[k] = v
-        # log.debug(hero_data)
         return cls(**hero_data)
 
     def _count_equipped_set(self):
