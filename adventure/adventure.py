@@ -901,7 +901,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx, _("You need to be Level `{c.maxlevel}` to rebirth").format(c=c)
             )
-        rebirthcost = 5000 * c.rebirths
+        rebirthcost = 1000 * c.rebirths
         has_fund = await has_funds(ctx.author, rebirthcost)
         if not has_fund:
             currency_name = await bank.get_currency_name(ctx.guild)
@@ -947,14 +947,14 @@ class Adventure(BaseCog):
                     log.exception("Error with the new character sheet")
                     return
 
-                bal = await bank.get_balance(ctx.author)
-                await bank.withdraw_credits(ctx.author, bal)
+                #  bal = await bank.get_balance(ctx.author)
+                await bank.set_balance(ctx.author, 1000)
 
                 await open_msg.edit(
                     content=(
                         box(
                             _("{c} Congratulations with your rebirth.\nYou paid {bal}").format(
-                                c=self.escape(ctx.author.display_name), bal=humanize_number(bal)
+                                c=self.escape(ctx.author.display_name), bal=1000
                             ),
                             lang="css",
                         )
@@ -3265,7 +3265,8 @@ class Adventure(BaseCog):
                 ),
             )
         cooldown = await self.config.guild(ctx.guild).cooldown()
-        cooldown_time = 420
+        #  cooldown_time = 420
+        cooldown_time = 180
 
         if cooldown + cooldown_time <= time.time():
             await self.config.guild(ctx.guild).cooldown.set(time.time())
@@ -3382,7 +3383,7 @@ class Adventure(BaseCog):
             timer = 60 * 3
             self.bot.dispatch("adventure_miniboss", ctx)
         else:
-            timer = 60 * 2
+            timer = 60 * 1
 
         self._sessions[ctx.guild.id] = GameSession(
             challenge=challenge,
@@ -3428,7 +3429,7 @@ class Adventure(BaseCog):
         basilisk_text = _(
             "but **a{attr} {chall}** stepped out looking around. \n\n"
             "What will you do and will other heroes help your cause?\n"
-            "Heroes have 3 minutes to participate via reaction:"
+            "Heroes have 2 minutes to participate via reaction:"
             "\n\nReact with: {reactions}"
         ).format(
             attr=session.attribute,
@@ -3447,7 +3448,7 @@ class Adventure(BaseCog):
             "but **a{attr} {chall}** "
             "is guarding it with{threat}. \n\n"
             "What will you do and will other heroes help your cause?\n"
-            "Heroes have 2 minutes to participate via reaction:"
+            "Heroes have 1 minutes to participate via reaction:"
             "\n\nReact with: {reactions}"
         ).format(
             attr=session.attribute,
