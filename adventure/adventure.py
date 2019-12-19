@@ -1336,8 +1336,7 @@ class Adventure(BaseCog):
     async def convert(self, ctx: Context, box_rarity: str, amount: int = 1):
         """Convert normal, rare or epic chests.
 
-        Trade 20 normal treasure chests for 1 rare treasure chest. Trade 20 rare treasure chests
-        for 1 epic treasure chest. Trade 50 epic treasure chests for 1 legendary treasure chest
+        Trade 5 chests to convert to next rarity.
         """
 
         # Thanks to flare#0001 for the idea and writing the first instance of this
@@ -1345,12 +1344,12 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx, _("You tried to converting some chets but the magician is back in town.")
             )
-        normalcost = 20
-        rarecost = 20
-        epiccost = 50
-        rebirth_normal = 2
-        rebirth_rare = 30
-        rebirth_epic = 50
+        normalcost = 5
+        rarecost = 5
+        epiccost = 5
+        rebirth_normal = 0
+        rebirth_rare = 0
+        rebirth_epic = 0
         if amount < 1:
             return await smart_embed(ctx, _("Nice try :smirk:"))
         if amount > 1:
@@ -3266,7 +3265,8 @@ class Adventure(BaseCog):
             )
         cooldown = await self.config.guild(ctx.guild).cooldown()
         #  cooldown_time = 420
-        cooldown_time = 180
+        #  cooldown_time = 180
+        cooldown_time = 120
 
         if cooldown + cooldown_time <= time.time():
             await self.config.guild(ctx.guild).cooldown.set(time.time())
@@ -5300,7 +5300,6 @@ class Adventure(BaseCog):
         return price
 
     async def _trader(self, ctx: Context, bypass=False):
-
         em_list = ReactionPredicate.NUMBER_EMOJIS
 
         cart = await self.config.cart_name()
@@ -5492,11 +5491,14 @@ class Adventure(BaseCog):
                     cha = item.cha
                     intel = item.int
                 if item.rarity == "epic":
-                    price = random.randint(10000, 50000) * max(att + cha + intel, 1)
+                    # max 18 int item: 22.5k-50k
+                    price = random.randint(750, 2750) * max(att, cha, intel, 1)
                 elif item.rarity == "rare":
-                    price = random.randint(2000, 5000) * max(att + cha + intel, 1)
+                    # max 12 int item: 9k-30k
+                    price = random.randint(750, 2500) * max(att, cha, intel, 1)
                 else:
-                    price = random.randint(100, 250) * max(att + cha + intel, 1)
+                    # max 6 int item: 600-1.5k
+                    price = random.randint(100, 250) * max(att, cha, intel, 1)
                 if itemname not in items:
                     items.update(
                         {
