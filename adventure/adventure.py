@@ -1908,7 +1908,6 @@ class Adventure(BaseCog):
             user = ctx.author
         new_item = {item_name: stats}
         item = Item.from_json(new_item)
-        print(item)
         log.critical(str(item.__dict__))
         async with self.get_lock(user):
             try:
