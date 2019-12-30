@@ -97,7 +97,7 @@ class Adventure(BaseCog):
         self.bot = bot
         self._last_trade = {}
         self.emojis = SimpleNamespace()
-        self.emojis.fumble = "\N{INTERROBANG}️"
+        self.emojis.fumble = "\N{CLOWN FACE}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
         self.emojis.rebirth = "\N{BABY SYMBOL}"
         self.emojis.attack = "\N{DAGGER KNIFE}"
