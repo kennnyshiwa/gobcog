@@ -3627,15 +3627,13 @@ class Adventure(BaseCog):
                     # iterating through reactions here and removing them seems to be expensive
                     # so they can just keep their react on the adventures they can't join
                     if user_id not in self._react_messaged:
-                        await reaction.message.channel.smart_embed(
+                        await reaction.message.channel.send(
                             _(
                                 "{c}, you are already in an existing adventure. "
                                 "Wait for it to finish before joining another one."
                             ).format(c=bold(self.escape(user.display_name)))
                         )
                         self._react_messaged.append(user_id)
-                        return
-                    else:
                         return
                 else:
                     getattr(session, action).append(user)
