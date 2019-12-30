@@ -43,6 +43,7 @@ from .charsheet import (
     equip_level,
     has_funds,
     parse_timedelta,
+    DEV_LIST
 )
 
 try:
@@ -73,7 +74,6 @@ log = logging.getLogger("red.cogs.adventure")
 REBIRTH_LVL = 20
 REBIRTH_STEP = 5
 
-DEV_LIST = [208903205982044161]
 _config: Config = None
 
 
@@ -418,7 +418,7 @@ class Adventure(BaseCog):
                 ctx,
                 _("You need to be level `{level}` to equip this item").format(level=equiplevel),
             )
-        equip = c.backpack[equip_item.name]
+        equip = c.backpack[equip_item.name_formated]
         if equip:
             slot = equip.slot[0]
             if len(equip.slot) > 1:
@@ -465,7 +465,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx, _("I've never heard of `{rarity}` rarity items before.").format(rarity=rarity)
             )
-        elif rarity and rarity.lower() not in ["set", "forged"]:
+        elif rarity and rarity.lower() in ["set", "forged"]:
             return await smart_embed(
                 ctx, _("You cannot sell `{rarity}` rarity items.").format(rarity=rarity)
             )
@@ -487,7 +487,7 @@ class Adventure(BaseCog):
                         item.owned -= 1
                         item_price += self._sell(c, item)
                         if item.owned <= 0:
-                            del c.backpack[item.name]
+                            del c.backpack[item.name_formated]
                         if not count % 10:
                             await asyncio.sleep(0.1)
                         count += 1
@@ -562,7 +562,7 @@ class Adventure(BaseCog):
                 log.exception("Error with the new character sheet")
                 return
             try:
-                item = c.backpack[item.name]
+                item = c.backpack[item.name_formated]
             except KeyError:
                 return
 
@@ -608,7 +608,7 @@ class Adventure(BaseCog):
                 currency_name=currency_name,
             )
             if item.owned <= 0:
-                del character.backpack[item.name]
+                del character.backpack[item.name_formated]
             with contextlib.suppress(BalanceTooHigh):
                 await bank.deposit_credits(ctx.author, price)
         elif (
@@ -622,7 +622,7 @@ class Adventure(BaseCog):
                 item.owned -= 1
                 price += price_shown
                 if item.owned <= 0:
-                    del character.backpack[item.name]
+                    del character.backpack[item.name_formated]
                 if not count % 10:
                     await asyncio.sleep(0.1)
                 count += 1
@@ -701,7 +701,7 @@ class Adventure(BaseCog):
                     author=self.escape(ctx.author.display_name)
                 ),
             )
-        lookup = list(x for n, x in c.backpack.items() if item.lower() in x.name.lower())
+        lookup = list(x for n, x in c.backpack.items() if item.lower() in x.name_formated.lower())
         if len(lookup) > 1:
             await smart_embed(
                 ctx,
@@ -796,9 +796,9 @@ class Adventure(BaseCog):
                                     ),
                                 )
                             await bank.transfer_credits(buyer, ctx.author, asking)
-                            c.backpack[item.name].owned -= 1
-                            if c.backpack[item.name].owned <= 0:
-                                del c.backpack[item.name]
+                            c.backpack[item.name_formated].owned -= 1
+                            if c.backpack[item.name_formated].owned <= 0:
+                                del c.backpack[item.name_formated]
                             await self.config.user(ctx.author).set(c.to_json())
                         async with self.get_lock(buyer):
                             try:
@@ -806,11 +806,11 @@ class Adventure(BaseCog):
                             except Exception:
                                 log.exception("Error with the new character sheet")
                                 return
-                            if item.name in buy_user.backpack:
-                                buy_user.backpack[item.name].owned += 1
+                            if item.name_formated in buy_user.backpack:
+                                buy_user.backpack[item.name_formated].owned += 1
                             else:
                                 item.owned = 1
-                                buy_user.backpack[item.name] = item
+                                buy_user.backpack[item.name_formated] = item
                                 await self.config.user(buyer).set(buy_user.to_json())
                         await trade_msg.edit(
                             content=(
@@ -1202,7 +1202,7 @@ class Adventure(BaseCog):
     async def remove_item(self, ctx: Context, user: discord.Member, *, full_item_name: str):
         """Lets you remove an item from a user.
 
-        Use the full name of the item without including the rarity characters like . or []  or {}.
+        Use the full name of the item including the rarity characters like . or []  or {}.
         """
         ORDER = [
             "head",
@@ -1229,7 +1229,7 @@ class Adventure(BaseCog):
                 if slot == "two handed":
                     continue
                 equipped_item = getattr(c, slot)
-                if equipped_item and equipped_item.name.lower() == full_item_name.lower():
+                if equipped_item and equipped_item.name_formated.lower() == full_item_name.lower():
                     item = equipped_item
             if item:
                 with contextlib.suppress(Exception):
@@ -1242,7 +1242,7 @@ class Adventure(BaseCog):
                         ctx, _("{} does not have an item named `{}`.").format(user, full_item_name)
                     )
             with contextlib.suppress(KeyError):
-                del c.backpack[item.name]
+                del c.backpack[item.name_formated]
             await self.config.user(user).set(c.to_json())
         await ctx.send(
             _("{item} removed from {user}.").format(item=box(str(item), lang="css"), user=user)
@@ -1646,9 +1646,9 @@ class Adventure(BaseCog):
 
                 newitem = await self._to_forge(ctx, consumed, c)
                 for x in consumed:
-                    c.backpack[x.name].owned -= 1
-                    if c.backpack[x.name].owned <= 0:
-                        del c.backpack[x.name]
+                    c.backpack[x.name_formated].owned -= 1
+                    if c.backpack[x.name_formated].owned <= 0:
+                        del c.backpack[x.name_formated]
                     await self.config.user(ctx.author).set(c.to_json())
                 # save so the items are eaten up already
                 log.debug("tambourine" in c.backpack)
@@ -1690,9 +1690,9 @@ class Adventure(BaseCog):
                             lang="css",
                         )
                         for item in lookup:
-                            del c.backpack[item.name]
+                            del c.backpack[item.name_formated]
                         await ctx.send(created_item)
-                        c.backpack[newitem.name] = newitem
+                        c.backpack[newitem.name_formated] = newitem
                         await self.config.user(ctx.author).set(c.to_json())
                     else:
                         mad_forge = box(
@@ -1703,7 +1703,7 @@ class Adventure(BaseCog):
                         )
                         return await ctx.send(mad_forge)
                 else:
-                    c.backpack[newitem.name] = newitem
+                    c.backpack[newitem.name_formated] = newitem
                     await self.config.user(ctx.author).set(c.to_json())
                     forged_item = box(
                         _("{author}, your new {newitem} is lurking in your backpack.").format(
@@ -1908,16 +1908,15 @@ class Adventure(BaseCog):
             user = ctx.author
         new_item = {item_name: stats}
         item = Item.from_json(new_item)
+        print(item)
+        log.critical(str(item.__dict__))
         async with self.get_lock(user):
             try:
                 c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
-            if item.name in c.backpack:
-                c.backpack[item.name].owned += 1
-            else:
-                c.backpack[item.name] = item
+            await c.add_to_backpack(item)
             await self.config.user(user).set(c.to_json())
         await ctx.send(
             box(
@@ -2187,7 +2186,7 @@ class Adventure(BaseCog):
                                         if item.rarity == "forged":
                                             tinker_wep.append(item)
                                     for item in tinker_wep:
-                                        del c.backpack[item.name]
+                                        del c.backpack[item.name_formated]
                                     await self.config.user(ctx.author).set(c.to_json())
                                     if tinker_wep:
                                         await class_msg.edit(
@@ -3218,7 +3217,7 @@ class Adventure(BaseCog):
                 ).format(author=self.escape(ctx.author.display_name), current_item=current_item)
             else:
                 for current_item in c.get_current_equipment():
-                    if item.lower() in current_item.name.lower():
+                    if item.lower() in current_item.name_formated.lower():
                         await c.unequip_item(current_item)
                         msg = _(
                             "{author} removed the {current_item} and put it into their backpack."
@@ -3690,12 +3689,13 @@ class Adventure(BaseCog):
                 else:
                     item = items["item"]
                     item.owned = pred.result
-                    log.debug(item.name)
-                    if item.name in c.backpack:
+                    log.debug(item.name_formated)
+                    item_name = f"{item.name_formated}"
+                    if item_name in c.backpack:
                         log.debug("item already in backpack")
-                        c.backpack[item.name].owned += pred.result
+                        c.backpack[item_name].owned += pred.result
                     else:
-                        c.backpack[item.name] = item
+                        c.backpack[item_name] = item
                 await self.config.user(user).set(c.to_json())
                 with contextlib.suppress(discord.HTTPException):
                     await to_delete.delete()
@@ -4944,16 +4944,13 @@ class Adventure(BaseCog):
             items = {}
             for i in range(0, max(amount, 0)):
                 item = await self._roll_chest(chest_type, c)
-                if item.name in items:
-                    items[item.name].owned += 1
+                if item.name_formated in items:
+                    items[item.name_formated].owned += 1
                 else:
-                    items[item.name] = item
+                    items[item.name_formated] = item
 
             for name, item in items.items():
-                if item.name in c.backpack:
-                    c.backpack[item.name].owned += item.owned
-                else:
-                    c.backpack[item.name] = item
+                await c.add_to_backpack(item)
             await self.config.user(ctx.author).set(c.to_json())
             return items
 
@@ -5117,10 +5114,7 @@ class Adventure(BaseCog):
                 if self.is_dev(ctx.author):  # FIXME:
                     equiplevel = 0
                 if not can_equip(c, item):
-                    if item.name in c.backpack:
-                        c.backpack[item.name].owned += 1
-                    else:
-                        c.backpack[item.name] = item
+                    await c.add_to_backpack(item)
                     await self.config.user(ctx.author).set(c.to_json())
                     return await smart_embed(
                         ctx,
