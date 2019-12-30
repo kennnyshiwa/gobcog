@@ -50,7 +50,9 @@ try:
 except ImportError:
 
     def humanize_number(val: int) -> str:
-        return "{:,}".format(val)
+        if isinstance(val, int):
+            return "{:,}".format(val)
+        return f"{val}"
 
 
 try:
@@ -953,8 +955,8 @@ class Adventure(BaseCog):
                 await open_msg.edit(
                     content=(
                         box(
-                            _("{c} Congratulations with your rebirth.\nYou paid {bal}").format(
-                                c=self.escape(ctx.author.display_name), bal=humanize_number(bal)
+                            _("{c} congratulations with your rebirth.\nYou paid {bal}").format(
+                                c=self.E(ctx.author.display_name), bal=humanize_number(bal)
                             ),
                             lang="css",
                         )
@@ -1336,8 +1338,9 @@ class Adventure(BaseCog):
     async def convert(self, ctx: Context, box_rarity: str, amount: int = 1):
         """Convert normal, rare or epic chests.
 
-        Trade 20 normal treasure chests for 1 rare treasure chest. Trade 20 rare treasure chests
-        for 1 epic treasure chest. Trade 50 epic treasure chests for 1 legendary treasure chest
+        Trade 20 normal chests for 1 rare chest.
+        Trade 20 rare chests for 1 epic chest.
+        Trade 50 epic chests for 1 legendary chest
         """
 
         # Thanks to flare#0001 for the idea and writing the first instance of this
@@ -1381,8 +1384,8 @@ class Adventure(BaseCog):
             elif c.rebirths < 2:
                 return await smart_embed(
                     ctx,
-                    _("{c}, You need to 3 rebirths to use this.").format(
-                        c=self.escape(ctx.author.display_name)
+                    _("{c}, you need to 3 rebirths to use this.").format(
+                        c=self.E(ctx.author.display_name)
                     ),
                 )
 
@@ -2254,7 +2257,7 @@ class Adventure(BaseCog):
     async def loot(self, ctx: Context, box_type: str = None, amount: int = 1):
         """This opens one of your precious treasure chests.
 
-        Use the box rarity type with the command: normal, rare, epic or legendary.
+        Use the box rarity type with the command: normal, rare, epic, legendary or set.
         """
         if self.in_adventure(ctx):
             return await smart_embed(
@@ -2277,7 +2280,7 @@ class Adventure(BaseCog):
                 box(
                     _(
                         "{author} owns {normal} normal, "
-                        "{rare} rare, {epic} epic, {leg} legendary {set} set chests."
+                        "{rare} rare, {epic} epic, {leg} legendary and {set} set chests."
                     ).format(
                         author=self.escape(ctx.author.display_name),
                         normal=str(c.treasure[0]),
@@ -3256,7 +3259,7 @@ class Adventure(BaseCog):
                 ctx, _("There's already another adventure going on in this server.")
             )
 
-        if not await has_funds(ctx.author, 500):
+        if not await has_funds(ctx.author, 250):
             currency_name = await bank.get_currency_name(ctx.guild)
             return await smart_embed(
                 ctx,
@@ -3273,7 +3276,7 @@ class Adventure(BaseCog):
             cooldown_time = cooldown + cooldown_time - time.time()
             return await smart_embed(
                 ctx,
-                _("No heroes are ready to depart in an adventure, Try again in {}").format(
+                _("No heroes are ready to depart in an adventure, try again in {}").format(
                     humanize_timedelta(seconds=int(cooldown_time))
                 ),
             )
@@ -3580,25 +3583,25 @@ class Adventure(BaseCog):
         action = {v: k for k, v in self._adventure_controls.items()}[str(reaction.emoji)]
         log.debug(action)
         session = self._sessions[user.guild.id]
-        has_fund = await has_funds(user, 500)
+        has_fund = await has_funds(user, 250)
         for x in ["fight", "magic", "talk", "pray", "run"]:
-            if x == action:
-                continue
+            if user in getattr(session, x):
+                getattr(session, x).remove(user)
+
             if not has_fund or user in getattr(session, x):
-                if user in getattr(session, x):
-                    getattr(session, x).remove(user)
-                with contextlib.suppress(Exception):
+                with contextlib.suppress(discord.HTTPException):
                     symbol = self._adventure_controls[x]
                     await reaction.message.remove_reaction(symbol, user)
 
         restricted = await self.config.restrict()
-        if user not in getattr(session, action):
+        if user not in getattr(session, action, []):
             if not has_fund:
                 with contextlib.suppress(discord.HTTPException):
                     await user.send(
                         _(
                             "You contemplate going in an adventure with your friends, "
-                            "you go to your bank to get some money to prepare and they tell you that "
+                            "you go to your bank to get some money to "
+                            "prepare and they tell you that "
                             "your bank is empty\n"
                             "You run home to look for some and yet you can't even find a "
                             "single coin and realise how poor you are, then you just tell "
@@ -3606,7 +3609,8 @@ class Adventure(BaseCog):
                             "as you are too embarrassed to tell them you are broke!"
                         )
                     )
-            elif restricted:
+                return
+            if restricted:
                 all_users = []
                 for guild_id, guild_session in self._sessions.items():
                     guild_users_in_game = (
@@ -3737,8 +3741,6 @@ class Adventure(BaseCog):
         failed = False
         lost = False
         session = self._sessions[ctx.guild.id]
-        people = len(session.fight) + len(session.talk) + len(session.pray) + len(session.magic)
-
         with contextlib.suppress(discord.HTTPException):
             await message.clear_reactions()
 
@@ -3747,6 +3749,14 @@ class Adventure(BaseCog):
         pray_list = list(set(session.pray))
         run_list = list(set(session.run))
         magic_list = list(set(session.magic))
+
+        self._sessions[ctx.guild.id].fight = fight_list
+        self._sessions[ctx.guild.id].talk = talk_list
+        self._sessions[ctx.guild.id].pray = pray_list
+        self._sessions[ctx.guild.id].run = run_list
+        self._sessions[ctx.guild.id].magic = magic_list
+
+        people = len(fight_list) + len(talk_list) + len(pray_list) + len(run_list)
 
         challenge = session.challenge
 
@@ -4326,14 +4336,17 @@ class Adventure(BaseCog):
 
     async def handle_fight(self, guild_id, fumblelist, critlist, attack, magic, challenge):
         session = self._sessions[guild_id]
+        fight_list = list(set(session.fight))
+        magic_list = list(set(session.magic))
+        attack_list = list(set(fight_list + magic_list))
         pdef = self.MONSTER_NOW[challenge]["pdef"]
         mdef = self.MONSTER_NOW[challenge]["mdef"]
         fumble_count = 0
         # make sure we pass this check first
         failed_emoji = self.emojis.fumble
-        if len(session.fight + session.magic) >= 1:
+        if len(attack_list) >= 1:
             msg = ""
-            if len(session.fight) >= 1:
+            if len(fight_list) >= 1:
                 if pdef >= 1.5:
                     msg += _(
                         "Swords bounce off this monster as it's skin is **almost impenetrable!**\n"
@@ -4348,7 +4361,7 @@ class Adventure(BaseCog):
                     msg += _(
                         "Swords slice through this monster like a **hot knife through butter!**\n"
                     )
-            if len(session.magic) >= 1:
+            if len(magic_list) >= 1:
                 if mdef >= 1.5:
                     msg += _("Magic? Pfft, your puny magic is **no match** for this creature!\n")
                 elif mdef >= 1.25:
@@ -4363,7 +4376,7 @@ class Adventure(BaseCog):
         else:
             return (fumblelist, critlist, attack, magic, "")
 
-        for user in session.fight:
+        for user in fight_list:
             try:
                 c = await Character.from_json(self.config, user)
             except Exception:
@@ -4423,7 +4436,7 @@ class Adventure(BaseCog):
             else:
                 attack += int((roll + att_value) / pdef) + c.rebirths // 5
                 report += f"{bold(self.escape(user.display_name))}: {self.emojis.dice}({roll}) + {self.emojis.attack}{str(att_value)}\n"
-        for user in session.magic:
+        for user in magic_list:
             try:
                 c = await Character.from_json(self.config, user)
             except Exception:
@@ -4485,8 +4498,8 @@ class Adventure(BaseCog):
             else:
                 magic += int((roll + int_value) / mdef) + c.rebirths // 5
                 report += f"{bold(self.escape(user.display_name))}: {self.emojis.dice}({roll}) + {self.emojis.magic}{str(int_value)}\n"
-        if fumble_count == (len(session.fight) + len(session.magic)):
-            report = report + _("No one!")
+        if fumble_count == len(attack_list):
+            report += _("No one!")
         msg += report + "\n"
         for user in fumblelist:
             if user in session.fight:
@@ -4606,14 +4619,15 @@ class Adventure(BaseCog):
 
     async def handle_talk(self, guild_id, fumblelist, critlist, diplomacy):
         session = self._sessions[guild_id]
-        if len(session.talk) >= 1:
+        talk_list = list(set(session.talk))
+        if len(talk_list) >= 1:
             report = _("Talking Party: \n\n")
             msg = ""
             fumble_count = 0
         else:
             return (fumblelist, critlist, diplomacy, "")
         failed_emoji = self.emojis.fumble
-        for user in session.talk:
+        for user in talk_list:
             try:
                 c = await Character.from_json(self.config, user)
             except Exception:
@@ -4664,11 +4678,11 @@ class Adventure(BaseCog):
             else:
                 diplomacy += roll + dipl_value + c.rebirths // 5
                 report += f"{bold(self.escape(user.display_name))} {self.emojis.dice}({roll}) + {self.emojis.talk}{str(dipl_value)}\n"
-        if fumble_count == len(session.talk):
-            report = report + _("No one!")
+        if fumble_count == len(talk_list):
+            report += _("No one!")
         msg = msg + report + "\n"
         for user in fumblelist:
-            if user in session.talk:
+            if user in talk_list:
                 session.talk.remove(user)
         return fumblelist, critlist, diplomacy, msg
 
@@ -4701,8 +4715,8 @@ class Adventure(BaseCog):
                         failed = False
                         break
                     try:
-                        current_item = getattr(c, slot)
-                        if item in str(current_item) or "shiny" in str(current_item).lower():
+                        current_item = str(getattr(c, slot))
+                        if item in current_item or "shiny " in current_item.lower():
                             failed = False
                             break
                     except KeyError:
@@ -4816,7 +4830,7 @@ class Adventure(BaseCog):
                     await message_cart.delete()
                     break
                 if int(sremain) % 5 == 0:
-                    await message_cart.edit(content=(f"⏳ [{title}] {timer}s"))
+                    await message_cart.edit(content=f"⏳ [{title}] {timer}s")
                 await asyncio.sleep(1)
 
         return ctx.bot.loop.create_task(cart_countdown())
