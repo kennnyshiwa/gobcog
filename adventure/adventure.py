@@ -97,7 +97,7 @@ class Adventure(BaseCog):
         self.bot = bot
         self._last_trade = {}
         self.emojis = SimpleNamespace()
-        self.emojis.fumble = "\N{CLOWN FACE}"
+        self.emojis.fumble = "\N{INTERROBANG}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
         self.emojis.rebirth = "\N{BABY SYMBOL}"
         self.emojis.attack = "\N{DAGGER KNIFE}"
@@ -2471,13 +2471,12 @@ class Adventure(BaseCog):
             ).format(loss=loss, currency_name=currency_name, negachar=negachar)
             await nega_msg.edit(
                 content=_(
-                    "{content}\n{author} {fumble}fumbled and died to {negachar}'s savagery{loss_msg}."
+                    "{content}\n{author} fumbled and died to {negachar}'s savagery{loss_msg}."
                 ).format(
                     content=nega_msg.content,
                     author=bold(ctx.author.display_name),
                     negachar=negachar,
                     loss_msg=loss_msg,
-                    fumble=self.emojis.fumble,
                 )
             )
         elif roll == 20:
