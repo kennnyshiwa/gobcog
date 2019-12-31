@@ -3722,7 +3722,7 @@ class Adventure(BaseCog):
             with contextlib.suppress(discord.HTTPException):
                 await to_delete.delete()
                 await msg.delete()
-            await channel.smart_embed(
+            await channel.send(
                 _("{author}, you do not have enough {currency_name}.").format(
                     author=self.escape(user.display_name), currency_name=currency_name
                 )
