@@ -76,6 +76,7 @@ REBIRTH_STEP = 5
 
 _config: Config = None
 
+RAID_COOLDOWN_TIME = 5
 
 async def smart_embed(ctx, message):
     if ctx.guild:
@@ -3263,9 +3264,9 @@ class Adventure(BaseCog):
                 ),
             )
         cooldown = await self.config.guild(ctx.guild).cooldown()
-        #  cooldown_time = 420
         #  cooldown_time = 180
-        cooldown_time = 120
+        #  cooldown_time = 120
+        cooldown_time = RAID_COOLDOWN_TIME
 
         if cooldown + cooldown_time <= time.time():
             await self.config.guild(ctx.guild).cooldown.set(time.time())
@@ -3338,7 +3339,7 @@ class Adventure(BaseCog):
                         break
             else:
                 possible_monsters.append(m)
-        log.debug(possible_monsters)
+        #  log.debug(possible_monsters)
         return random.choice(possible_monsters)
 
     async def update_monster_roster(self, user):
@@ -3381,8 +3382,7 @@ class Adventure(BaseCog):
         elif self.MONSTER_NOW[challenge]["miniboss"]:
             timer = 60 * 3
             self.bot.dispatch("adventure_miniboss", ctx)
-        else:
-            timer = 60 * 1
+        timer = RAID_COOLDOWN_TIME
 
         self._sessions[ctx.guild.id] = GameSession(
             challenge=challenge,
@@ -3992,7 +3992,7 @@ class Adventure(BaseCog):
                 "\n{loss_l} to repay a passing "
                 "cleric that resurrected the group."
             ).format(miniboss=miniboss, special=special, loss_l=humanize_list(loss_list))
-        amount = 2 * people * (self.monster_stats // 2)
+        amount = people * self.monster_stats
         amount *= hp if slain else dipl
         if people == 1:
             if slain:
