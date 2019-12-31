@@ -3992,7 +3992,8 @@ class Adventure(BaseCog):
                 "\n{loss_l} to repay a passing "
                 "cleric that resurrected the group."
             ).format(miniboss=miniboss, special=special, loss_l=humanize_list(loss_list))
-        amount = ((hp + dipl) * people) * self.monster_stats // 2
+        amount = 2 * people * (self.monster_stats // 2)
+        amount *= hp if slain else dipl
         if people == 1:
             if slain:
                 group = fighters if len(fight_list) == 1 else wizards
