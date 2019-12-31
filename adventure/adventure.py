@@ -956,7 +956,7 @@ class Adventure(BaseCog):
                     content=(
                         box(
                             _("{c} congratulations with your rebirth.\nYou paid {bal}").format(
-                                c=self.E(ctx.author.display_name), bal=humanize_number(bal)
+                                c=bold(self.escape(ctx.author.display_name)), bal=humanize_number(bal)
                             ),
                             lang="css",
                         )
@@ -1385,7 +1385,7 @@ class Adventure(BaseCog):
                 return await smart_embed(
                     ctx,
                     _("{c}, you need to 3 rebirths to use this.").format(
-                        c=self.E(ctx.author.display_name)
+                        c=bold(self.escape(ctx.author.display_name))
                     ),
                 )
 
