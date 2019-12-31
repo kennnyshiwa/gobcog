@@ -2339,7 +2339,7 @@ class Adventure(BaseCog):
                     dex_space = " " if len(str(item.dex)) == 1 else ""
                     luck_space = " " if len(str(item.luck)) == 1 else ""
                     msg += (
-                        f"\n {item.owned} - {str(item):<{rjust}} - "
+                        f"\n {item.owned} - Lvl req {item.lvl} | {str(item):<{rjust}} - "
                         f"({att_space}{item.att}  | "
                         f"{int_space}{item.cha}  | "
                         f"{cha_space}{item.int}  | "
