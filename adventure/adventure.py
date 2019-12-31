@@ -8,6 +8,7 @@ import random
 import time
 from collections import namedtuple
 from datetime import date, datetime
+from math import ceil
 from types import SimpleNamespace
 from typing import List, Optional, Union
 
@@ -119,6 +120,8 @@ class Adventure(BaseCog):
         self.emojis.skills.bard = (
             "\N{EIGHTH NOTE}\N{BEAMED EIGHTH NOTES}\N{BEAMED SIXTEENTH NOTES}"
         )
+        self.emojis.hp = "\N{HEAVY BLACK HEART}\N{VARIATION SELECTOR-16}"
+        self.emojis.dipl = self.emojis.talk
 
         self._adventure_actions = [
             self.emojis.attack,
@@ -955,8 +958,9 @@ class Adventure(BaseCog):
                 await open_msg.edit(
                     content=(
                         box(
-                            _("{c} congratulations with your rebirth.\nYou paid {bal}").format(
-                                c=bold(self.escape(ctx.author.display_name)),
+                            _("{c}, congratulations on your rebirth.\n" +
+                                "You paid {bal}.").format(
+                                c=self.escape(ctx.author.display_name),
                                 bal=humanize_number(old_bal)
                             ),
                             lang="css",
@@ -1469,7 +1473,7 @@ class Adventure(BaseCog):
                         box(
                             _(
                                 "Successfully converted {converted} epic treasure "
-                                "chests to {to} legendary treasure chest{plural}. \n{author} "
+                                "chests to {to} legendary treasure chest{plur}. \n{author} "
                                 "now owns {normal} normal, {rare} rare, {epic} epic, "
                                 "{leg} legendary treasure chests and {set} set treasure chests."
                             ).format(
@@ -3338,7 +3342,7 @@ class Adventure(BaseCog):
                         break
             else:
                 possible_monsters.append(m)
-        log.debug(possible_monsters)
+        #  log.debug(possible_monsters)
         return random.choice(possible_monsters)
 
     async def update_monster_roster(self, user):
@@ -3407,14 +3411,31 @@ class Adventure(BaseCog):
     async def _choice(self, ctx: Context, adventure_msg):
         session = self._sessions[ctx.guild.id]
 
+        hp = (
+            self.MONSTER_NOW[session.challenge]["hp"]
+            * self.ATTRIBS[session.attribute][0]
+            * self.monster_stats
+        )
+        dipl = (
+            self.MONSTER_NOW[session.challenge]["dipl"]
+            * self.ATTRIBS[session.attribute][1]
+            * self.monster_stats
+        )
         dragon_text = _(
-            "but **a{attr} {chall}** just landed in front of you glaring! \n\n"
+            "but **a{attr} {chall}** ("
+            "{hp_symbol} {hp}/"
+            "{dipl_symbol} {dipl}) "
+            "just landed in front of you glaring! \n\n"
             "What will you do and will other heroes be brave enough to help you?\n"
             "Heroes have 5 minutes to participate via reaction:"
             "\n\nReact with: {reactions}"
         ).format(
             attr=session.attribute,
             chall=session.challenge,
+            hp_symbol=self.emojis.hp,
+            hp=ceil(hp),
+            dipl_symbol=self.emojis.dipl,
+            dipl=ceil(dipl),
             reactions=bold(_("Fight"))
             + " - "
             + bold(_("Spell"))
@@ -3444,7 +3465,9 @@ class Adventure(BaseCog):
             + bold(_("Run")),
         )
         normal_text = _(
-            "but **a{attr} {chall}** "
+            "but **a{attr} {chall}** ("
+            "{hp_symbol} {hp}/"
+            "{dipl_symbol} {dipl}) "
             "is guarding it with{threat}. \n\n"
             "What will you do and will other heroes help your cause?\n"
             "Heroes have 1 minutes to participate via reaction:"
@@ -3452,6 +3475,10 @@ class Adventure(BaseCog):
         ).format(
             attr=session.attribute,
             chall=session.challenge,
+            hp_symbol=self.emojis.hp,
+            hp=ceil(hp),
+            dipl_symbol=self.emojis.dipl,
+            dipl=ceil(dipl),
             threat=random.choice(self.THREATEE),
             reactions=bold(_("Fight"))
             + " - "
