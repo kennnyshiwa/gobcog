@@ -98,7 +98,7 @@ class Adventure(BaseCog):
         self.bot = bot
         self._last_trade = {}
         self.emojis = SimpleNamespace()
-        self.emojis.fumble = "\N{INTERROBANG}"
+        self.emojis.fumble = "\N{EXCLAMATION QUESTION MARK}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
         self.emojis.rebirth = "\N{BABY SYMBOL}"
         self.emojis.attack = "\N{DAGGER KNIFE}"
@@ -952,16 +952,20 @@ class Adventure(BaseCog):
                     log.exception("Error with the new character sheet")
                     return
 
-                old_bal = await bank.get_balance(ctx.author)
-                await bank.set_balance(ctx.author, 1000)
+                bal = await bank.get_balance(ctx.author)
+                if bal >= 1000:
+                    withdraw = bal - 1000
+                    await bank.withdraw_credits(ctx.author, withdraw)
+                else:
+                    withdraw = bal
+                    await bank.set_balance(ctx.author, 0)
 
                 await open_msg.edit(
                     content=(
                         box(
                             _("{c}, congratulations on your rebirth.\n" +
                                 "You paid {bal}.").format(
-                                c=self.escape(ctx.author.display_name),
-                                bal=humanize_number(old_bal)
+                                c=self.escape(ctx.author.display_name), bal=humanize_number(withdraw)
                             ),
                             lang="css",
                         )
@@ -3745,7 +3749,7 @@ class Adventure(BaseCog):
             with contextlib.suppress(discord.HTTPException):
                 await to_delete.delete()
                 await msg.delete()
-            await channel.smart_embed(
+            await channel.send(
                 _("{author}, you do not have enough {currency_name}.").format(
                     author=self.escape(user.display_name), currency_name=currency_name
                 )
@@ -4011,7 +4015,6 @@ class Adventure(BaseCog):
                         f"{bold(self.escape(user.display_name))} used {humanize_number(loss)} {currency_name}"
                     )
             miniboss = session.challenge
-            session.miniboss["requirements"][0]
             special = session.miniboss["special"]
             result_msg += _(
                 "The {miniboss}'s "
@@ -4019,8 +4022,8 @@ class Adventure(BaseCog):
                 "\n{loss_l} to repay a passing "
                 "cleric that resurrected the group."
             ).format(miniboss=miniboss, special=special, loss_l=humanize_list(loss_list))
-        amount = people * self.monster_stats
-        amount *= hp if slain else dipl
+        amount = (1 * people) * self.monster_stats // 2
+        amount *= (hp + dipl) if slain and persuaded else hp if slain else dipl
         if people == 1:
             if slain:
                 group = fighters if len(fight_list) == 1 else wizards
