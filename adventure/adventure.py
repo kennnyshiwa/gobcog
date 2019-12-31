@@ -97,7 +97,7 @@ class Adventure(BaseCog):
         self.bot = bot
         self._last_trade = {}
         self.emojis = SimpleNamespace()
-        self.emojis.fumble = "\N{INTERROBANG}"
+        self.emojis.fumble = "\N{EXCLAMATION QUESTION MARK}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
         self.emojis.rebirth = "\N{BABY SYMBOL}"
         self.emojis.attack = "\N{DAGGER KNIFE}"
@@ -903,7 +903,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx, _("You need to be Level `{c.maxlevel}` to rebirth").format(c=c)
             )
-        rebirthcost = 5000 * c.rebirths
+        rebirthcost = 1000 * c.rebirths
         has_fund = await has_funds(ctx.author, rebirthcost)
         if not has_fund:
             currency_name = await bank.get_currency_name(ctx.guild)
@@ -950,13 +950,18 @@ class Adventure(BaseCog):
                     return
 
                 bal = await bank.get_balance(ctx.author)
-                await bank.withdraw_credits(ctx.author, bal)
+                if bal >= 1000:
+                    withdraw = bal - 1000
+                    await bank.withdraw_credits(ctx.author, withdraw)
+                else:
+                    withdraw = bal
+                    await bank.set_balance(ctx.author, 0)
 
                 await open_msg.edit(
                     content=(
                         box(
                             _("{c} congratulations with your rebirth.\nYou paid {bal}").format(
-                                c=bold(self.escape(ctx.author.display_name)), bal=humanize_number(bal)
+                                c=bold(self.escape(ctx.author.display_name)), bal=humanize_number(withdraw)
                             ),
                             lang="css",
                         )
@@ -3983,7 +3988,6 @@ class Adventure(BaseCog):
                         f"{bold(self.escape(user.display_name))} used {humanize_number(loss)} {currency_name}"
                     )
             miniboss = session.challenge
-            session.miniboss["requirements"][0]
             special = session.miniboss["special"]
             result_msg += _(
                 "The {miniboss}'s "
@@ -3991,7 +3995,8 @@ class Adventure(BaseCog):
                 "\n{loss_l} to repay a passing "
                 "cleric that resurrected the group."
             ).format(miniboss=miniboss, special=special, loss_l=humanize_list(loss_list))
-        amount = ((hp + dipl) * people) * self.monster_stats // 2
+        amount = (1 * people) * self.monster_stats // 2
+        amount *= (hp + dipl) if slain and persuaded else hp if slain else dipl
         if people == 1:
             if slain:
                 group = fighters if len(fight_list) == 1 else wizards
