@@ -1691,7 +1691,6 @@ class Adventure(BaseCog):
                         del c.backpack[x.name_formated]
                     await self.config.user(ctx.author).set(c.to_json())
                 # save so the items are eaten up already
-                log.debug("tambourine" in c.backpack)
                 for items in c.get_current_equipment():
                     if item.rarity in ["forged"]:
                         c = await c.unequip_item(items)
@@ -3379,7 +3378,6 @@ class Adventure(BaseCog):
                         break
             else:
                 possible_monsters.append(m)
-        #  log.debug(possible_monsters)
         return random.choice(possible_monsters)
 
     async def update_monster_roster(self, user):
@@ -3623,10 +3621,8 @@ class Adventure(BaseCog):
             return
         if not await self.has_perm(user):
             return
-        log.debug("reactions working")
         emojis = ReactionPredicate.NUMBER_EMOJIS + self._adventure_actions
         if str(reaction.emoji) not in emojis:
-            log.debug("emoji not in pool")
             return
         if guild.id in self._sessions:
             if reaction.message.id == self._sessions[guild.id].message_id:
@@ -3751,10 +3747,8 @@ class Adventure(BaseCog):
                 else:
                     item = items["item"]
                     item.owned = pred.result
-                    log.debug(item.name_formated)
                     item_name = f"{item.name_formated}"
                     if item_name in c.backpack:
-                        log.debug("item already in backpack")
                         c.backpack[item_name].owned += pred.result
                     else:
                         c.backpack[item_name] = item
@@ -3816,7 +3810,8 @@ class Adventure(BaseCog):
         self._sessions[ctx.guild.id].run = run_list
         self._sessions[ctx.guild.id].magic = magic_list
 
-        people = len(fight_list) + len(talk_list) + len(pray_list) + len(run_list)
+        people = len(fight_list) + len(magic_list) + len(talk_list) + len(pray_list) + len(run_list)
+        log.debug(f"{people} people")
 
         challenge = session.challenge
 
@@ -5275,7 +5270,6 @@ class Adventure(BaseCog):
             if roll == 5 and c.heroclass["name"] == "Ranger" and c.heroclass["pet"]:
                 petxp = int(userxp * c.heroclass["pet"]["bonus"])
                 newxp += petxp
-                log.debug(f"{user}: user gained the following xp: {userxp}")
                 self._rewards[user.id]["xp"] = userxp
                 petcp = int(usercp * c.heroclass["pet"]["bonus"])
                 newcp += petcp
@@ -5290,7 +5284,6 @@ class Adventure(BaseCog):
                 )
 
             else:
-                log.debug(f"{user}: user gained the following xp: {userxp}")
                 self._rewards[user.id]["xp"] = userxp
                 self._rewards[user.id]["cp"] = usercp
             if special is not False:
