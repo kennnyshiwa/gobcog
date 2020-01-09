@@ -99,7 +99,7 @@ class Adventure(BaseCog):
         self.bot = bot
         self._last_trade = {}
         self.emojis = SimpleNamespace()
-        self.emojis.fumble = "\N{INTERROBANG}"
+        self.emojis.fumble = "\N{EXCLAMATION QUESTION MARK}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
         self.emojis.rebirth = "\N{BABY SYMBOL}"
         self.emojis.attack = "\N{DAGGER KNIFE}"
@@ -953,21 +953,59 @@ class Adventure(BaseCog):
                     log.exception("Error with the new character sheet")
                     return
 
-                old_bal = await bank.get_balance(ctx.author)
-                await bank.set_balance(ctx.author, 1000)
+                bal = await bank.get_balance(ctx.author)
+                if bal >= 1000:
+                    withdraw = bal - 1000
+                    await bank.withdraw_credits(ctx.author, withdraw)
+                else:
+                    withdraw = bal
+                    await bank.set_balance(ctx.author, 0)
 
                 await open_msg.edit(
                     content=(
                         box(
-                            _("{c} congratulations with your rebirth.\nYou paid {bal}").format(
-                                c=bold(self.escape(ctx.author.display_name)),
-                                bal=humanize_number(old_bal)
+                            _("{c}, congratulations on your rebirth.\n" +
+                                "You paid {bal}.").format(
+                                c=self.escape(ctx.author.display_name), bal=humanize_number(withdraw)
                             ),
                             lang="css",
                         )
                     )
                 )
                 await self.config.user(ctx.author).set(await c.rebirth())
+
+    @commands.is_owner()
+    @commands.command()
+    async def devrebirth(self, ctx: Context, user:discord.Member=None, rebirth_level:int=1):
+        """Set a users rebith level."""
+        target = user or ctx.author
+        async with self.get_lock(target):
+            try:
+                c = await Character.from_json(self.config, target)
+            except Exception:
+                log.exception("Error with the new character sheet")
+                return
+
+            bal = await bank.get_balance(target)
+            if bal >= 1000:
+                withdraw = bal - 1000
+                await bank.withdraw_credits(target, withdraw )
+            else:
+                withdraw = bal
+                await bank.set_balance(target, 0)
+
+            await ctx.send(
+                content=(
+                    box(
+                        _("{c} congratulations with your rebirth.\nYou paid {bal}").format(
+                            c=bold(self.escape(target.display_name)),
+                            bal=humanize_number(withdraw)
+                        ),
+                        lang="css",
+                    )
+                )
+            )
+            await self.config.user(ctx.author).set(await c.rebirth(dev_val=rebirth_level))
 
     @loadout.command(name="delete", aliases=["del", "rem", "remove"])
     async def remove_loadout(self, ctx: Context, name: str):
@@ -1473,7 +1511,7 @@ class Adventure(BaseCog):
                         box(
                             _(
                                 "Successfully converted {converted} epic treasure "
-                                "chests to {to} legendary treasure chest{plural}. \n{author} "
+                                "chests to {to} legendary treasure chest{plur}. \n{author} "
                                 "now owns {normal} normal, {rare} rare, {epic} epic, "
                                 "{leg} legendary treasure chests and {set} set treasure chests."
                             ).format(
@@ -1654,7 +1692,6 @@ class Adventure(BaseCog):
                         del c.backpack[x.name_formated]
                     await self.config.user(ctx.author).set(c.to_json())
                 # save so the items are eaten up already
-                log.debug("tambourine" in c.backpack)
                 for items in c.get_current_equipment():
                     if item.rarity in ["forged"]:
                         c = await c.unequip_item(items)
@@ -3342,7 +3379,6 @@ class Adventure(BaseCog):
                         break
             else:
                 possible_monsters.append(m)
-        #  log.debug(possible_monsters)
         return random.choice(possible_monsters)
 
     async def update_monster_roster(self, user):
@@ -3359,7 +3395,7 @@ class Adventure(BaseCog):
 
         if c.rebirths >= 25:
             monsters = self.AS_MONSTERS
-            self.monster_stats = 1 + max((c.rebirths // 50) - 1, 0)
+            self.monster_stats = 1 + max((c.rebirths // 25) - 1, 0)
         elif c.rebirths >= 15:
             monsters = {**self.AS_MONSTERS}
         else:
@@ -3586,10 +3622,8 @@ class Adventure(BaseCog):
             return
         if not await self.has_perm(user):
             return
-        log.debug("reactions working")
         emojis = ReactionPredicate.NUMBER_EMOJIS + self._adventure_actions
         if str(reaction.emoji) not in emojis:
-            log.debug("emoji not in pool")
             return
         if guild.id in self._sessions:
             if reaction.message.id == self._sessions[guild.id].message_id:
@@ -3714,10 +3748,8 @@ class Adventure(BaseCog):
                 else:
                     item = items["item"]
                     item.owned = pred.result
-                    log.debug(item.name_formated)
                     item_name = f"{item.name_formated}"
                     if item_name in c.backpack:
-                        log.debug("item already in backpack")
                         c.backpack[item_name].owned += pred.result
                     else:
                         c.backpack[item_name] = item
@@ -3745,7 +3777,7 @@ class Adventure(BaseCog):
             with contextlib.suppress(discord.HTTPException):
                 await to_delete.delete()
                 await msg.delete()
-            await channel.smart_embed(
+            await channel.send(
                 _("{author}, you do not have enough {currency_name}.").format(
                     author=self.escape(user.display_name), currency_name=currency_name
                 )
@@ -3779,7 +3811,8 @@ class Adventure(BaseCog):
         self._sessions[ctx.guild.id].run = run_list
         self._sessions[ctx.guild.id].magic = magic_list
 
-        people = len(fight_list) + len(talk_list) + len(pray_list) + len(run_list)
+        people = len(fight_list) + len(magic_list) + len(talk_list) + len(pray_list) + len(run_list)
+        log.debug(f"{people} people")
 
         challenge = session.challenge
 
@@ -4011,7 +4044,6 @@ class Adventure(BaseCog):
                         f"{bold(self.escape(user.display_name))} used {humanize_number(loss)} {currency_name}"
                     )
             miniboss = session.challenge
-            session.miniboss["requirements"][0]
             special = session.miniboss["special"]
             result_msg += _(
                 "The {miniboss}'s "
@@ -4019,8 +4051,9 @@ class Adventure(BaseCog):
                 "\n{loss_l} to repay a passing "
                 "cleric that resurrected the group."
             ).format(miniboss=miniboss, special=special, loss_l=humanize_list(loss_list))
-        amount = people * self.monster_stats
-        amount *= hp if slain else dipl
+        amount = 1 * self.monster_stats
+        amount *= (hp + dipl) if slain and persuaded else hp if slain else dipl
+        amount += int(amount * (0.25 * people))
         if people == 1:
             if slain:
                 group = fighters if len(fight_list) == 1 else wizards
@@ -5238,10 +5271,10 @@ class Adventure(BaseCog):
             if roll == 5 and c.heroclass["name"] == "Ranger" and c.heroclass["pet"]:
                 petxp = int(userxp * c.heroclass["pet"]["bonus"])
                 newxp += petxp
-                self._rewards[user.id]["xp"] = userxp + petxp
+                self._rewards[user.id]["xp"] = userxp
                 petcp = int(usercp * c.heroclass["pet"]["bonus"])
                 newcp += petcp
-                self._rewards[user.id]["cp"] = usercp + petcp
+                self._rewards[user.id]["cp"] = usercp
                 percent = round((c.heroclass["pet"]["bonus"] - 1.0) * 100)
                 phrase = _(
                     "\n{user} received a {percent}% reward bonus from their {pet_name}."
