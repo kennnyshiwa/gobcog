@@ -1,0 +1,24 @@
+{
+  "Extinction": {
+    "att": 3,
+    "cha": -2,
+    "int": 3
+  },
+  "Suffering": {
+    "att": 2,
+    "cha": 1,
+    "int": 2,
+    "dex": 2
+  },
+  "West": {
+    "dex": 2,
+    "the": true
+  },
+  "Stealth": {
+    "dex": 4,
+    "luck": 2
+  },
+  "Fools": {
+    "cha": 2
+  }
+}

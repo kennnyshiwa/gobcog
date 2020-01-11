@@ -363,6 +363,10 @@ class Adventure(BaseCog):
         tr_epic_fp = cog_data_path(self) / f"{theme}/tr_epic.json"
         tr_legendary_fp = cog_data_path(self) / f"{theme}/tr_legendary.json"
         tr_set_fp = cog_data_path(self) / f"{theme}/tr_set.json"
+        prefixes_fp = cog_data_path(self) / f"{theme}/prefixes.json"
+        materials_fp = cog_data_path(self) / f"{theme}/tr_materials.json"
+        equipment_fp = cog_data_path(self) / f"{theme}/tr_equipment.json"
+        suffixes_fp = cog_data_path(self) / f"{theme}/tr_suffixes.json"
         files = {
             "pets": pets_fp,
             "attr": attribs_fp,
@@ -376,6 +380,10 @@ class Adventure(BaseCog):
             "legendary": tr_legendary_fp,
             "set": tr_set_fp,
             "as_monsters": as_monster_fp,
+            "prefixes": prefixes_fp,
+            "materials": materials_fp,
+            "equipment": equipment_fp,
+            "suffixes": suffixes_fp,
         }
         for name, file in files.items():
             if not file.exists():
@@ -404,6 +412,14 @@ class Adventure(BaseCog):
             self.TR_LEGENDARY = json.load(f)
         with files["set"].open("r") as f:
             self.TR_GEAR_SET = json.load(f)
+        with files["prefixes"].open("r") as f:
+            self.PREFIXES = json.load(f)
+        with files["materials"].open("r") as f:
+            self.MATERIALS = json.load(f)
+        with files["equipment"].open("r") as f:
+            self.EQUIPMENT = json.load(f)
+        with files["suffixes"].open("r") as f:
+            self.SUFFIXES = json.load(f)
 
         adventure.charsheet.TR_GEAR_SET = self.TR_GEAR_SET
         adventure.charsheet.TR_LEGENDARY = self.TR_LEGENDARY
@@ -456,6 +472,11 @@ class Adventure(BaseCog):
     async def makecart(self, ctx: Context):
         """Force cart to appear in a channel."""
         await self._trader(ctx, True)
+
+    @commands.command()
+    async def genitems(self, ctx: Context):
+        """Generate item names."""
+        await ctx.send(self.MATERIALS)
 
     @commands.command()
     @commands.is_owner()

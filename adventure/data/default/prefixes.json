@@ -1,0 +1,25 @@
+{
+  "Scarred": {
+    "att": -1,
+    "cha": -1,
+    "int": -1,
+    "luck": -1
+  },
+  "Invisible": {
+  },
+  "Zealous": {
+    "att": 2,
+    "cha": 2,
+    "dex": 1
+  },
+  "Savage": {
+    "att": 3,
+    "cha": -2,
+    "int": 3
+  },
+  "Sinister": {
+    "att": 4,
+    "cha": -2,
+    "int": -2
+  }
+}

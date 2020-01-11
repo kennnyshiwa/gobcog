@@ -1,0 +1,25 @@
+{
+  "Axe": {
+    "att": 1,
+    "cha": -1
+  },
+  "Dagger": {
+    "att": 2,
+    "dex": 2,
+    "luck": 1
+  },
+  "Katana": {
+    "att": 2,
+    "cha": 1,
+    "dex": 0,
+    "luck": 0
+  },
+  "Quarterstaff": {
+    "int": 2,
+    "dex": 2,
+    "luck": 1
+  },
+  "Sword": {
+    "att": 1
+  }
+}

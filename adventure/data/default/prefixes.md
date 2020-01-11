@@ -1,4 +1,3 @@
-Amulet
 Ancient
 Ancienty
 Arcane
@@ -24,7 +23,6 @@ Corrupted
 Crazed
 Cunning
 Cursed
-Dagger
 Dark
 Defiled
 Demonic
@@ -62,7 +60,6 @@ Inherited
 Invisible
 Knightly
 Large
-Leather
 Lionheart
 Lucky
 Magical
@@ -97,6 +94,7 @@ Sad
 Savage
 Scaled
 Scarred
+Sharp
 Shiny
 Short
 Simple
@@ -129,7 +127,6 @@ Vengeful
 Vicious
 Victorious
 Vindictive
-War
 Warped
 Warrior
 Wicked
