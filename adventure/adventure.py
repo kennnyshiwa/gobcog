@@ -364,9 +364,9 @@ class Adventure(BaseCog):
         tr_legendary_fp = cog_data_path(self) / f"{theme}/tr_legendary.json"
         tr_set_fp = cog_data_path(self) / f"{theme}/tr_set.json"
         prefixes_fp = cog_data_path(self) / f"{theme}/prefixes.json"
-        materials_fp = cog_data_path(self) / f"{theme}/tr_materials.json"
-        equipment_fp = cog_data_path(self) / f"{theme}/tr_equipment.json"
-        suffixes_fp = cog_data_path(self) / f"{theme}/tr_suffixes.json"
+        materials_fp = cog_data_path(self) / f"{theme}/materials.json"
+        equipment_fp = cog_data_path(self) / f"{theme}/equipment.json"
+        suffixes_fp = cog_data_path(self) / f"{theme}/suffixes.json"
         files = {
             "pets": pets_fp,
             "attr": attribs_fp,
@@ -473,10 +473,52 @@ class Adventure(BaseCog):
         """Force cart to appear in a channel."""
         await self._trader(ctx, True)
 
+    async def _genitem(self):
+        """Generate an item."""
+        name = ""
+        stats = {
+                "att": 0,
+                "cha": 0,
+                "int": 0,
+                "dex": 0,
+                "luck": 0,
+                }
+
+        def add_stats(word_stats):
+            """Add stats in word's dict to local stats dict."""
+            for stat in stats.keys():
+                if stat in word_stats:
+                    stats[stat] += word_stats[stat]
+
+        prefix, prefix_stats = random.choice(list(self.PREFIXES.items()))
+        name += f"{prefix} "
+        add_stats(prefix_stats)
+
+        material, material_stat = random.choice(list(self.MATERIALS.items()))
+        name += f"{material} "
+        for stat in stats.keys():
+            stats[stat] += material_stat
+
+        equipment, equipment_stats = random.choice(list(self.EQUIPMENT.items()))
+        name += f"{equipment}"
+        add_stats(equipment_stats)
+
+        if random.randint(1,2) == 2:
+            suffix, suffix_stats = random.choice(list(self.SUFFIXES.items()))
+            of_keyword = ("of" if 'the' not in suffix_stats else "of the")
+            name += f" {of_keyword} {suffix}"
+            add_stats(suffix_stats)
+
+        return { name: stats }
+
     @commands.command()
-    async def genitems(self, ctx: Context):
-        """Generate item names."""
-        await ctx.send(self.MATERIALS)
+    async def genitems(self, ctx: Context, num: int = 10):
+        """Generate items."""
+        items_str = "```py\n"
+        for i in range(num):
+            items_str += str(await self._genitem()) + "\n"
+        items_str += "```"
+        await ctx.send(items_str)
 
     @commands.command()
     @commands.is_owner()
