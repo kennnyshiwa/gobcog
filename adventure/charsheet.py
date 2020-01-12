@@ -182,6 +182,8 @@ class Item:
             lvl = 10 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
         elif self.rarity == "epic":
             lvl = 30 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
+            #  log.debug(lvl)
+            #  log.debug(self.total_stats)
         elif self.rarity == "legendary":
             lvl = 50 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
         elif self.rarity == "set":

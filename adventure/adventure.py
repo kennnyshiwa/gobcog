@@ -509,16 +509,37 @@ class Adventure(BaseCog):
             name += f" {of_keyword} {suffix}"
             add_stats(suffix_stats)
 
-        return { name: stats }
+        #  return { name: stats }
+        return Item(
+                name=name, 
+                slot=["right"],
+                rarity="epic",
+                att=stats["att"],
+                int=stats["int"],
+                cha=stats["cha"],
+                dex=stats["dex"],
+                luck=stats["luck"],
+                owned=1,
+                parts=1,
+                )
 
     @commands.command()
-    async def genitems(self, ctx: Context, num: int = 10):
-        """Generate items."""
-        items_str = "```py\n"
-        for i in range(num):
-            items_str += str(await self._genitem()) + "\n"
-        items_str += "```"
-        await ctx.send(items_str)
+    async def giveitems(self, ctx: Context, num: int = 5):
+        """Give random items to user."""
+        user = ctx.author
+        async with self.get_lock(user):
+            try:
+                c = await Character.from_json(self.config, user)
+            except Exception:
+                log.exception("Error with the new character sheet")
+                return
+            for i in range(num):
+                await c.add_to_backpack(await self._genitem())
+            #  await self.config.user(user).set(c.to_json())
+            backpack_contents = _("```css\n[{author}'s backpack]\n\n{backpack}\n```").format(
+                author=self.escape(ctx.author.display_name), backpack=c.get_backpack()
+            )
+            await ctx.send(backpack_contents)
 
     @commands.command()
     @commands.is_owner()
