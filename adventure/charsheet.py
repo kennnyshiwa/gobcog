@@ -77,7 +77,7 @@ LUCK = re.compile(r"([\d]*) (luck)")
 DEX = re.compile(r"([\d]*) (dex(?:terity)?)")
 SLOT = re.compile(r"(head|neck|chest|gloves|belt|legs|boots|left|right|ring|charm|twohanded)")
 RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged)")
-RARITIES = ("normal", "rare", "epic", "legendary", "forged")
+RARITIES = ("normal", "rare", "epic", "legendary")
 
 class Stats(Converter):
     """This will parse a string for specific keywords like attack and dexterity followed by a
@@ -177,9 +177,13 @@ class Item:
         return str(self)
 
     def get_equip_level(self):
-        lvl = self.max_main_stat * (RARITIES.index(self.rarity) + 2.5)
-        if self.rarity == "forged":
-            lvl = 1
+        lvl = 1
+        if self.rarity != "forged":
+            # epic and legendary stats too similar so make level req's
+            # the same
+            rarity_multiplier = min(RARITIES.index(self.rarity),
+                    RARITIES.index("epic"))
+            lvl = self.max_main_stat * (rarity_multiplier + 3)
         return max(round(lvl), 1)
 
     @staticmethod

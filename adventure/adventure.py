@@ -484,8 +484,7 @@ class Adventure(BaseCog):
         if rarity is None:
             rarity = random.choice(RARITIES)
         if slot is None:
-            #  slot = random.choice(ORDER)
-            slot = random.choice(["right", "chest"])
+            slot = random.choice(ORDER)
         name = ""
         stats = {
                 "att": 0,
@@ -529,9 +528,10 @@ class Adventure(BaseCog):
             name += f" {of_keyword} {suffix}"
             add_stats(suffix_stats)
 
+        slot_list = [slot] if slot != "two handed" else ["left", "right"]
         return Item(
                 name=name, 
-                slot=[slot],
+                slot=slot_list,
                 rarity=rarity,
                 att=stats["att"],
                 int=stats["int"],
@@ -543,8 +543,8 @@ class Adventure(BaseCog):
                 )
 
     @commands.command()
-    async def genitems(self, ctx: Context, rarity: str, num: int = 15):
-        """Give random items to user."""
+    async def genitems(self, ctx: Context, num: int = 15, rarity: str = None, slot: str = None):
+        """Generate random items."""
         user = ctx.author
         async with self.get_lock(user):
             try:
@@ -554,7 +554,8 @@ class Adventure(BaseCog):
                 return
             c.backpack = {}
             for i in range(num):
-                await c.add_to_backpack(await self._genitem(rarity))
+                await c.add_to_backpack(await self._genitem(
+                    rarity, slot))
             backpack_contents = _("```css\n{backpack}\n```").format(
                     backpack=c.get_backpack())
             await ctx.send(backpack_contents)
@@ -5599,8 +5600,8 @@ class Adventure(BaseCog):
 
         self.bot.dispatch("adventure_cart", ctx)  # dispatch after silent return
 
-        #  stockcount = random.randint(5, 9)
-        stockcount = 9
+        stockcount = random.randint(5, 9)
+        #  stockcount = 9
         controls = {em_list[i + 1]: i for i in range(stockcount)}
         self._curent_trader_stock[ctx.guild.id] = stockcount, controls
 
@@ -5691,18 +5692,22 @@ class Adventure(BaseCog):
             price = random.randint(250, 500)
             rarity_roll = random.random()
             #  rarity_roll = .9
-            if rarity_roll >= .8:
+            # 10% legendary
+            if rarity_roll >= .9:
                 item = await self._genitem("legendary")
                 # min. 10 stat for legendary, want to be about 50k
                 price = random.randint(4000, 6000)
-            elif rarity_roll >= .6:
+            # 20% epic
+            elif rarity_roll >= .7:
                 item = await self._genitem("epic")
                 # min. 5 stat for epic, want to be about 25k
                 price = random.randint(4000, 6000)
-            elif rarity_roll >= .3:
+            # 35% rare
+            elif rarity_roll >= .35:
                 item = await self._genitem("rare")
                 # around 3 stat for rare, want to be about 3k
                 price = random.randint(750, 1250)
+            # 35% normal
             log.debug(f"Random price for {item.name}: {price}")
             price *= item.max_main_stat 
             log.debug(f"* max stat: {price}")
