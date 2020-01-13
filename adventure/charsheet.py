@@ -44,9 +44,9 @@ ORDER = [
 ]
 TINKER_OPEN = r"{.:'"
 TINKER_CLOSE = r"':.}"
-LEGENDARY_OPEN = r"{Legendary:'"
+LEGENDARY_OPEN = r"{L:'"
 LEGENDARY_CLOSE = r"'}"
-SET_OPEN = r"{Gear_Set:'"
+SET_OPEN = r"{Set:'"
 
 TIME_RE_STRING = r"\s?".join(
     [
@@ -77,7 +77,7 @@ LUCK = re.compile(r"([\d]*) (luck)")
 DEX = re.compile(r"([\d]*) (dex(?:terity)?)")
 SLOT = re.compile(r"(head|neck|chest|gloves|belt|legs|boots|left|right|ring|charm|twohanded)")
 RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged)")
-
+RARITIES = ("normal", "rare", "epic", "legendary", "forged")
 
 class Stats(Converter):
     """This will parse a string for specific keywords like attack and dexterity followed by a
@@ -176,23 +176,10 @@ class Item:
         return str(self)
 
     def get_equip_level(self):
-        if self.rarity == "normal":
-            lvl = 1 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-        elif self.rarity == "rare":
-            lvl = 10 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-        elif self.rarity == "epic":
-            lvl = 30 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-            #  log.debug(lvl)
-            #  log.debug(self.total_stats)
-        elif self.rarity == "legendary":
-            lvl = 50 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-        elif self.rarity == "set":
-            lvl = 75 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-        elif self.rarity == "forged":
+        max_main_stat = max(self.att, self.int, self.cha)
+        lvl = max_main_stat * (RARITIES.index(self.rarity) + 2.5)
+        if self.rarity == "forged":
             lvl = 1
-        else:
-            lvl = 1
-
         return max(round(lvl), 1)
 
     @staticmethod
@@ -683,6 +670,7 @@ class Character(Item):
             slot_name = slot_name[0] if len(slot_name) < 2 else _("two handed")
             form_string += f"\n\n {slot_name.title()} slot"
             rjust = max([len(str(i[1])) for i in slot_group])
+            #  rjust = 0
             for item in slot_group:
                 if forging and (item[1].rarity == "forged" or item[1] in consumed_list):
                     continue
@@ -695,7 +683,7 @@ class Character(Item):
                 if item[1].set:
                     settext += f" | Set `{item[1].set}` ({item[1].parts})"
                 form_string += (
-                    f"\n {item[1].owned} - Lvl req {equip_level(self, item[1])} | {str(item[1]):<{rjust}} - "
+                    f"\n Lv {equip_level(self, item[1])} | {str(item[1]):<{rjust}} - "
                     f"({att_space}{item[1].att}  | "
                     f"{cha_space}{item[1].cha}  | "
                     f"{int_space}{item[1].int}  | "

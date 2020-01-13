@@ -36,7 +36,7 @@ def convert_md_to_json(file_name):
         json.dump(prefix_stats, prefix_output, indent=2)
 
 if __name__ == "__main__":
-    pprint(json.load(open(argv[1], 'r')))
+    #  pprint(json.load(open(argv[1], 'r')))
     #  blank_stats_cp = BLANK_STATS.copy()
     #  blank_stats_cp['the'] = False
-    #  convert_list_to_json(argv[1], blank_stats_cp)
+    convert_list_to_json(argv[1], 0)

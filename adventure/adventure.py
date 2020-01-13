@@ -44,7 +44,8 @@ from .charsheet import (
     equip_level,
     has_funds,
     parse_timedelta,
-    DEV_LIST
+    DEV_LIST,
+    RARITIES,
 )
 
 try:
@@ -72,12 +73,11 @@ _ = Translator("Adventure", __file__)
 
 log = logging.getLogger("red.cogs.adventure")
 
-REBIRTH_LVL = 20
-REBIRTH_STEP = 5
-
 _config: Config = None
 
 RAID_COOLDOWN_TIME = 120
+REBIRTH_LVL = 20
+REBIRTH_STEP = 5
 
 async def smart_embed(ctx, message):
     if ctx.guild:
@@ -473,7 +473,7 @@ class Adventure(BaseCog):
         """Force cart to appear in a channel."""
         await self._trader(ctx, True)
 
-    async def _genitem(self):
+    async def _genitem(self, rarity):
         """Generate an item."""
         name = ""
         stats = {
@@ -483,6 +483,10 @@ class Adventure(BaseCog):
                 "dex": 0,
                 "luck": 0,
                 }
+        RARE_INDEX = RARITIES.index("rare")
+        EPIC_INDEX = RARITIES.index("epic")
+        PREFIX_CHANCE = { "rare": .5, "epic": .75, "legendary": .9 }
+        SUFFIX_CHANCE = { "epic": .5, "legendary": .75 }
 
         def add_stats(word_stats):
             """Add stats in word's dict to local stats dict."""
@@ -490,11 +494,16 @@ class Adventure(BaseCog):
                 if stat in word_stats:
                     stats[stat] += word_stats[stat]
 
-        prefix, prefix_stats = random.choice(list(self.PREFIXES.items()))
-        name += f"{prefix} "
-        add_stats(prefix_stats)
+        # only rare and above should have prefix with PREFIX_CHANCE 
+        if (RARITIES.index(rarity) >= RARE_INDEX 
+                and random.random() >= PREFIX_CHANCE[rarity]):
+            #  log.debug(f"Prefix %: {PREFIX_CHANCE[rarity]}")
+            prefix, prefix_stats = random.choice(list(self.PREFIXES.items()))
+            name += f"{prefix} "
+            add_stats(prefix_stats)
 
-        material, material_stat = random.choice(list(self.MATERIALS.items()))
+        material, material_stat = random.choice(
+                list(self.MATERIALS[rarity].items()))
         name += f"{material} "
         for stat in stats.keys():
             stats[stat] += material_stat
@@ -503,17 +512,19 @@ class Adventure(BaseCog):
         name += f"{equipment}"
         add_stats(equipment_stats)
 
-        if random.randint(1,2) == 2:
+        # only epic and above should have suffix with SUFFIX_CHANCE
+        if (RARITIES.index(rarity) >= EPIC_INDEX 
+                and random.random() >= SUFFIX_CHANCE[rarity]):
+            #  log.debug(f"Suffix %: {SUFFIX_CHANCE[rarity]}")
             suffix, suffix_stats = random.choice(list(self.SUFFIXES.items()))
             of_keyword = ("of" if 'the' not in suffix_stats else "of the")
             name += f" {of_keyword} {suffix}"
             add_stats(suffix_stats)
 
-        #  return { name: stats }
         return Item(
                 name=name, 
                 slot=["right"],
-                rarity="epic",
+                rarity=rarity,
                 att=stats["att"],
                 int=stats["int"],
                 cha=stats["cha"],
@@ -524,7 +535,7 @@ class Adventure(BaseCog):
                 )
 
     @commands.command()
-    async def giveitems(self, ctx: Context, num: int = 5):
+    async def giveitems(self, ctx: Context, rarity: str, num: int = 15):
         """Give random items to user."""
         user = ctx.author
         async with self.get_lock(user):
@@ -534,7 +545,7 @@ class Adventure(BaseCog):
                 log.exception("Error with the new character sheet")
                 return
             for i in range(num):
-                await c.add_to_backpack(await self._genitem())
+                await c.add_to_backpack(await self._genitem(rarity))
             #  await self.config.user(user).set(c.to_json())
             backpack_contents = _("```css\n[{author}'s backpack]\n\n{backpack}\n```").format(
                 author=self.escape(ctx.author.display_name), backpack=c.get_backpack()
@@ -645,8 +656,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx, _("You tried to selling your items, but there is no merchants in sight.")
             )
-        rarities = ["normal", "rare", "epic", "legendary", "forged"]
-        if rarity and rarity.lower() not in rarities:
+        if rarity and rarity.lower() not in RARITIES:
             return await smart_embed(
                 ctx, _("I've never heard of `{rarity}` rarity items before.").format(rarity=rarity)
             )
@@ -3584,12 +3594,14 @@ class Adventure(BaseCog):
             self.monster_stats = 1
 
         self.MONSTER_NOW = self.MONSTERS
+        ascended_mons = False
         if c.rebirths >= 10:
             self.MONSTER_NOW.update(self.AS_MONSTERS)
+            ascended_mons = True
         if c.rebirths >= 15:
             self.monster_stats = 1 + max((c.rebirths // 25) - 1, 0)
 
-        log.debug(self.MONSTER_NOW)
+        log.debug(f"Ascended mons: {ascended_mons}")
 
     async def _simple(self, ctx: Context, adventure_msg, challenge=None):
         self.bot.dispatch("adventure", ctx)

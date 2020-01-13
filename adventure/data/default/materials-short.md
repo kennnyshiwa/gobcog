@@ -1,7 +1,5 @@
-Steel
-Duranium
-Mithril
-Obsidian
-Titanium
-Adamantite
-Platinum 
+Cloth
+Linen
+Silk
+Fur
+Dwarven
