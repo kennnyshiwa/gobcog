@@ -64,10 +64,6 @@ REBIRTH_LVL = 20
 REBIRTH_STEP = 5
 
 TR_GEAR_SET = {}
-TR_LEGENDARY = {}
-TR_EPIC = {}
-TR_RARE = {}
-TR_COMMON = {}
 PETS = {}
 
 ATT = re.compile(r"([\d]*) (att(?:ack)?)")
@@ -1083,19 +1079,9 @@ def calculate_sp(lvl_end: int, c: Character):
 
     return int(points)
 
-
 def get_item_db(rarity):
-    if rarity == "normal":
-        return TR_COMMON
-    elif rarity == "rare":
-        return TR_RARE
-    elif rarity == "epic":
-        return TR_EPIC
-    elif rarity == "legendary":
-        return TR_LEGENDARY
-    elif rarity == "set":
+    if rarity == "set":
         return TR_GEAR_SET
-
 
 def has_funds_check(cost):
     async def predicate(ctx):

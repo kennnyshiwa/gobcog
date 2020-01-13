@@ -320,10 +320,6 @@ class Adventure(BaseCog):
         }
         self.RAISINS: list = None
         self.THREATEE: list = None
-        self.TR_COMMON: dict = None
-        self.TR_RARE: dict = None
-        self.TR_EPIC: dict = None
-        self.TR_LEGENDARY: dict = None
         self.TR_GEAR_SET: dict = None
         self.ATTRIBS: dict = None
         self.MONSTERS: dict = None
@@ -403,14 +399,6 @@ class Adventure(BaseCog):
             self.RAISINS = json.load(f)
         with files["threatee"].open("r") as f:
             self.THREATEE = json.load(f)
-        with files["common"].open("r") as f:
-            self.TR_COMMON = json.load(f)
-        with files["rare"].open("r") as f:
-            self.TR_RARE = json.load(f)
-        with files["epic"].open("r") as f:
-            self.TR_EPIC = json.load(f)
-        with files["legendary"].open("r") as f:
-            self.TR_LEGENDARY = json.load(f)
         with files["set"].open("r") as f:
             self.TR_GEAR_SET = json.load(f)
         with files["prefixes"].open("r") as f:
@@ -423,10 +411,6 @@ class Adventure(BaseCog):
             self.SUFFIXES = json.load(f)
 
         adventure.charsheet.TR_GEAR_SET = self.TR_GEAR_SET
-        adventure.charsheet.TR_LEGENDARY = self.TR_LEGENDARY
-        adventure.charsheet.TR_EPIC = self.TR_EPIC
-        adventure.charsheet.TR_RARE = self.TR_RARE
-        adventure.charsheet.TR_COMMON = self.TR_COMMON
         adventure.charsheet.PETS = self.PETS
         adventure.charsheet.REBIRTH_LVL = REBIRTH_LVL
         adventure.charsheet.REBIRTH_STEP = REBIRTH_STEP
@@ -485,6 +469,7 @@ class Adventure(BaseCog):
             rarity = random.choice(RARITIES)
         if slot is None:
             slot = random.choice(ORDER)
+            #  slot = random.choice(["right", "chest"])
         name = ""
         stats = {
                 "att": 0,
