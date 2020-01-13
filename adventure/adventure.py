@@ -535,7 +535,7 @@ class Adventure(BaseCog):
                 )
 
     @commands.command()
-    async def giveitems(self, ctx: Context, rarity: str, num: int = 15):
+    async def genitems(self, ctx: Context, rarity: str, num: int = 15):
         """Give random items to user."""
         user = ctx.author
         async with self.get_lock(user):
@@ -544,12 +544,11 @@ class Adventure(BaseCog):
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
+            c.backpack = {}
             for i in range(num):
                 await c.add_to_backpack(await self._genitem(rarity))
-            #  await self.config.user(user).set(c.to_json())
-            backpack_contents = _("```css\n[{author}'s backpack]\n\n{backpack}\n```").format(
-                author=self.escape(ctx.author.display_name), backpack=c.get_backpack()
-            )
+            backpack_contents = _("```css\n{backpack}\n```").format(
+                    backpack=c.get_backpack())
             await ctx.send(backpack_contents)
 
     @commands.command()
@@ -614,7 +613,7 @@ class Adventure(BaseCog):
                 ctx,
                 _("You need to be level `{level}` to equip this item").format(level=equiplevel),
             )
-        equip = c.backpack[equip_item.name_formated]
+        equip = c.backpack[equip_item.name]
         if equip:
             slot = equip.slot[0]
             if len(equip.slot) > 1:
@@ -682,7 +681,7 @@ class Adventure(BaseCog):
                         item.owned -= 1
                         item_price += self._sell(c, item)
                         if item.owned <= 0:
-                            del c.backpack[item.name_formated]
+                            del c.backpack[item.name]
                         if not count % 10:
                             await asyncio.sleep(0.1)
                         count += 1
@@ -757,7 +756,7 @@ class Adventure(BaseCog):
                 log.exception("Error with the new character sheet")
                 return
             try:
-                item = c.backpack[item.name_formated]
+                item = c.backpack[item.name]
             except KeyError:
                 return
 
@@ -803,7 +802,7 @@ class Adventure(BaseCog):
                 currency_name=currency_name,
             )
             if item.owned <= 0:
-                del character.backpack[item.name_formated]
+                del character.backpack[item.name]
             with contextlib.suppress(BalanceTooHigh):
                 await bank.deposit_credits(ctx.author, price)
         elif (
@@ -817,7 +816,7 @@ class Adventure(BaseCog):
                 item.owned -= 1
                 price += price_shown
                 if item.owned <= 0:
-                    del character.backpack[item.name_formated]
+                    del character.backpack[item.name]
                 if not count % 10:
                     await asyncio.sleep(0.1)
                 count += 1
@@ -896,7 +895,7 @@ class Adventure(BaseCog):
                     author=self.escape(ctx.author.display_name)
                 ),
             )
-        lookup = list(x for n, x in c.backpack.items() if item.lower() in x.name_formated.lower())
+        lookup = list(x for n, x in c.backpack.items() if item.lower() in x.name.lower())
         if len(lookup) > 1:
             await smart_embed(
                 ctx,
@@ -976,13 +975,13 @@ class Adventure(BaseCog):
                             except Exception:
                                 log.exception("Error with the new character sheet")
                                 return
-                            if buy_user.rebirths >= c.rebirths:
-                                return await smart_embed(
-                                    ctx,
-                                    _(
-                                        "You can only trade with people the same rebirth level or higher than yours."
-                                    ),
-                                )
+                            #  if buy_user.rebirths >= c.rebirths:
+                                #  return await smart_embed(
+                                    #  ctx,
+                                    #  _(
+                                        #  "You can only trade with people the same rebirth level or higher than yours."
+                                    #  ),
+                                #  )
                             if not can_equip(buy_user, item):
                                 return await smart_embed(
                                     ctx,
@@ -991,9 +990,9 @@ class Adventure(BaseCog):
                                     ),
                                 )
                             await bank.transfer_credits(buyer, ctx.author, asking)
-                            c.backpack[item.name_formated].owned -= 1
-                            if c.backpack[item.name_formated].owned <= 0:
-                                del c.backpack[item.name_formated]
+                            c.backpack[item.name].owned -= 1
+                            if c.backpack[item.name].owned <= 0:
+                                del c.backpack[item.name]
                             await self.config.user(ctx.author).set(c.to_json())
                         async with self.get_lock(buyer):
                             try:
@@ -1001,11 +1000,11 @@ class Adventure(BaseCog):
                             except Exception:
                                 log.exception("Error with the new character sheet")
                                 return
-                            if item.name_formated in buy_user.backpack:
-                                buy_user.backpack[item.name_formated].owned += 1
+                            if item.name in buy_user.backpack:
+                                buy_user.backpack[item.name].owned += 1
                             else:
                                 item.owned = 1
-                                buy_user.backpack[item.name_formated] = item
+                                buy_user.backpack[item.name] = item
                                 await self.config.user(buyer).set(buy_user.to_json())
                         await trade_msg.edit(
                             content=(
@@ -1463,7 +1462,7 @@ class Adventure(BaseCog):
                 if slot == "two handed":
                     continue
                 equipped_item = getattr(c, slot)
-                if equipped_item and equipped_item.name_formated.lower() == full_item_name.lower():
+                if equipped_item and equipped_item.name.lower() == full_item_name.lower():
                     item = equipped_item
             if item:
                 with contextlib.suppress(Exception):
@@ -1476,7 +1475,7 @@ class Adventure(BaseCog):
                         ctx, _("{} does not have an item named `{}`.").format(user, full_item_name)
                     )
             with contextlib.suppress(KeyError):
-                del c.backpack[item.name_formated]
+                del c.backpack[item.name]
             await self.config.user(user).set(c.to_json())
         await ctx.send(
             _("{item} removed from {user}.").format(item=box(str(item), lang="css"), user=user)
@@ -1878,9 +1877,9 @@ class Adventure(BaseCog):
 
                 newitem = await self._to_forge(ctx, consumed, c)
                 for x in consumed:
-                    c.backpack[x.name_formated].owned -= 1
-                    if c.backpack[x.name_formated].owned <= 0:
-                        del c.backpack[x.name_formated]
+                    c.backpack[x.name].owned -= 1
+                    if c.backpack[x.name].owned <= 0:
+                        del c.backpack[x.name]
                     await self.config.user(ctx.author).set(c.to_json())
                 # save so the items are eaten up already
                 for items in c.get_current_equipment():
@@ -1921,9 +1920,9 @@ class Adventure(BaseCog):
                             lang="css",
                         )
                         for item in lookup:
-                            del c.backpack[item.name_formated]
+                            del c.backpack[item.name]
                         await ctx.send(created_item)
-                        c.backpack[newitem.name_formated] = newitem
+                        c.backpack[newitem.name] = newitem
                         await self.config.user(ctx.author).set(c.to_json())
                     else:
                         mad_forge = box(
@@ -1934,7 +1933,7 @@ class Adventure(BaseCog):
                         )
                         return await ctx.send(mad_forge)
                 else:
-                    c.backpack[newitem.name_formated] = newitem
+                    c.backpack[newitem.name] = newitem
                     await self.config.user(ctx.author).set(c.to_json())
                     forged_item = box(
                         _("{author}, your new {newitem} is lurking in your backpack.").format(
@@ -2415,7 +2414,7 @@ class Adventure(BaseCog):
                                         if item.rarity == "forged":
                                             tinker_wep.append(item)
                                     for item in tinker_wep:
-                                        del c.backpack[item.name_formated]
+                                        del c.backpack[item.name]
                                     await self.config.user(ctx.author).set(c.to_json())
                                     if tinker_wep:
                                         await class_msg.edit(
@@ -3445,7 +3444,7 @@ class Adventure(BaseCog):
                 ).format(author=self.escape(ctx.author.display_name), current_item=current_item)
             else:
                 for current_item in c.get_current_equipment():
-                    if item.lower() in current_item.name_formated.lower():
+                    if item.lower() in current_item.name.lower():
                         await c.unequip_item(current_item)
                         msg = _(
                             "{author} removed the {current_item} and put it into their backpack."
@@ -3906,7 +3905,7 @@ class Adventure(BaseCog):
         currency_name = await bank.get_currency_name(guild)
         if currency_name.startswith("<"):
             currency_name = "credits"
-        item_data = box(items["itemname"] + " - " + humanize_number(items["price"]), lang="css")
+        item_data = box(items["item"].formatted_name + " - " + humanize_number(items["price"]), lang="css")
         to_delete = await channel.send(
             _("{user}, how many {item} would you like to buy?").format(
                 user=user.mention, item=item_data
@@ -3945,11 +3944,10 @@ class Adventure(BaseCog):
                 else:
                     item = items["item"]
                     item.owned = pred.result
-                    item_name = f"{item.name_formated}"
-                    if item_name in c.backpack:
-                        c.backpack[item_name].owned += pred.result
+                    if item.name in c.backpack:
+                        c.backpack[item.name].owned += pred.result
                     else:
-                        c.backpack[item_name] = item
+                        c.backpack[item.name] = item
                 await self.config.user(user).set(c.to_json())
                 with contextlib.suppress(discord.HTTPException):
                     await to_delete.delete()
@@ -3962,7 +3960,7 @@ class Adventure(BaseCog):
                         ).format(
                             author=self.escape(user.display_name),
                             p_result=pred.result,
-                            item_name=items["itemname"],
+                            item_name=item.formatted_name,
                             item_price=humanize_number(items["price"] * pred.result),
                             currency_name=currency_name,
                         ),
@@ -5207,10 +5205,10 @@ class Adventure(BaseCog):
             items = {}
             for i in range(0, max(amount, 0)):
                 item = await self._roll_chest(chest_type, c)
-                if item.name_formated in items:
-                    items[item.name_formated].owned += 1
+                if item.name in items:
+                    items[item.name].owned += 1
                 else:
-                    items[item.name_formated] = item
+                    items[item.name] = item
 
             for name, item in items.items():
                 await c.add_to_backpack(item)
@@ -5594,7 +5592,8 @@ class Adventure(BaseCog):
 
         self.bot.dispatch("adventure_cart", ctx)  # dispatch after silent return
 
-        stockcount = random.randint(3, 9)
+        #  stockcount = random.randint(3, 9)
+        stockcount = 2
         controls = {em_list[i + 1]: i for i in range(stockcount)}
         self._curent_trader_stock[ctx.guild.id] = stockcount, controls
 
@@ -5633,7 +5632,7 @@ class Adventure(BaseCog):
                         "[{hand}]) for {item_price} {currency_name}."
                     ).format(
                         i=str(index + 1),
-                        item_name=item["itemname"],
+                        item_name=item["item"].formatted_name,
                         lvl=item["item"].lvl,
                         str_att=str(att),
                         str_int=str(intel),
@@ -5677,107 +5676,40 @@ class Adventure(BaseCog):
         items = {}
         output = {}
 
-        chest_type = random.randint(1, 100)
-        chest_enable = await self.config.enable_chests()
+        #  chest_enable = await self.config.enable_chests()
+        chest_enable = False
         while len(items) < howmany:
-            chance = None
-            roll = random.randint(1, 100)
-            if chest_type <= 60:
-                if roll <= 5:
-                    chance = self.TR_EPIC
-                elif 5 < roll <= 25:
-                    chance = self.TR_RARE
-                elif roll >= 90 and chest_enable:
-                    chest = [1, 0, 0]
-                    types = ["normal chest", ".rare_chest", "[epic chest]"]
-                    if "normal chest" not in items:
-                        items.update(
-                            {
-                                "normal chest": {
-                                    "itemname": _("normal chest"),
-                                    "item": chest,
-                                    "price": 100000,
-                                }
-                            }
-                        )
-                else:
-                    chance = self.TR_COMMON
-            elif chest_type <= 75:
-                if roll <= 15:
-                    chance = self.TR_EPIC
-                elif 15 < roll <= 45:
-                    chance = self.TR_RARE
-                elif roll >= 90 and chest_enable:
-                    chest = random.choice([[0, 1, 0], [1, 0, 0]])
-                    types = ["normal chest", ".rare_chest", "[epic chest]"]
-                    prices = [10000, 50000, 100000]
-                    chesttext = types[chest.index(1)]
-                    price = prices[chest.index(1)]
-                    if chesttext not in items:
-                        items.update(
-                            {
-                                chesttext: {
-                                    "itemname": "{}".format(chesttext),
-                                    "item": chest,
-                                    "price": price,
-                                }
-                            }
-                        )
-                else:
-                    chance = self.TR_COMMON
-            else:
-                if roll <= 25:
-                    chance = self.TR_EPIC
-                elif roll >= 90 and chest_enable:
-                    chest = random.choice([[0, 1, 0], [0, 0, 1]])
-                    types = ["normal chest", ".rare_chest", "[epic chest]"]
-                    prices = [10000, 50000, 100000]
-                    chesttext = types[chest.index(1)]
-                    price = prices[chest.index(1)]
-                    if chesttext not in items:
-                        items.update(
-                            {
-                                chesttext: {
-                                    "itemname": "{}".format(chesttext),
-                                    "item": chest,
-                                    "price": price,
-                                }
-                            }
-                        )
-                else:
-                    chance = self.TR_RARE
+            item = await self._genitem("normal")
+            # 1 stat for normal, want to be <1k
+            price = random.randint(250, 500)
+            #  rarity_roll = random.random()
+            rarity_roll = .9
+            if rarity_roll >= .8:
+                item = await self._genitem("legendary")
+                # min. 10 stat for legendary, want to be about 50k
+                price = random.randint(4000, 6000)
+            elif rarity_roll >= .6:
+                item = await self._genitem("epic")
+                # min. 5 stat for epic, want to be about 25k
+                price = random.randint(4000, 6000)
+            elif rarity_roll >= .3:
+                item = await self._genitem("rare")
+                # around 3 stat for rare, want to be about 3k
+                price = random.randint(750, 1250)
+            log.debug(f"Random price for {item.name}: {price}")
+            price *= item.max_main_stat 
+            log.debug(f"* max stat: {price}")
 
-            if chance is not None:
-                itemname = random.choice(list(chance.keys()))
-                item = Item.from_json({itemname: chance[itemname]})
-                if len(item.slot) == 2:  # two handed weapons add their bonuses twice
-                    att = item.att * 2
-                    cha = item.cha * 2
-                    intel = item.int * 2
-                else:
-                    att = item.att
-                    cha = item.cha
-                    intel = item.int
-                if item.rarity == "epic":
-                    # max 18 int item: 22.5k-50k
-                    price = random.randint(750, 2750) * max(att, cha, intel, 1)
-                elif item.rarity == "rare":
-                    # max 12 int item: 9k-30k
-                    price = random.randint(750, 2500) * max(att, cha, intel, 1)
-                else:
-                    # max 6 int item: 600-1.5k
-                    price = random.randint(100, 250) * max(att, cha, intel, 1)
-                if itemname not in items:
-                    items.update(
-                        {
-                            itemname: {
-                                "itemname": itemname,
-                                "item": item,
-                                "price": price,
-                                "lvl": item.lvl,
-                            }
-                        }
-                    )
+            items.update(
+                {
+                    item.name: {
+                        "itemname": item.name,
+                        "item": item,
+                        "price": price,
+                        "lvl": item.lvl,
+                    }
+                }
+            )
 
         for index, item in enumerate(items):
             output.update({index: items[item]})

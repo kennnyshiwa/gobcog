@@ -26,7 +26,7 @@ except ImportError:
     def humanize_number(val: int) -> str:
         return "{:,}".format(val)
 
-DEV_LIST = [208903205982044161]
+DEV_LIST = [208903205982044161, 142822767497052161]
 
 ORDER = [
     "head",
@@ -152,6 +152,7 @@ class Item:
             },
         )
         self.total_stats: int = self.att + self.int + self.cha + self.dex + self.luck
+        self.max_main_stat = max(self.att, self.int, self.cha, 1)
         self.lvl: int = self.get_equip_level()
         self.parts: int = kwargs.pop("parts")
         self.degrade = kwargs.pop("degrade", 2)
@@ -172,12 +173,11 @@ class Item:
             return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
             # Thanks Sinbad!
     @property
-    def name_formated(self):
+    def formatted_name(self):
         return str(self)
 
     def get_equip_level(self):
-        max_main_stat = max(self.att, self.int, self.cha)
-        lvl = max_main_stat * (RARITIES.index(self.rarity) + 2.5)
+        lvl = self.max_main_stat * (RARITIES.index(self.rarity) + 2.5)
         if self.rarity == "forged":
             lvl = 1
         return max(round(lvl), 1)
@@ -287,8 +287,7 @@ class Item:
             self.luck = item.get("luck", self.luck)
 
         data = {
-            self.name_formated: {
-                "name": get_true_name(self.rarity, self.name),
+            self.name: {
                 "slot": self.slot,
                 "att": self.att,
                 "int": self.int,
@@ -304,7 +303,7 @@ class Item:
             }
         }
         if self.rarity == "legendary":
-            data[self.name_formated].update({"degrade": self.degrade})
+            data[self.name].update({"degrade": self.degrade})
 
         return data
 
@@ -700,13 +699,10 @@ class Character(Item):
             if not dev:
                 await self.add_to_backpack(item)
                 return self
-        if from_backpack and item.name_formated in self.backpack:
-            log.debug("removing from backpack")
-            del self.backpack[item.name_formated]
+        if from_backpack and item.name in self.backpack:
+            del self.backpack[item.name]
         for slot in item.slot:
-            log.debug(f"Equipping {slot}")
             current = getattr(self, slot)
-            log.debug(current)
             if current:
                 await self.unequip_item(current)
             setattr(self, slot, item)
@@ -714,11 +710,10 @@ class Character(Item):
 
     async def add_to_backpack(self, item: Item):
         if item:
-            item_name = f"{item.name_formated}"
-            if item_name in self.backpack:
-                self.backpack[item_name].owned += 1
+            if item.name in self.backpack:
+                self.backpack[item.name].owned += 1
             else:
-                self.backpack[item_name] = item
+                self.backpack[item.name] = item
 
     async def equip_loadout(self, loadout_name):
         loadout = self.loadouts[loadout_name]
@@ -728,12 +723,11 @@ class Character(Item):
             name_unformatted = "".join(item.keys())
             name = Item.remove_markdowns(name_unformatted)
             current = getattr(self, slot)
-            if current and current.name_formated == name_unformatted:
+            if current and current.name == name_unformatted:
                 continue
-            if current and current.name_formated != name_unformatted:
+            if current and current.name != name_unformatted:
                 await self.unequip_item(current)
             if name_unformatted not in self.backpack:
-                log.debug(f"{name} is missing")
                 setattr(self, slot, None)
             else:
                 equiplevel = max((item.get("lvl", 1) - min(max(self.rebirths // 2 - 1, 0), 50)), 1)
@@ -774,13 +768,11 @@ class Character(Item):
 
     async def unequip_item(self, item: Item):
         """This handles moving an item equipment to backpack."""
-        if item.name_formated in self.backpack:
-            self.backpack[item.name_formated].owned += 1
+        if item.name in self.backpack:
+            self.backpack[item.name].owned += 1
         else:
-            self.backpack[item.name_formated] = item
-            log.debug(f"storing {item} in backpack")
+            self.backpack[item.name] = item
         for slot in item.slot:
-            log.debug(f"Unequipped {slot} {item}")
             setattr(self, slot, None)
         return self
 
@@ -812,7 +804,7 @@ class Character(Item):
             backpack = {}
             for n, i in data["items"]["backpack"].items():
                 item = Item.from_json({n: i})
-                backpack[item.name_formated] = item
+                backpack[item.name] = item
         else:
             backpack = {n: Item.from_json({n: i}) for n, i in data["backpack"].items()}
         while len(data["treasure"]) < 5:
