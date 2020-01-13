@@ -1,44 +1,44 @@
-# Head
+# head
 Crown
 Faceguard
 Greathelm
 Visage
 Jaws
 
-# Neck
+# neck
 Chain
 Collar
 Necklace
 
-# Chest
+# chest
 Armor
 Battleplate 
 Chestplate
 Robes
 Vest
 
-# Gloves
+# gloves
 Fists
 Gloves
 Grasps
 Grips
 Gauntlets
 
-# Belt
+# belt
 Band
 Belt
 Cord
 Strap
 Waistband 
 
-# Legs
+# legs
 Chaps
 Guards
 Leggings
 Legplates
 Skins
 
-# Boots
+# boots
 Boots
 Clogs
 Heels
@@ -46,14 +46,14 @@ Sabatons
 Slip-Ons
 Stompers
 
-# Left
+# left
 Defender
 Deflector
 Shield
 Spellbook
 Tome
 
-# Right
+# right
 Axe
 Club
 Dagger
@@ -61,19 +61,20 @@ Katana
 Quarterstaff
 Sword
 
-# Two-Handed
+# two handed
 Crossbow
 Greatsword
 Slingshot
 Staff
 Warhammer
 
-# Ring
+# ring
 Ring
 Ringlet
 
-# Charm
+# charm
 Charm
 Figurine
 Medallion
 Shard
+
