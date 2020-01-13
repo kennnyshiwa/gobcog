@@ -2553,7 +2553,7 @@ class Adventure(BaseCog):
                 items = await self._open_chests(ctx, ctx.author, box_type, amount)
                 msg = _(
                     "{}, you've opened the following items:\n"
-                    "( ATT  |  CHA  |  INT  |  DEX  |  LUCK)"
+                    "( ATT | CHA | INT | DEX | LUCK)"
                 ).format(self.escape(ctx.author.display_name))
                 rjust = max([len(str(i)) for n, i in items.items()])
                 for name, item in items.items():
@@ -2562,14 +2562,14 @@ class Adventure(BaseCog):
                     int_space = " " if len(str(item.int)) == 1 else ""
                     dex_space = " " if len(str(item.dex)) == 1 else ""
                     luck_space = " " if len(str(item.luck)) == 1 else ""
-                    msg += (
-                        f"\n {item.owned} - Lvl req {item.lvl} | {str(item):<{rjust}} - "
-                        f"({att_space}{item.att}  | "
-                        f"{int_space}{item.cha}  | "
-                        f"{cha_space}{item.int}  | "
-                        f"{dex_space}{item.dex}  | "
-                        f"{luck_space}{item.luck} )"
-                    )
+                    msg += (f"\n Lv {item.lvl:<2} | "
+                            f"{str(item):<{rjust}} - "
+                            f"({att_space}{item.att} |"
+                            f"{cha_space}{item.cha} |"
+                            f"{int_space}{item.int} |"
+                            f"{dex_space}{item.dex} |"
+                            f"{luck_space}{item.luck} )"
+                            )
                 msgs = []
                 for page in pagify(msg):
                     msgs.append(box(page, lang="css"))
@@ -4102,7 +4102,7 @@ class Adventure(BaseCog):
         text = ""
         if slain or persuaded and not failed:
             roll = random.randint(1, 10)
-            CR = hp + dipl
+            monster_amount = hp if slain else dipl
             treasure = [0, 0, 0, 0, 0]
             if session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
                 treasure = random.choice(
@@ -4128,17 +4128,26 @@ class Adventure(BaseCog):
                 session.miniboss
             ):  # rewards 50:50 rare:normal chest for killing something like the basilisk
                 treasure = random.choice([[1, 1, 1, 0, 0], [0, 0, 1, 1, 0]])
-            elif CR >= 800:  # super hard stuff
-                if roll <= 4:
-                    treasure = random.choice([[0, 0, 1, 0, 0], [0, 1, 0, 0, 0], [0, 0, 0, 1, 0]])
-            elif CR >= 640:  # rewards 50:50 rare:epic chest for killing hard stuff.
-                if roll <= 3:
-                    treasure = random.choice([[0, 0, 1, 0, 0], [0, 1, 0, 0, 0], [0, 1, 1, 0, 0]])
-            elif CR >= 360:  # rewards 50:50 rare:normal chest for killing hardish stuff
+            elif monster_amount >= 700:  # super hard stuff
+                if roll <= 7:
+                    treasure = random.choice([
+                        [0, 0, 1, 0, 0], 
+                        [0, 1, 0, 0, 0], 
+                        [0, 0, 0, 1, 0]])
+            elif monster_amount >= 500:  # rewards 50:50 rare:epic chest for killing hard stuff.
+                if roll <= 5:
+                    treasure = random.choice([
+                        [0, 0, 1, 0, 0],
+                        [0, 1, 0, 0, 0], 
+                        [0, 1, 1, 0, 0]])
+            elif monster_amount >= 300:  # rewards 50:50 rare:normal chest for killing hardish stuff
                 if roll <= 2:
-                    treasure = random.choice([[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [1, 1, 0, 0, 0]])
+                    treasure = random.choice([
+                        [1, 0, 0, 0, 0], 
+                        [0, 1, 0, 0, 0],
+                        [1, 1, 0, 0, 0]])
             elif (
-                CR >= 80
+                monster_amount >= 80
             ):  # small chance of a normal chest on killing stuff that's not terribly weak
                 if roll == 1:
                     treasure = [1, 0, 0, 0, 0]
@@ -4166,7 +4175,7 @@ class Adventure(BaseCog):
                 except Exception:
                     log.exception("Error with the new character sheet")
                     continue
-                multiplier = 0.02
+                multiplier = 0.1
                 if c.dex != 0:
                     if c.dex < 0:
                         dex = min(1 / abs(c.dex), 1)
@@ -4215,7 +4224,7 @@ class Adventure(BaseCog):
                 except Exception:
                     log.exception("Error with the new character sheet")
                     continue
-                multiplier = 0.02
+                multiplier = 0.1
                 if c.dex != 0:
                     if c.dex < 0:
                         dex = min(1 / abs(c.dex), 1)
@@ -4283,7 +4292,7 @@ class Adventure(BaseCog):
                     except Exception:
                         log.exception("Error with the new character sheet")
                         continue
-                    multiplier = 0.02
+                    multiplier = 0.1
                     if c.dex != 0:
                         if c.dex < 0:
                             dex = min(1 / abs(c.dex), 1)
@@ -4457,7 +4466,7 @@ class Adventure(BaseCog):
                     except Exception:
                         log.exception("Error with the new character sheet")
                         continue
-                    multiplier = 0.02
+                    multiplier = 0.1
                     if c.dex != 0:
                         if c.dex < 0:
                             dex = min(1 / abs(c.dex), 1)
@@ -5134,59 +5143,63 @@ class Adventure(BaseCog):
                 await self._trader(ctx)
 
     async def _roll_chest(self, chest_type: str, c: Character):
-        multiplier = 600 + int(round(-c.luck * 3) - c.rebirths)
-        chest_logic = {"pet": 40, "normal": 10, "rare": 10, "epic": 20, "legendary": 10, "set": 60}
-        multiplier = max(multiplier, chest_logic.get(chest_type, 60))
-        # -multiplier because higher luck is better negative luck takes away
-        roll = random.randint(1, multiplier)
+        # set rarity to chest by default
+        rarity = chest_type
         if chest_type == "pet":
-            if roll <= 20:
-                chance = self.TR_LEGENDARY
-            elif roll <= 50:
-                chance = self.TR_EPIC
-            elif 50 < roll <= 200:
-                chance = self.TR_RARE
-            else:
-                chance = self.TR_COMMON
-        elif chest_type == "normal":
-            if roll <= 5:
-                chance = self.TR_EPIC
-            elif 5 < roll <= 125:
-                chance = self.TR_RARE
-            else:
-                chance = self.TR_COMMON
-        elif chest_type == "rare":
-            if roll <= 5:
-                chance = self.TR_EPIC
-            elif 5 < roll <= 350:
-                chance = self.TR_RARE
-            else:
-                chance = self.TR_COMMON
-        elif chest_type == "epic":
-            if roll <= 10:
-                chance = self.TR_LEGENDARY
-            elif 10 < roll <= 350:
-                chance = self.TR_EPIC
-            else:
-                chance = self.TR_RARE
-        elif chest_type == "legendary":
-            if roll < 5:
-                chance = self.TR_GEAR_SET
-            elif roll <= 125:
-                chance = self.TR_LEGENDARY
-            else:
-                chance = self.TR_EPIC
+            rarity = "normal"
         elif chest_type == "set":
-            if roll <= 50:
-                chance = self.TR_GEAR_SET
-            else:
-                chance = self.TR_LEGENDARY
-        else:
-            chance = self.TR_COMMON
-            # not sure why this was put here but just incase someone
-            # tries to add a new loot type we give them normal loot instead
-        itemname = random.choice(list(chance.keys()))
-        return Item.from_json({itemname: chance[itemname]})
+            rarity = "legendary"
+
+        INITIAL_MAX_ROLL = 400
+        # max luck for best chest odds
+        MAX_CHEST_LUCK = 200
+        # lower gives you better chances for better items
+        max_roll = INITIAL_MAX_ROLL - round(c.luck) - (c.rebirths * 2)
+        log.debug(max_roll)
+        roll = random.randint(1, max(max_roll, 
+            INITIAL_MAX_ROLL - MAX_CHEST_LUCK))
+        if chest_type == "normal":
+            # 5% to roll epic
+            if roll <= INITIAL_MAX_ROLL * .05:
+                rarity = "epic"
+            # 20% to roll rare
+            elif roll <= INITIAL_MAX_ROLL * .25:
+                rarity = "rare"
+            # 75% to roll common
+        elif chest_type == "rare":
+            # 15% to roll epic
+            if roll <= INITIAL_MAX_ROLL * .2:
+                rarity = "epic"
+            # 70% to roll rare
+            # 10% to roll normal
+            elif roll >= INITIAL_MAX_ROLL * .9:
+                rarity = "normal"
+        elif chest_type == "epic":
+            # 20% to roll legendary
+            if roll <= INITIAL_MAX_ROLL * .2:
+                rarity = "legendary"
+            # 70% to roll epic
+            # 10% to roll rare
+            elif roll >= INITIAL_MAX_ROLL * .9:
+                rarity = "rare"
+        elif chest_type == "legendary" or chest_type == "set":
+            # 80% to roll legendary
+            # 20% to roll epic
+            if roll >= INITIAL_MAX_ROLL * .8:
+                rarity = "epic"
+        elif chest_type == "pet":
+            # 2% to roll legendary
+            if roll <= INITIAL_MAX_ROLL * .02:
+                rarity = "legendary"
+            # 5% to roll epic
+            elif roll <= INITIAL_MAX_ROLL * .07:
+                rarity = "epic"
+            # 50% to roll rare
+            elif roll <= INITIAL_MAX_ROLL * .57:
+                rarity = "rare"
+            # 43% to roll common
+
+        return await self._genitem(rarity)
 
     async def _open_chests(self, ctx: Context, user: discord.Member, chest_type: str, amount: int):
         """This allows you you to open multiple chests at once and put them in your inventory."""
