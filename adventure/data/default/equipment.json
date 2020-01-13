@@ -1,25 +1,58 @@
 {
-  "Axe": {
-    "att": 1,
-    "cha": -1
+  "chest": {
+    "Armor": {
+      "att": 1,
+      "cha": 1
+    },
+    "Battleplate": {
+      "att": 3,
+      "cha": 1,
+      "int": 2,
+      "dex": -2
+    },
+    "Chestplate": {
+      "att": 2,
+      "cha": 2,
+      "int": 2,
+      "dex": -1,
+      "luck": 1
+    },
+    "Robes": {
+      "att": 0,
+      "cha": 0,
+      "int": 2,
+      "dex": 2,
+      "luck": 2
+    },
+    "Vest": {
+      "att": 1,
+      "cha": 1,
+      "int": 1,
+      "dex": 3,
+      "luck": 1
+    }
   },
-  "Dagger": {
-    "att": 2,
-    "dex": 2,
-    "luck": 1
-  },
-  "Katana": {
-    "att": 2,
-    "cha": 1,
-    "dex": 0,
-    "luck": 0
-  },
-  "Quarterstaff": {
-    "int": 2,
-    "dex": 2,
-    "luck": 1
-  },
-  "Sword": {
-    "att": 1
+  "right": {
+    "Axe": {
+      "att": 1,
+      "cha": -1
+    },
+    "Dagger": {
+      "att": 2,
+      "dex": 2,
+      "luck": 1
+    },
+    "Katana": {
+      "att": 2,
+      "cha": 1
+    },
+    "Quarterstaff": {
+      "int": 2,
+      "dex": 2,
+      "luck": 1
+    },
+    "Sword": {
+      "att": 2
+    }
   }
 }

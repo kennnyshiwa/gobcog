@@ -46,6 +46,7 @@ from .charsheet import (
     parse_timedelta,
     DEV_LIST,
     RARITIES,
+    ORDER,
 )
 
 try:
@@ -473,8 +474,18 @@ class Adventure(BaseCog):
         """Force cart to appear in a channel."""
         await self._trader(ctx, True)
 
-    async def _genitem(self, rarity):
+    async def _genitem(self, rarity: str = None, slot: str = None):
         """Generate an item."""
+        RARE_INDEX = RARITIES.index("rare")
+        EPIC_INDEX = RARITIES.index("epic")
+        PREFIX_CHANCE = { "rare": .5, "epic": .75, "legendary": .9 }
+        SUFFIX_CHANCE = { "epic": .5, "legendary": .75 }
+
+        if rarity is None:
+            rarity = random.choice(RARITIES)
+        if slot is None:
+            #  slot = random.choice(ORDER)
+            slot = random.choice(["right", "chest"])
         name = ""
         stats = {
                 "att": 0,
@@ -483,10 +494,6 @@ class Adventure(BaseCog):
                 "dex": 0,
                 "luck": 0,
                 }
-        RARE_INDEX = RARITIES.index("rare")
-        EPIC_INDEX = RARITIES.index("epic")
-        PREFIX_CHANCE = { "rare": .5, "epic": .75, "legendary": .9 }
-        SUFFIX_CHANCE = { "epic": .5, "legendary": .75 }
 
         def add_stats(word_stats):
             """Add stats in word's dict to local stats dict."""
@@ -496,7 +503,7 @@ class Adventure(BaseCog):
 
         # only rare and above should have prefix with PREFIX_CHANCE 
         if (RARITIES.index(rarity) >= RARE_INDEX 
-                and random.random() >= PREFIX_CHANCE[rarity]):
+                and random.random() <= PREFIX_CHANCE[rarity]):
             #  log.debug(f"Prefix %: {PREFIX_CHANCE[rarity]}")
             prefix, prefix_stats = random.choice(list(self.PREFIXES.items()))
             name += f"{prefix} "
@@ -508,13 +515,14 @@ class Adventure(BaseCog):
         for stat in stats.keys():
             stats[stat] += material_stat
 
-        equipment, equipment_stats = random.choice(list(self.EQUIPMENT.items()))
+        equipment, equipment_stats = random.choice(
+                list(self.EQUIPMENT[slot].items()))
         name += f"{equipment}"
         add_stats(equipment_stats)
 
         # only epic and above should have suffix with SUFFIX_CHANCE
         if (RARITIES.index(rarity) >= EPIC_INDEX 
-                and random.random() >= SUFFIX_CHANCE[rarity]):
+                and random.random() <= SUFFIX_CHANCE[rarity]):
             #  log.debug(f"Suffix %: {SUFFIX_CHANCE[rarity]}")
             suffix, suffix_stats = random.choice(list(self.SUFFIXES.items()))
             of_keyword = ("of" if 'the' not in suffix_stats else "of the")
@@ -523,7 +531,7 @@ class Adventure(BaseCog):
 
         return Item(
                 name=name, 
-                slot=["right"],
+                slot=[slot],
                 rarity=rarity,
                 att=stats["att"],
                 int=stats["int"],
@@ -1437,20 +1445,6 @@ class Adventure(BaseCog):
 
         Use the full name of the item including the rarity characters like . or []  or {}.
         """
-        ORDER = [
-            "head",
-            "neck",
-            "chest",
-            "gloves",
-            "belt",
-            "legs",
-            "boots",
-            "left",
-            "right",
-            "two handed",
-            "ring",
-            "charm",
-        ]
         async with self.get_lock(user):
             item = None
             try:
@@ -5592,8 +5586,8 @@ class Adventure(BaseCog):
 
         self.bot.dispatch("adventure_cart", ctx)  # dispatch after silent return
 
-        #  stockcount = random.randint(3, 9)
-        stockcount = 2
+        #  stockcount = random.randint(5, 9)
+        stockcount = 9
         controls = {em_list[i + 1]: i for i in range(stockcount)}
         self._curent_trader_stock[ctx.guild.id] = stockcount, controls
 
@@ -5682,8 +5676,8 @@ class Adventure(BaseCog):
             item = await self._genitem("normal")
             # 1 stat for normal, want to be <1k
             price = random.randint(250, 500)
-            #  rarity_roll = random.random()
-            rarity_roll = .9
+            rarity_roll = random.random()
+            #  rarity_roll = .9
             if rarity_roll >= .8:
                 item = await self._genitem("legendary")
                 # min. 10 stat for legendary, want to be about 50k

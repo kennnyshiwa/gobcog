@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import json
 
 from pprint import pprint
@@ -39,4 +42,4 @@ if __name__ == "__main__":
     #  pprint(json.load(open(argv[1], 'r')))
     #  blank_stats_cp = BLANK_STATS.copy()
     #  blank_stats_cp['the'] = False
-    convert_list_to_json(argv[1], 0)
+    convert_list_to_json(argv[1], BLANK_STATS)

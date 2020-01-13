@@ -493,7 +493,7 @@ class Character(Item):
                     class_desc += _("\n\n- Current pet: {}").format(self.heroclass["pet"]["name"])
         else:
             class_desc = _("Hero.")
-        legend = _("( ATT  |  CHA  |  INT  |  DEX  |  LUCK)")
+        legend = _("( ATT | CHA | INT | DEX | LUCK )")
         return _(
             "[{user}'s Character Sheet]\n\n"
             "{{Rebirths: {rebirths}, \n Max Level: {maxlevel}}}\n\n"
@@ -592,12 +592,13 @@ class Character(Item):
             if item.set:
                 settext += f" | Set `{item.set}` ({item.parts})"
             form_string += (
-                f"\n {item.owned} - Lvl req {equip_level(self, item)} | {str(item):<{rjust}} - "
-                f"({att_space}{att}  | "
-                f"{cha_space}{cha}  | "
-                f"{int_space}{inter}  | "
-                f"{dex_space}{dex}  | "
-                f"{luck_space}{luck} ){settext}"
+                    f"\n Lv {equip_level(self, item):<2} | "
+                    f"{str(item):<{rjust}} - "
+                    f"({att_space}{att} |"
+                    f"{cha_space}{cha} |"
+                    f"{int_space}{inter} |"
+                    f"{dex_space}{dex} |"
+                    f"{luck_space}{luck} ){settext}"
             )
 
         return form_string + "\n"
@@ -662,7 +663,7 @@ class Character(Item):
         if consumed is None:
             consumed = []
         bkpk = self.get_sorted_backpack(self.backpack)
-        form_string = _("Items in Backpack: \n( ATT  |  CHA  |  INT  |  DEX  |  LUCK)")
+        form_string = _("Items in Backpack: \n( ATT | CHA | INT | DEX | LUCK )")
         consumed_list = [i for i in consumed]
         for slot_group in bkpk:
             slot_name = slot_group[0][1].slot
@@ -682,13 +683,14 @@ class Character(Item):
                 if item[1].set:
                     settext += f" | Set `{item[1].set}` ({item[1].parts})"
                 form_string += (
-                    f"\n Lv {equip_level(self, item[1])} | {str(item[1]):<{rjust}} - "
-                    f"({att_space}{item[1].att}  | "
-                    f"{cha_space}{item[1].cha}  | "
-                    f"{int_space}{item[1].int}  | "
-                    f"{dex_space}{item[1].dex}  | "
-                    f"{luck_space}{item[1].luck} ){settext}"
-                )
+                        f"\n Lv {equip_level(self, item[1]):<2} | "
+                        f"{str(item[1]):<{rjust}} - "
+                        f"({att_space}{item[1].att} |"
+                        f"{cha_space}{item[1].cha} |"
+                        f"{int_space}{item[1].int} |"
+                        f"{dex_space}{item[1].dex} |"
+                        f"{luck_space}{item[1].luck} ){settext}"
+                        )
 
         return form_string + "\n"
 

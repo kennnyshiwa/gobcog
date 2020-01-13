@@ -1,5 +1,5 @@
-Axe
-Dagger
-Katana
-Quarterstaff
-Sword
+Armor
+Battleplate 
+Chestplate
+Robes
+Vest
