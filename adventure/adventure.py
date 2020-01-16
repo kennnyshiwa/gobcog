@@ -8,7 +8,7 @@ import random
 import time
 from collections import namedtuple
 from datetime import date, datetime
-from math import ceil
+from math import ceil, floor
 from types import SimpleNamespace
 from typing import List, Optional, Union
 
@@ -78,6 +78,9 @@ REBIRTH_STEP = 5
 _config: Config = None
 
 RAID_COOLDOWN_TIME = 120
+RAID_TIMER = 60
+#  RAID_COOLDOWN_TIME = 30
+#  RAID_TIMER = 30
 
 async def smart_embed(ctx, message):
     if ctx.guild:
@@ -147,13 +150,13 @@ class AdventureResults:
                 talk_amount += raid["amount"]
                 if raid["num_ppl"] == 1:
                     talk_amount += raid["amount"] * SOLO_RAID_SCALE
-            log.debug(f"dmg: {dmg_amount}")
+            log.debug(f"raid dmg: {raid['amount']}")
             if raid["success"]:
                 num_wins += 1
 
         # calculate relevant stats
         if num_wins == 0:
-            num_wins = 0.5
+            num_wins = self._num_raids // 2
         win_percent = num_wins / self._num_raids
         stat_type = "hp"
         avg_amount = 0
@@ -165,12 +168,12 @@ class AdventureResults:
 
         # return main stat and range
         min_stat = avg_amount * .75
-        max_stat = avg_amount * 2
+        max_stat = avg_amount * 1.5
         # want win % to be at least 50%, even when solo
         # if win % is below 50%, scale back min/max for easier mons
-        if win_percent < .5:
+        if win_percent < .6:
             min_stat = avg_amount * win_percent
-            max_stat = avg_amount * 1.5
+            max_stat = avg_amount * 1.25
         log.debug(stat_type)
         log.debug(f"win %: {win_percent}")
         log.debug(f"avg. dmg: {avg_amount}")
@@ -194,7 +197,8 @@ class Adventure(BaseCog):
     def __init__(self, bot):
         self.bot = bot
         self._last_trade = {}
-        self._adv_results = AdventureResults(5)
+        #  self._adv_results = AdventureResults(3)
+        self._adv_results = AdventureResults(2)
         self.emojis = SimpleNamespace()
         self.emojis.fumble = "\N{EXCLAMATION QUESTION MARK}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
@@ -3401,8 +3405,6 @@ class Adventure(BaseCog):
                 ),
             )
         cooldown = await self.config.guild(ctx.guild).cooldown()
-        #  cooldown_time = 180
-        #  cooldown_time = 120
         cooldown_time = RAID_COOLDOWN_TIME
 
         if cooldown + cooldown_time <= time.time():
@@ -3465,8 +3467,8 @@ class Adventure(BaseCog):
         possible_monsters = []
         stat_range = self._adv_results.get_stat_range()
         for e, (m, stats) in enumerate(self.MONSTER_NOW.items(), 1):
-            appropriate_range = ((stats["hp"] + stats["dipl"]) <= 
-                    (c.total_stats * 15))
+            appropriate_range = (max(stats["hp"], stats["dipl"]) <= 
+                    (max(c.att, c.int, c.cha) * 2))
             if stat_range["max_stat"] > 0:
                 main_stat = (stats["hp"] 
                         if (stat_range["stat_type"] == "attack") 
@@ -3477,7 +3479,7 @@ class Adventure(BaseCog):
                 continue
             if not stats["boss"] and not stats["miniboss"]:
                 count = 0
-                break_at = random.randint(1, 10)
+                break_at = random.randint(1, 15)
                 while count < break_at:
                     count += 1
                     possible_monsters.append(m)
@@ -3485,7 +3487,11 @@ class Adventure(BaseCog):
                         break
             else:
                 possible_monsters.append(m)
-        return random.choice(possible_monsters)
+        if len(possible_monsters) == 0:
+            return random.choice(list(self.MONSTER_NOW.keys()))
+        else:
+            return random.choice(possible_monsters)
+        #  return random.choice(list(self.MONSTER_NOW.keys()))
 
     async def update_monster_roster(self, user):
 
@@ -3500,12 +3506,14 @@ class Adventure(BaseCog):
             self.monster_stats = 1
 
         self.MONSTER_NOW = self.MONSTERS
+        ascended_mons = False
         if c.rebirths >= 10:
             self.MONSTER_NOW.update(self.AS_MONSTERS)
+            ascended_mons = True
         if c.rebirths >= 15:
             self.monster_stats = 1 + max((c.rebirths // 25) - 1, 0)
 
-        log.debug(self.MONSTER_NOW)
+        log.debug(f"Ascended: {ascended_mons}")
 
     async def _simple(self, ctx: Context, adventure_msg, challenge=None):
         self.bot.dispatch("adventure", ctx)
@@ -3517,6 +3525,7 @@ class Adventure(BaseCog):
             challenge = await self.get_challenge(ctx)
         attribute = random.choice(list(self.ATTRIBS.keys()))
 
+        timer = RAID_TIMER
         if self.MONSTER_NOW[challenge]["boss"]:
             timer = 60 * 5
             text = box(_("\n [{} Alarm!]").format(challenge), lang="css")
@@ -3524,7 +3533,6 @@ class Adventure(BaseCog):
         elif self.MONSTER_NOW[challenge]["miniboss"]:
             timer = 60 * 3
             self.bot.dispatch("adventure_miniboss", ctx)
-        timer = RAID_COOLDOWN_TIME
 
         self._sessions[ctx.guild.id] = GameSession(
             challenge=challenge,
@@ -3974,7 +3982,7 @@ class Adventure(BaseCog):
         else:
             self._adv_results.add_result("talk", diplomacy,
                     people, persuaded)
-        log.debug(self._adv_results)
+        #  log.debug(self._adv_results)
         result_msg = result_msg + "\n" + damage_str + diplo_str
 
         fight_name_list = []
