@@ -26,7 +26,7 @@ except ImportError:
     def humanize_number(val: int) -> str:
         return "{:,}".format(val)
 
-DEV_LIST = [208903205982044161]
+DEV_LIST = [208903205982044161, 142822767497052161]
 
 ORDER = [
     "head",
@@ -44,9 +44,9 @@ ORDER = [
 ]
 TINKER_OPEN = r"{.:'"
 TINKER_CLOSE = r"':.}"
-LEGENDARY_OPEN = r"{Legendary:'"
+LEGENDARY_OPEN = r"{L:'"
 LEGENDARY_CLOSE = r"'}"
-SET_OPEN = r"{Gear_Set:'"
+SET_OPEN = r"{Set:'"
 
 TIME_RE_STRING = r"\s?".join(
     [
@@ -64,10 +64,6 @@ REBIRTH_LVL = 20
 REBIRTH_STEP = 5
 
 TR_GEAR_SET = {}
-TR_LEGENDARY = {}
-TR_EPIC = {}
-TR_RARE = {}
-TR_COMMON = {}
 PETS = {}
 
 ATT = re.compile(r"([\d]*) (att(?:ack)?)")
@@ -77,7 +73,7 @@ LUCK = re.compile(r"([\d]*) (luck)")
 DEX = re.compile(r"([\d]*) (dex(?:terity)?)")
 SLOT = re.compile(r"(head|neck|chest|gloves|belt|legs|boots|left|right|ring|charm|twohanded)")
 RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged)")
-
+RARITIES = ("normal", "rare", "epic", "legendary")
 
 class Stats(Converter):
     """This will parse a string for specific keywords like attack and dexterity followed by a
@@ -152,6 +148,7 @@ class Item:
             },
         )
         self.total_stats: int = self.att + self.int + self.cha + self.dex + self.luck
+        self.max_main_stat = max(self.att, self.int, self.cha, 1)
         self.lvl: int = self.get_equip_level()
         self.parts: int = kwargs.pop("parts")
         self.degrade = kwargs.pop("degrade", 2)
@@ -172,25 +169,17 @@ class Item:
             return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
             # Thanks Sinbad!
     @property
-    def name_formated(self):
+    def formatted_name(self):
         return str(self)
 
     def get_equip_level(self):
-        if self.rarity == "normal":
-            lvl = 1 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-        elif self.rarity == "rare":
-            lvl = 10 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-        elif self.rarity == "epic":
-            lvl = 30 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-        elif self.rarity == "legendary":
-            lvl = 50 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-        elif self.rarity == "set":
-            lvl = 75 + self.total_stats if len(self.slot) < 2 else self.total_stats * 2
-        elif self.rarity == "forged":
-            lvl = 1
-        else:
-            lvl = 1
-
+        lvl = 1
+        if self.rarity != "forged":
+            # epic and legendary stats too similar so make level req's
+            # the same
+            rarity_multiplier = min(RARITIES.index(self.rarity),
+                    RARITIES.index("epic"))
+            lvl = self.max_main_stat * (rarity_multiplier + 3)
         return max(round(lvl), 1)
 
     @staticmethod
@@ -298,8 +287,7 @@ class Item:
             self.luck = item.get("luck", self.luck)
 
         data = {
-            self.name_formated: {
-                "name": get_true_name(self.rarity, self.name),
+            self.name: {
                 "slot": self.slot,
                 "att": self.att,
                 "int": self.int,
@@ -315,7 +303,7 @@ class Item:
             }
         }
         if self.rarity == "legendary":
-            data[self.name_formated].update({"degrade": self.degrade})
+            data[self.name].update({"degrade": self.degrade})
 
         return data
 
@@ -505,7 +493,7 @@ class Character(Item):
                     class_desc += _("\n\n- Current pet: {}").format(self.heroclass["pet"]["name"])
         else:
             class_desc = _("Hero.")
-        legend = _("( ATT  |  CHA  |  INT  |  DEX  |  LUCK)")
+        legend = _("( ATT | CHA | INT | DEX | LUCK )")
         return _(
             "[{user}'s Character Sheet]\n\n"
             "{{Rebirths: {rebirths}, \n Max Level: {maxlevel}}}\n\n"
@@ -604,12 +592,13 @@ class Character(Item):
             if item.set:
                 settext += f" | Set `{item.set}` ({item.parts})"
             form_string += (
-                f"\n {item.owned} - Lvl req {equip_level(self, item)} | {str(item):<{rjust}} - "
-                f"({att_space}{att}  | "
-                f"{cha_space}{cha}  | "
-                f"{int_space}{inter}  | "
-                f"{dex_space}{dex}  | "
-                f"{luck_space}{luck} ){settext}"
+                    f"\n Lv {equip_level(self, item):<2} | "
+                    f"{str(item):<{rjust}} - "
+                    f"({att_space}{att} |"
+                    f"{cha_space}{cha} |"
+                    f"{int_space}{inter} |"
+                    f"{dex_space}{dex} |"
+                    f"{luck_space}{luck} ){settext}"
             )
 
         return form_string + "\n"
@@ -674,13 +663,14 @@ class Character(Item):
         if consumed is None:
             consumed = []
         bkpk = self.get_sorted_backpack(self.backpack)
-        form_string = _("Items in Backpack: \n( ATT  |  CHA  |  INT  |  DEX  |  LUCK)")
+        form_string = _("Items in Backpack: \n( ATT | CHA | INT | DEX | LUCK )")
         consumed_list = [i for i in consumed]
         for slot_group in bkpk:
             slot_name = slot_group[0][1].slot
             slot_name = slot_name[0] if len(slot_name) < 2 else _("two handed")
             form_string += f"\n\n {slot_name.title()} slot"
             rjust = max([len(str(i[1])) for i in slot_group])
+            #  rjust = 0
             for item in slot_group:
                 if forging and (item[1].rarity == "forged" or item[1] in consumed_list):
                     continue
@@ -693,13 +683,14 @@ class Character(Item):
                 if item[1].set:
                     settext += f" | Set `{item[1].set}` ({item[1].parts})"
                 form_string += (
-                    f"\n {item[1].owned} - Lvl req {equip_level(self, item[1])} | {str(item[1]):<{rjust}} - "
-                    f"({att_space}{item[1].att}  | "
-                    f"{cha_space}{item[1].cha}  | "
-                    f"{int_space}{item[1].int}  | "
-                    f"{dex_space}{item[1].dex}  | "
-                    f"{luck_space}{item[1].luck} ){settext}"
-                )
+                        f"\n Lv {equip_level(self, item[1]):<2} | "
+                        f"{str(item[1]):<{rjust}} - "
+                        f"({att_space}{item[1].att} |"
+                        f"{cha_space}{item[1].cha} |"
+                        f"{int_space}{item[1].int} |"
+                        f"{dex_space}{item[1].dex} |"
+                        f"{luck_space}{item[1].luck} ){settext}"
+                        )
 
         return form_string + "\n"
 
@@ -710,13 +701,10 @@ class Character(Item):
             if not dev:
                 await self.add_to_backpack(item)
                 return self
-        if from_backpack and item.name_formated in self.backpack:
-            log.debug("removing from backpack")
-            del self.backpack[item.name_formated]
+        if from_backpack and item.name in self.backpack:
+            del self.backpack[item.name]
         for slot in item.slot:
-            log.debug(f"Equipping {slot}")
             current = getattr(self, slot)
-            log.debug(current)
             if current:
                 await self.unequip_item(current)
             setattr(self, slot, item)
@@ -724,11 +712,10 @@ class Character(Item):
 
     async def add_to_backpack(self, item: Item):
         if item:
-            item_name = f"{item.name_formated}"
-            if item_name in self.backpack:
-                self.backpack[item_name].owned += 1
+            if item.name in self.backpack:
+                self.backpack[item.name].owned += 1
             else:
-                self.backpack[item_name] = item
+                self.backpack[item.name] = item
 
     async def equip_loadout(self, loadout_name):
         loadout = self.loadouts[loadout_name]
@@ -738,12 +725,11 @@ class Character(Item):
             name_unformatted = "".join(item.keys())
             name = Item.remove_markdowns(name_unformatted)
             current = getattr(self, slot)
-            if current and current.name_formated == name_unformatted:
+            if current and current.name == name_unformatted:
                 continue
-            if current and current.name_formated != name_unformatted:
+            if current and current.name != name_unformatted:
                 await self.unequip_item(current)
             if name_unformatted not in self.backpack:
-                log.debug(f"{name} is missing")
                 setattr(self, slot, None)
             else:
                 equiplevel = max((item.get("lvl", 1) - min(max(self.rebirths // 2 - 1, 0), 50)), 1)
@@ -784,13 +770,11 @@ class Character(Item):
 
     async def unequip_item(self, item: Item):
         """This handles moving an item equipment to backpack."""
-        if item.name_formated in self.backpack:
-            self.backpack[item.name_formated].owned += 1
+        if item.name in self.backpack:
+            self.backpack[item.name].owned += 1
         else:
-            self.backpack[item.name_formated] = item
-            log.debug(f"storing {item} in backpack")
+            self.backpack[item.name] = item
         for slot in item.slot:
-            log.debug(f"Unequipped {slot} {item}")
             setattr(self, slot, None)
         return self
 
@@ -822,7 +806,7 @@ class Character(Item):
             backpack = {}
             for n, i in data["items"]["backpack"].items():
                 item = Item.from_json({n: i})
-                backpack[item.name_formated] = item
+                backpack[item.name] = item
         else:
             backpack = {n: Item.from_json({n: i}) for n, i in data["backpack"].items()}
         while len(data["treasure"]) < 5:
@@ -1095,19 +1079,9 @@ def calculate_sp(lvl_end: int, c: Character):
 
     return int(points)
 
-
 def get_item_db(rarity):
-    if rarity == "normal":
-        return TR_COMMON
-    elif rarity == "rare":
-        return TR_RARE
-    elif rarity == "epic":
-        return TR_EPIC
-    elif rarity == "legendary":
-        return TR_LEGENDARY
-    elif rarity == "set":
+    if rarity == "set":
         return TR_GEAR_SET
-
 
 def has_funds_check(cost):
     async def predicate(ctx):

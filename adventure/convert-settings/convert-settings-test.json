@@ -1,0 +1,298 @@
+{
+    "2710801001": {
+        "GUILD": {
+            "636715606330179636": {
+                "cart_channels": [
+                    656113064747204608,
+                    658067110198771712
+                ],
+                "god_name": "Duckmaster. \ud83d\udc51|\ud83d\udc51",
+                "cart_timeout": 1200,
+                "cart_name": "HawksNest",
+                "cooldown": 1578462897.049417,
+                "cartroom": 657620423151976479
+            },
+            "401422081025245184": {
+                "cooldown": 1577818048.6550333
+            }
+        },
+        "USER": {
+            "142822767497052161": {
+                "adventures": {
+                    "wins": 498,
+                    "loses": 156,
+                    "fight": 608,
+                    "spell": 25,
+                    "talk": 7,
+                    "pray": 5,
+                    "run": 8,
+                    "fumbles": 32
+                },
+                "weekly_score": {
+                    "adventures": 334,
+                    "rebirths": 4,
+                    "week": 52
+                },
+                "exp": 127633,
+                "lvl": 50,
+                "att": 75,
+                "int": 30,
+                "cha": 36,
+                "treasure": [
+                    3,
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "items": {
+                    "head": {},
+                    "neck": {
+                        "large glass scarf": {
+                            "name": "large glass scarf",
+                            "slot": [
+                                "neck"
+                            ],
+                            "att": 4,
+                            "int": 0,
+                            "cha": 0,
+                            "rarity": "normal",
+                            "dex": 1,
+                            "luck": 1,
+                            "owned": 1,
+                            "set": false,
+                            "bonus": {
+                                "att": 0,
+                                "cha": 0,
+                                "int": 0,
+                                "dex": 0,
+                                "luck": 0,
+                                "statmult": 1,
+                                "xpmult": 1,
+                                "cpmult": 1
+                            },
+                            "lvl": 7,
+                            "parts": 0
+                        }
+                    },
+                    "chest": {
+                        "[rusty silken pauldrons]": {
+                            "name": "[rusty silken pauldrons]",
+                            "slot": [
+                                "chest"
+                            ],
+                            "att": 18,
+                            "int": 0,
+                            "cha": 0,
+                            "rarity": "epic",
+                            "dex": 0,
+                            "luck": 0,
+                            "owned": 1,
+                            "set": false,
+                            "bonus": {
+                                "att": 0,
+                                "cha": 0,
+                                "int": 0,
+                                "dex": 0,
+                                "luck": 0,
+                                "statmult": 1,
+                                "xpmult": 1,
+                                "cpmult": 1
+                            },
+                            "lvl": 48,
+                            "parts": 0
+                        }
+                    },
+                    "gloves": {
+                        ".godly_unicorn_horn_gauntlets": {
+                            "name": ".godly_unicorn_horn_gauntlets",
+                            "slot": [
+                                "gloves"
+                            ],
+                            "att": 0,
+                            "int": 0,
+                            "cha": 0,
+                            "rarity": "rare",
+                            "dex": 3,
+                            "luck": 5,
+                            "owned": 1,
+                            "set": false,
+                            "bonus": {
+                                "att": 0,
+                                "cha": 0,
+                                "int": 0,
+                                "dex": 0,
+                                "luck": 0,
+                                "statmult": 1,
+                                "xpmult": 1,
+                                "cpmult": 1
+                            },
+                            "lvl": 18,
+                            "parts": 0
+                        }
+                    },
+                    "belt": {},
+                    "legs": {},
+                    "boots": {},
+                    "left": {},
+                    "right": {},
+                    "ring": {},
+                    "charm": {
+                        "{Legendary:'testing'}": {
+                            "name": "{Legendary:'testing'}",
+                            "slot": [
+                                "charm"
+                            ],
+                            "att": 9,
+                            "int": 2,
+                            "cha": 0,
+                            "rarity": "legendary",
+                            "dex": 0,
+                            "luck": 0,
+                            "owned": 1,
+                            "set": false,
+                            "bonus": {
+                                "att": 0,
+                                "cha": 0,
+                                "int": 0,
+                                "dex": 0,
+                                "luck": 0,
+                                "statmult": 1,
+                                "xpmult": 1,
+                                "cpmult": 1
+                            },
+                            "lvl": 41,
+                            "parts": 0
+                        }
+                    }
+                },
+                "backpack": {
+                    "{Legendary:'testing'}": {
+                        "name": "{Legendary:'testing'}",
+                        "slot": [
+                            "left"
+                        ],
+                        "att": 999,
+                        "int": 0,
+                        "cha": 0,
+                        "rarity": "legendary",
+                        "dex": 0,
+                        "luck": 0,
+                        "owned": 2,
+                        "set": false,
+                        "bonus": {
+                            "att": 0,
+                            "cha": 0,
+                            "int": 0,
+                            "dex": 0,
+                            "luck": 0,
+                            "statmult": 1,
+                            "xpmult": 1,
+                            "cpmult": 1
+                        },
+                        "lvl": 1049,
+                        "parts": 0,
+                        "degrade": 1
+                    },
+                    "[carved silver chainmail]": {
+                        "name": "[carved silver chainmail]",
+                        "slot": [
+                            "chest"
+                        ],
+                        "att": 4,
+                        "int": 0,
+                        "cha": 3,
+                        "rarity": "epic",
+                        "dex": 0,
+                        "luck": 0,
+                        "owned": 1,
+                        "set": false,
+                        "bonus": {
+                            "att": 0,
+                            "cha": 0,
+                            "int": 0,
+                            "dex": 0,
+                            "luck": 0,
+                            "statmult": 1,
+                            "xpmult": 1,
+                            "cpmult": 1
+                        },
+                        "lvl": 37,
+                        "parts": 0
+                    },
+                    ".sturdy_chittin_quarterstaff": {
+                        "name": ".sturdy_chittin_quarterstaff",
+                        "slot": [
+                            "right",
+                            "left"
+                        ],
+                        "att": 0,
+                        "int": 1,
+                        "cha": 0,
+                        "rarity": "rare",
+                        "dex": 0,
+                        "luck": 3,
+                        "owned": 1,
+                        "set": false,
+                        "bonus": {
+                            "att": 0,
+                            "cha": 0,
+                            "int": 0,
+                            "dex": 0,
+                            "luck": 0,
+                            "statmult": 1,
+                            "xpmult": 1,
+                            "cpmult": 1
+                        },
+                        "lvl": 8,
+                        "parts": 0
+                    },
+                    "polished admantite shoes": {
+                        "name": "polished admantite shoes",
+                        "slot": [
+                            "boots"
+                        ],
+                        "att": 0,
+                        "int": 0,
+                        "cha": 0,
+                        "rarity": "normal",
+                        "dex": 0,
+                        "luck": 0,
+                        "owned": 1,
+                        "set": false,
+                        "bonus": {
+                            "att": 0,
+                            "cha": 0,
+                            "int": 0,
+                            "dex": 0,
+                            "luck": 0,
+                            "statmult": 1,
+                            "xpmult": 1,
+                            "cpmult": 1
+                        },
+                        "lvl": 1,
+                        "parts": 0
+                    }
+                },
+                "loadouts": {},
+                "heroclass": {
+                    "name": "Berserker",
+                    "ability": false,
+                    "desc": "Berserkers have the option to rage and add big bonuses to attacks, but fumbles hurt.\nUse the rage command when attacking in an adventure.",
+                    "cooldown": 1578429281.5030918
+                },
+                "skill": {
+                    "pool": 2,
+                    "att": 23,
+                    "cha": 0,
+                    "int": 0
+                },
+                "rebirths": 12,
+                "set_items": 0
+            }
+        },
+        "GLOBAL": {
+            "enable_chests": false
+        }
+    }
+}
