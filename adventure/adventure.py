@@ -3101,10 +3101,17 @@ class Adventure(BaseCog):
                 )
             return
 
-        if c.skill["pool"] < amount:
+        if c.skill["pool"] <= 0:
             return await smart_embed(
                 ctx,
                 _("{}, you do not have unspent skillpoints.").format(
+                    self.escape(ctx.author.display_name)
+                ),
+            )
+        elif c.skill["pool"] < amount:
+            return await smart_embed(
+                ctx,
+                _("{}, you do not have enough unspent skillpoints.").format(
                     self.escape(ctx.author.display_name)
                 ),
             )
