@@ -2524,7 +2524,7 @@ class Adventure(BaseCog):
         ten_percent = xp_to_max * 0.1
         xp_randomizer = random.randint(1, 100)
         xp_won = ten_percent if xp_won > ten_percent else xp_won
-        xp_won = xp_randomizer / 100 * xp_won * c.rebirths // 10
+        xp_won = xp_randomizer / 100 * xp_won * (min(max(random.randint(0, c.rebirths // 10), 1), 3)/10 + 1)
 
         if roll == 1:
             loss = round(bal // 3)
