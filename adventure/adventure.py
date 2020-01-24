@@ -2507,8 +2507,8 @@ class Adventure(BaseCog):
                 author=bold(ctx.author.display_name), negachar=negachar
             )
         )
-        roll = random.randint(1, 20)
-        versus = random.randint(1, 20)
+        roll = random.randint(1, 50)
+        versus = random.randint(10, 60)
         xp_mod = random.randint(1, 20)
         weekend = datetime.today().weekday() in [5, 6]
         wedfriday = datetime.today().weekday() in [2, 4]
@@ -2526,7 +2526,7 @@ class Adventure(BaseCog):
         xp_won = ten_percent if xp_won > ten_percent else xp_won
         xp_won = xp_randomizer / 100 * xp_won * (min(max(random.randint(0, c.rebirths // 10), 1), 3)/10 + 1)
 
-        if roll == 1:
+        if roll < 10:
             loss = round(bal // 3)
             try:
                 await bank.withdraw_credits(ctx.author, loss)
@@ -2548,7 +2548,7 @@ class Adventure(BaseCog):
                     loss_msg=loss_msg,
                 )
             )
-        elif roll == 20:
+        elif roll == 50 and versus < 50:
             await nega_msg.edit(
                 content=_(
                     "{content}\n{author} decapitated {negachar}. You gain {xp_gain} xp and take "
