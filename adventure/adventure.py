@@ -332,7 +332,17 @@ class Adventure(BaseCog):
         if not sessions:
             return False
         participants_ids = set(
-            [p.id for _loop, session in self._sessions.items() for p in [*session.fight, *session.magic, *session.pray, *session.talk, *session.run]]
+            [
+                p.id
+                for _loop, session in self._sessions.items()
+                for p in [
+                    *session.fight,
+                    *session.magic,
+                    *session.pray,
+                    *session.talk,
+                    *session.run,
+                ]
+            ]
         )
         return bool(author.id in participants_ids)
 
@@ -2524,7 +2534,12 @@ class Adventure(BaseCog):
         ten_percent = xp_to_max * 0.1
         xp_randomizer = random.randint(1, 100)
         xp_won = ten_percent if xp_won > ten_percent else xp_won
-        xp_won = xp_randomizer / 100 * xp_won * (min(max(random.randint(0, c.rebirths // 10), 1), 3)/10 + 1)
+        xp_won = (
+            xp_randomizer
+            / 100
+            * xp_won
+            * (min(max(random.randint(0, c.rebirths // 10), 1), 3) / 10 + 1)
+        )
 
         if roll < 10:
             loss = round(bal // 3)
@@ -2604,7 +2619,11 @@ class Adventure(BaseCog):
                 loss = _("all of their")
             loss_msg = _(
                 ", losing {loss} {currency_name} as {negachar} looted their backpack"
-            ).format(loss=humanize_number(loss) if not isinstance(loss, str) else loss, currency_name=currency_name, negachar=negachar)
+            ).format(
+                loss=humanize_number(loss) if not isinstance(loss, str) else loss,
+                currency_name=currency_name,
+                negachar=negachar,
+            )
             await nega_msg.edit(
                 content=_(
                     "{author} {dice}({roll}) was killed by {negachar} {dice}({versus}){loss_msg}."
@@ -4488,7 +4507,7 @@ class Adventure(BaseCog):
             except Exception:
                 log.exception("Error with the new character sheet")
                 continue
-            crit_mod = max(c.dex, c.luck) + (c.total_att // 20) # Thanks GoaFan77
+            crit_mod = max(c.dex, c.luck) + (c.total_att // 20)  # Thanks GoaFan77
             mod = 0
             if crit_mod != 0:
                 mod = round(crit_mod / 10)
