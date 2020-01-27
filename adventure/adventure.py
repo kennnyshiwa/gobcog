@@ -2056,8 +2056,10 @@ class Adventure(BaseCog):
         For information on class use: `[p]heroclass "classname" info`.
         """
         if self.in_adventure(ctx):
+            ctx.command.reset_cooldown(ctx)
             return await smart_embed(ctx, _("The class hall is back in town."))
         if not await self.allow_in_dm(ctx):
+            ctx.command.reset_cooldown(ctx)
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
 
         classes = {
@@ -2133,71 +2135,70 @@ class Adventure(BaseCog):
             if clz in classes and action == "info":
                 ctx.command.reset_cooldown(ctx)
                 return await smart_embed(ctx, f"{classes[clz]['desc']}")
-            elif clz not in classes and action is None:
+            elif clz not in classes:
                 ctx.command.reset_cooldown(ctx)
                 return await smart_embed(
                     ctx, _("{} may be a class somewhere, but not on my watch.").format(clz)
                 )
-            bal = await bank.get_balance(ctx.author)
-            currency_name = await bank.get_currency_name(ctx.guild)
-            if str(currency_name).startswith("<"):
-                currency_name = "credits"
-            spend = round(bal * 0.2)
-            class_msg = await ctx.send(
-                box(
-                    _(
-                        "This will cost {spend} {currency_name}. "
-                        "Do you want to continue, {author}?"
-                    ).format(
-                        spend=humanize_number(spend),
-                        currency_name=currency_name,
-                        author=self.escape(ctx.author.display_name),
-                    ),
-                    lang="css",
-                )
-            )
-            broke = box(
-                _("You don't have enough {currency_name} to train to be a {clz}.").format(
-                    currency_name=currency_name, clz=clz.title()
-                ),
-                lang="css",
-            )
-            try:
-                c = await Character.from_json(self.config, ctx.author)
-            except Exception:
-                log.exception("Error with the new character sheet")
-                return
-            start_adding_reactions(class_msg, ReactionPredicate.YES_OR_NO_EMOJIS)
-            pred = ReactionPredicate.yes_or_no(class_msg, ctx.author)
-            try:
-                await ctx.bot.wait_for("reaction_add", check=pred, timeout=60)
-            except asyncio.TimeoutError:
-                await self._clear_react(class_msg)
-                ctx.command.reset_cooldown(ctx)
-                return
-
-            if not pred.result:
-                await class_msg.edit(
-                    content=box(
-                        _("{author} decided to continue being a {h_class}.").format(
+            elif clz in classes and action is None:
+                bal = await bank.get_balance(ctx.author)
+                currency_name = await bank.get_currency_name(ctx.guild)
+                if str(currency_name).startswith("<"):
+                    currency_name = "credits"
+                spend = round(bal * 0.2)
+                class_msg = await ctx.send(
+                    box(
+                        _(
+                            "This will cost {spend} {currency_name}. "
+                            "Do you want to continue, {author}?"
+                        ).format(
+                            spend=humanize_number(spend),
+                            currency_name=currency_name,
                             author=self.escape(ctx.author.display_name),
-                            h_class=c.heroclass["name"],
                         ),
                         lang="css",
                     )
                 )
-                ctx.command.reset_cooldown(ctx)
-                return await self._clear_react(class_msg)
-            if bal < spend:
-                await class_msg.edit(content=broke)
-                ctx.command.reset_cooldown(ctx)
-                return await self._clear_react(class_msg)
-            try:
-                await bank.withdraw_credits(ctx.author, spend)
-            except ValueError:
-                return await class_msg.edit(content=broke)
+                broke = box(
+                    _("You don't have enough {currency_name} to train to be a {clz}.").format(
+                        currency_name=currency_name, clz=clz.title()
+                    ),
+                    lang="css",
+                )
+                try:
+                    c = await Character.from_json(self.config, ctx.author)
+                except Exception:
+                    log.exception("Error with the new character sheet")
+                    return
+                start_adding_reactions(class_msg, ReactionPredicate.YES_OR_NO_EMOJIS)
+                pred = ReactionPredicate.yes_or_no(class_msg, ctx.author)
+                try:
+                    await ctx.bot.wait_for("reaction_add", check=pred, timeout=60)
+                except asyncio.TimeoutError:
+                    await self._clear_react(class_msg)
+                    ctx.command.reset_cooldown(ctx)
+                    return
 
-            if clz in classes and action is None:
+                if not pred.result:
+                    await class_msg.edit(
+                        content=box(
+                            _("{author} decided to continue being a {h_class}.").format(
+                                author=self.escape(ctx.author.display_name),
+                                h_class=c.heroclass["name"],
+                            ),
+                            lang="css",
+                        )
+                    )
+                    ctx.command.reset_cooldown(ctx)
+                    return await self._clear_react(class_msg)
+                if bal < spend:
+                    await class_msg.edit(content=broke)
+                    ctx.command.reset_cooldown(ctx)
+                    return await self._clear_react(class_msg)
+                try:
+                    await bank.withdraw_credits(ctx.author, spend)
+                except ValueError:
+                    return await class_msg.edit(content=broke)
                 async with self.get_lock(ctx.author):
                     try:
                         c = await Character.from_json(self.config, ctx.author)
