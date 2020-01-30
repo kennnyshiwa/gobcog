@@ -506,9 +506,10 @@ class Adventure(BaseCog):
                         price=humanize_number(item_price),
                     )
                     total_price += item_price
-                    await asyncio.sleep(0.1)
-                    with contextlib.suppress(BalanceTooHigh):
-                        await bank.deposit_credits(ctx.author, item_price)
+                    item_price = max(item_price, 0)
+                    if item_price > 0:
+                        with contextlib.suppress(BalanceTooHigh):
+                            await bank.deposit_credits(ctx.author, item_price)
             await self.config.user(ctx.author).set(c.to_json())
         msg_list = []
         new_msg = _("{author} sold all their{rarity} items for {price}.\n\n{items}").format(
@@ -619,8 +620,10 @@ class Adventure(BaseCog):
             )
             if item.owned <= 0:
                 del character.backpack[item.name_formated]
-            with contextlib.suppress(BalanceTooHigh):
-                await bank.deposit_credits(ctx.author, price)
+            price = max(price, 0)
+            if price > 0:
+                with contextlib.suppress(BalanceTooHigh):
+                    await bank.deposit_credits(ctx.author, price)
         elif (
             emoji == "\N{CLOCKWISE RIGHTWARDS AND LEFTWARDS OPEN CIRCLE ARROWS}"
         ):  # user wants to sell all owned.
@@ -642,8 +645,10 @@ class Adventure(BaseCog):
                 price=humanize_number(price),
                 currency_name=currency_name,
             )
-            with contextlib.suppress(BalanceTooHigh):
-                await bank.deposit_credits(ctx.author, price)
+            price = max(price, 0)
+            if price > 0:
+                with contextlib.suppress(BalanceTooHigh):
+                    await bank.deposit_credits(ctx.author, price)
         elif (
             emoji
             == "\N{CLOCKWISE RIGHTWARDS AND LEFTWARDS OPEN CIRCLE ARROWS WITH CIRCLED ONE OVERLAY}"
@@ -669,8 +674,10 @@ class Adventure(BaseCog):
                     price=humanize_number(price),
                     currency_name=currency_name,
                 )
-                with contextlib.suppress(BalanceTooHigh):
-                    await bank.deposit_credits(ctx.author, price)
+                price = max(price, 0)
+                if price > 0:
+                    with contextlib.suppress(BalanceTooHigh):
+                        await bank.deposit_credits(ctx.author, price)
         else:  # user doesn't want to sell those items.
             msg = _("Not selling those items.")
 
@@ -1933,6 +1940,7 @@ class Adventure(BaseCog):
                     "I could not find that user, **{}**. Try using their full Discord name (name#0000)."
                 ).format(self.escape(ctx.author.display_name)),
             )
+        amount = max(amount, 0)
         try:
             bal = await bank.deposit_credits(to, amount)
         except BalanceTooHigh:
@@ -4839,8 +4847,10 @@ class Adventure(BaseCog):
                 return
             c.exp += exp
             member = ctx.guild.get_member(user.id)
-            with contextlib.suppress(BalanceTooHigh):
-                await bank.deposit_credits(member, cp)
+            cp = max(cp, 0)
+            if cp > 0:
+                with contextlib.suppress(BalanceTooHigh):
+                    await bank.deposit_credits(member, cp)
             extra = ""
             rebirthextra = ""
             lvl_start = c.lvl
@@ -5191,8 +5201,10 @@ class Adventure(BaseCog):
         await self._clear_react(open_msg)
         if self._treasure_controls[react.emoji] == "sell":
             price = self._sell(c, item)
-            with contextlib.suppress(BalanceTooHigh):
-                await bank.deposit_credits(ctx.author, price)
+            price = max(price, 0)
+            if price > 0:
+                with contextlib.suppress(BalanceTooHigh):
+                    await bank.deposit_credits(ctx.author, price)
             currency_name = await bank.get_currency_name(ctx.guild)
             if str(currency_name).startswith("<"):
                 currency_name = "credits"
