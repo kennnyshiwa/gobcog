@@ -398,7 +398,16 @@ class Character(Item):
         self.int = self.get_stat_value("int")
         self.dex = self.get_stat_value("dex")
         self.luck = self.get_stat_value("luck")
-
+        if self.lvl == self.maxlevel and self.rebirths < 1:
+            self.att = min(self.att, 5)
+            self.cha = min(self.cha, 5)
+            self.int = min(self.int, 5)
+            self.dex = min(self.dex, 5)
+            self.luck = min(self.luck, 5)
+            self.skill["att"] = 1
+            self.skill["int"] = 1
+            self.skill["cha"] = 1
+            self.skill["pool"] = 0
         self.total_att = self.att + self.skill["att"]
         self.total_int = self.int + self.skill["int"]
         self.total_cha = self.cha + self.skill["cha"]
