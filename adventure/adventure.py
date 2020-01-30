@@ -791,7 +791,7 @@ class Adventure(BaseCog):
                             except Exception:
                                 log.exception("Error with the new character sheet")
                                 return
-                            if buy_user.rebirths >= c.rebirths:
+                            if buy_user.rebirths > c.rebirths:
                                 return await smart_embed(
                                     ctx,
                                     _(
