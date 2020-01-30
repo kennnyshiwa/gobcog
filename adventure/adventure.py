@@ -1623,7 +1623,7 @@ class Adventure(BaseCog):
                     ),
                 )
             else:
-                cooldown_time = max(900, (3600 - (c.luck - c.total_int) * 10))
+                cooldown_time = max(900, (3600 - (c.luck - c.total_int) * 2))
                 if "cooldown" not in c.heroclass:
                     c.heroclass["cooldown"] = cooldown_time + 1
                 if not c.heroclass["cooldown"] + cooldown_time <= time.time():
@@ -2690,7 +2690,7 @@ class Adventure(BaseCog):
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
-                cooldown_time = max(600, (3600 - c.luck * 10 - c.total_int * 5))
+                cooldown_time = max(600, (3600 - (c.luck * 2 + c.total_int * 2)))
                 if "catch_cooldown" not in c.heroclass:
                     c.heroclass["catch_cooldown"] = cooldown_time + 1
                 if c.heroclass["catch_cooldown"] + cooldown_time > time.time():
@@ -2811,7 +2811,7 @@ class Adventure(BaseCog):
                     lang="css",
                 )
             )
-        cooldown_time = max(1800, (7200 - c.luck * 25 - c.total_int * 10))
+        cooldown_time = max(1800, (7200 - (c.luck * 2 + c.total_int * 2)))
         if "cooldown" not in c.heroclass:
             c.heroclass["cooldown"] = cooldown_time + 1
         if c.heroclass["cooldown"] + cooldown_time <= time.time():
@@ -2895,7 +2895,7 @@ class Adventure(BaseCog):
                     ctx,
                     _("**{}**, ability already in use.").format(self.escape(ctx.author.display_name)),
                 )
-            cooldown_time = max(300, (1200 - (c.luck - c.total_int) * 2))
+            cooldown_time = max(300, (1200 - ((c.luck + c.total_int) * 2)))
             if "cooldown" not in c.heroclass:
                 c.heroclass["cooldown"] = cooldown_time + 1
             if c.heroclass["cooldown"] + cooldown_time <= time.time():
@@ -2951,7 +2951,7 @@ class Adventure(BaseCog):
                     ctx,
                     _("**{}**, ability already in use.").format(self.escape(ctx.author.display_name)),
                 )
-            cooldown_time = max(300, (1200 - (c.luck - c.total_att) * 5))
+            cooldown_time = max(300, (1200 - ((c.luck + c.total_att) * 2)))
             if "cooldown" not in c.heroclass:
                 c.heroclass["cooldown"] = cooldown_time + 1
             if c.heroclass["cooldown"] + cooldown_time <= time.time():
@@ -3006,7 +3006,7 @@ class Adventure(BaseCog):
                     ctx,
                     _("**{}**, ability already in use.").format(self.escape(ctx.author.display_name)),
                 )
-            cooldown_time = max(300, (1200 - (c.luck - c.total_int) * 5))
+            cooldown_time = max(300, (1200 - ((c.luck + c.total_int) * 2)))
             if "cooldown" not in c.heroclass:
                 c.heroclass["cooldown"] = cooldown_time + 1
             if c.heroclass["cooldown"] + cooldown_time <= time.time():
@@ -3062,7 +3062,7 @@ class Adventure(BaseCog):
                     ctx,
                     _("{}, ability already in use.").format(self.escape(ctx.author.display_name)),
                 )
-            cooldown_time = max(300, (1200 - (c.luck - c.total_cha) * 5))
+            cooldown_time = max(300, (1200 - ((c.luck + c.total_cha) * 2)))
             if "cooldown" not in c.heroclass:
                 c.heroclass["cooldown"] = cooldown_time + 1
             if c.heroclass["cooldown"] + cooldown_time <= time.time():
