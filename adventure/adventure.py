@@ -5450,7 +5450,7 @@ class Adventure(BaseCog):
                 price = 0
         price += round(price * min(0.1 * c.rebirths / 15, 0.4))
 
-        return price
+        return max(price, base[0])
 
     async def _trader(self, ctx: Context, bypass=False):
 
