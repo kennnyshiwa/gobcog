@@ -4,7 +4,7 @@ import logging
 import re
 from copy import copy
 from datetime import date, timedelta
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Mapping, Optional, Set
 
 import discord
 from discord.ext.commands import check
@@ -349,6 +349,8 @@ class GameSession:
         self.miniboss: dict = kwargs.pop("miniboss")
         self.timer: int = kwargs.pop("timer")
         self.monster: dict = kwargs.pop("monster")
+        self.monsters: List[Mapping] = kwargs.pop("monsters", [])
+        self.monster_stats: int = kwargs.pop("monster_stats", 1)
         self.message_id: int = 0
         self.reacted = False
         self.participants: Set[discord.Member] = set()
