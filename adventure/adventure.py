@@ -8,6 +8,7 @@ import random
 import time
 from collections import namedtuple
 from datetime import date, datetime
+from math import ceil, floor
 from types import SimpleNamespace
 from typing import List, Optional, Union
 
@@ -19,6 +20,7 @@ from redbot.core.data_manager import bundled_data_path, cog_data_path
 from redbot.core.errors import BalanceTooHigh
 from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.chat_formatting import (
+    bold,
     box,
     escape,
     humanize_list,
@@ -43,6 +45,8 @@ from .charsheet import (
     has_funds,
     parse_timedelta,
     DEV_LIST,
+    RARITIES,
+    ORDER,
 )
 
 try:
@@ -85,6 +89,101 @@ async def smart_embed(ctx, message):
         return await ctx.maybe_send_embed(message)
     return await ctx.send(message)
 
+class AdventureResults:
+    """Object to store recent adventure results."""
+
+    def __init__(self, num_raids):
+        """TODO: to be defined1. """
+        self._num_raids = num_raids
+        self._last_raids = []
+
+    def add_result(self, main_action, amount, num_ppl, success):
+        """Add result to this object.
+        :main_action: Main damage action taken by the adventurers
+            (highest amount dealt). Should be either "attack" or
+            "talk". Running will just be notated by a 0 amount.
+        :amount: Amount dealt.
+        :num_ppl: Number of people in adventure.
+        :success: Whether adventure was successful or not.
+        """
+        if len(self._last_raids) >= self._num_raids:
+            self._last_raids.pop(0)
+        raid_dict = {}
+        for var in ('main_action', 'amount', 'num_ppl', 'success'):
+            raid_dict[var] = locals()[var]
+        self._last_raids.append(raid_dict)
+
+    def get_stat_range(self):
+        """Return reasonable stat range for monster pool to have based
+        on last few raids' damage.
+
+        :returns: Dict with stat_type, min_stat and max_stat.
+        """
+        # how much % to increase damage for solo raiders so that they
+        # can't just solo every monster based on their own average
+        # damage
+        SOLO_RAID_SCALE = 0.25
+        if len(self._last_raids) == 0:
+            return {
+                    'stat_type': "hp",
+                    'min_stat': 0,
+                    'max_stat': 0,
+                    }
+
+        # tally up stats for raids
+        num_attack = 0
+        dmg_amount = 0
+        num_talk = 0
+        talk_amount = 0
+        num_wins = 0
+        for raid in self._last_raids:
+            if raid["main_action"] == "attack":
+                num_attack += 1
+                dmg_amount += raid["amount"]
+                if raid["num_ppl"] == 1:
+                    dmg_amount += raid["amount"] * SOLO_RAID_SCALE
+            else:
+                num_talk += 1
+                talk_amount += raid["amount"]
+                if raid["num_ppl"] == 1:
+                    talk_amount += raid["amount"] * SOLO_RAID_SCALE
+            log.debug(f"raid dmg: {raid['amount']}")
+            if raid["success"]:
+                num_wins += 1
+
+        # calculate relevant stats
+        if num_wins == 0:
+            num_wins = self._num_raids // 2
+        win_percent = num_wins / self._num_raids
+        stat_type = "hp"
+        avg_amount = 0
+        if num_attack > 0:
+            avg_amount = dmg_amount / num_attack
+        if dmg_amount < talk_amount:
+            stat_type = "dipl"
+            avg_amount = talk_amount / num_talk
+
+        # return main stat and range
+        min_stat = avg_amount * .75
+        max_stat = avg_amount * 1.5
+        # want win % to be at least 50%, even when solo
+        # if win % is below 50%, scale back min/max for easier mons
+        if win_percent < .6:
+            min_stat = avg_amount * win_percent
+            max_stat = avg_amount * 1.25
+        log.debug(stat_type)
+        log.debug(f"win %: {win_percent}")
+        log.debug(f"avg. dmg: {avg_amount}")
+        log.debug(f"min stat: {min_stat}")
+        log.debug(f"max stat: {max_stat}")
+
+        stats_dict = {}
+        for var in ('stat_type', 'min_stat', 'max_stat'):
+            stats_dict[var] = locals()[var]
+        return stats_dict
+
+    def __str__(self):
+        return str(self._last_raids)
 
 @cog_i18n(_)
 class Adventure(BaseCog):
@@ -95,6 +194,7 @@ class Adventure(BaseCog):
     def __init__(self, bot):
         self.bot = bot
         self._last_trade = {}
+        self._adv_results = AdventureResults(2)
         self.emojis = SimpleNamespace()
         self.emojis.fumble = "\N{EXCLAMATION QUESTION MARK}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
@@ -118,6 +218,8 @@ class Adventure(BaseCog):
         self.emojis.skills.bard = (
             "\N{EIGHTH NOTE}\N{BEAMED EIGHTH NOTES}\N{BEAMED SIXTEENTH NOTES}"
         )
+        self.emojis.hp = "\N{HEAVY BLACK HEART}\N{VARIATION SELECTOR-16}"
+        self.emojis.dipl = self.emojis.talk
 
         self._adventure_actions = [
             self.emojis.attack,
@@ -218,14 +320,11 @@ class Adventure(BaseCog):
         }
         self.RAISINS: list = None
         self.THREATEE: list = None
-        self.TR_COMMON: dict = None
-        self.TR_RARE: dict = None
-        self.TR_EPIC: dict = None
-        self.TR_LEGENDARY: dict = None
         self.TR_GEAR_SET: dict = None
         self.ATTRIBS: dict = None
         self.MONSTERS: dict = None
         self.AS_MONSTERS: dict = None
+        self.MONSTER_NOW: dict = None
         self.LOCATIONS: list = None
         self.PETS: dict = None
 
@@ -260,6 +359,10 @@ class Adventure(BaseCog):
         tr_epic_fp = cog_data_path(self) / f"{theme}/tr_epic.json"
         tr_legendary_fp = cog_data_path(self) / f"{theme}/tr_legendary.json"
         tr_set_fp = cog_data_path(self) / f"{theme}/tr_set.json"
+        prefixes_fp = cog_data_path(self) / f"{theme}/prefixes.json"
+        materials_fp = cog_data_path(self) / f"{theme}/materials.json"
+        equipment_fp = cog_data_path(self) / f"{theme}/equipment.json"
+        suffixes_fp = cog_data_path(self) / f"{theme}/suffixes.json"
         files = {
             "pets": pets_fp,
             "attr": attribs_fp,
@@ -273,6 +376,10 @@ class Adventure(BaseCog):
             "legendary": tr_legendary_fp,
             "set": tr_set_fp,
             "as_monsters": as_monster_fp,
+            "prefixes": prefixes_fp,
+            "materials": materials_fp,
+            "equipment": equipment_fp,
+            "suffixes": suffixes_fp,
         }
         for name, file in files.items():
             if not file.exists():
@@ -291,22 +398,18 @@ class Adventure(BaseCog):
             self.RAISINS = json.load(f)
         with files["threatee"].open("r") as f:
             self.THREATEE = json.load(f)
-        with files["common"].open("r") as f:
-            self.TR_COMMON = json.load(f)
-        with files["rare"].open("r") as f:
-            self.TR_RARE = json.load(f)
-        with files["epic"].open("r") as f:
-            self.TR_EPIC = json.load(f)
-        with files["legendary"].open("r") as f:
-            self.TR_LEGENDARY = json.load(f)
         with files["set"].open("r") as f:
             self.TR_GEAR_SET = json.load(f)
+        with files["prefixes"].open("r") as f:
+            self.PREFIXES = json.load(f)
+        with files["materials"].open("r") as f:
+            self.MATERIALS = json.load(f)
+        with files["equipment"].open("r") as f:
+            self.EQUIPMENT = json.load(f)
+        with files["suffixes"].open("r") as f:
+            self.SUFFIXES = json.load(f)
 
         adventure.charsheet.TR_GEAR_SET = self.TR_GEAR_SET
-        adventure.charsheet.TR_LEGENDARY = self.TR_LEGENDARY
-        adventure.charsheet.TR_EPIC = self.TR_EPIC
-        adventure.charsheet.TR_RARE = self.TR_RARE
-        adventure.charsheet.TR_COMMON = self.TR_COMMON
         adventure.charsheet.PETS = self.PETS
         adventure.charsheet.REBIRTH_LVL = REBIRTH_LVL
         adventure.charsheet.REBIRTH_STEP = REBIRTH_STEP
@@ -363,6 +466,93 @@ class Adventure(BaseCog):
     async def makecart(self, ctx: Context):
         """Force cart to appear in a channel."""
         await self._trader(ctx, True)
+
+    async def _genitem(self, rarity: str = None, slot: str = None):
+        """Generate an item."""
+        RARE_INDEX = RARITIES.index("rare")
+        EPIC_INDEX = RARITIES.index("epic")
+        PREFIX_CHANCE = { "rare": .5, "epic": .75, "legendary": .9 }
+        SUFFIX_CHANCE = { "epic": .5, "legendary": .75 }
+
+        if rarity is None:
+            rarity = random.choice(RARITIES)
+        if slot is None:
+            slot = random.choice(ORDER)
+            #  slot = random.choice(["right", "chest"])
+        name = ""
+        stats = {
+                "att": 0,
+                "cha": 0,
+                "int": 0,
+                "dex": 0,
+                "luck": 0,
+                }
+
+        def add_stats(word_stats):
+            """Add stats in word's dict to local stats dict."""
+            for stat in stats.keys():
+                if stat in word_stats:
+                    stats[stat] += word_stats[stat]
+
+        # only rare and above should have prefix with PREFIX_CHANCE
+        if (RARITIES.index(rarity) >= RARE_INDEX
+                and random.random() <= PREFIX_CHANCE[rarity]):
+            #  log.debug(f"Prefix %: {PREFIX_CHANCE[rarity]}")
+            prefix, prefix_stats = random.choice(list(self.PREFIXES.items()))
+            name += f"{prefix} "
+            add_stats(prefix_stats)
+
+        material, material_stat = random.choice(
+                list(self.MATERIALS[rarity].items()))
+        name += f"{material} "
+        for stat in stats.keys():
+            stats[stat] += material_stat
+
+        equipment, equipment_stats = random.choice(
+                list(self.EQUIPMENT[slot].items()))
+        name += f"{equipment}"
+        add_stats(equipment_stats)
+
+        # only epic and above should have suffix with SUFFIX_CHANCE
+        if (RARITIES.index(rarity) >= EPIC_INDEX
+                and random.random() <= SUFFIX_CHANCE[rarity]):
+            #  log.debug(f"Suffix %: {SUFFIX_CHANCE[rarity]}")
+            suffix, suffix_stats = random.choice(list(self.SUFFIXES.items()))
+            of_keyword = ("of" if 'the' not in suffix_stats else "of the")
+            name += f" {of_keyword} {suffix}"
+            add_stats(suffix_stats)
+
+        slot_list = [slot] if slot != "two handed" else ["left", "right"]
+        return Item(
+                name=name,
+                slot=slot_list,
+                rarity=rarity,
+                att=stats["att"],
+                int=stats["int"],
+                cha=stats["cha"],
+                dex=stats["dex"],
+                luck=stats["luck"],
+                owned=1,
+                parts=1,
+                )
+
+    @commands.command()
+    async def genitems(self, ctx: Context, num: int = 15, rarity: str = None, slot: str = None):
+        """Generate random items."""
+        user = ctx.author
+        async with self.get_lock(user):
+            try:
+                c = await Character.from_json(self.config, user)
+            except Exception:
+                log.exception("Error with the new character sheet")
+                return
+            c.backpack = {}
+            for i in range(num):
+                await c.add_to_backpack(await self._genitem(
+                    rarity, slot))
+            backpack_contents = _("```css\n{backpack}\n```").format(
+                    backpack=c.get_backpack())
+            await ctx.send(backpack_contents)
 
     @commands.command()
     @commands.is_owner()
@@ -426,7 +616,7 @@ class Adventure(BaseCog):
                 ctx,
                 _("You need to be level `{level}` to equip this item").format(level=equiplevel),
             )
-        equip = c.backpack[equip_item.name_formated]
+        equip = c.backpack[equip_item.name]
         if equip:
             slot = equip.slot[0]
             if len(equip.slot) > 1:
@@ -468,8 +658,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx, _("You tried to selling your items, but there is no merchants in sight.")
             )
-        rarities = ["normal", "rare", "epic", "legendary", "set", "forged"]
-        if rarity and rarity.lower() not in rarities:
+        if rarity and rarity.lower() not in RARITIES:
             return await smart_embed(
                 ctx, _("I've never heard of `{rarity}` rarity items before.").format(rarity=rarity)
             )
@@ -495,7 +684,7 @@ class Adventure(BaseCog):
                         item.owned -= 1
                         item_price += self._sell(c, item)
                         if item.owned <= 0:
-                            del c.backpack[item.name_formated]
+                            del c.backpack[item.name]
                         if not count % 10:
                             await asyncio.sleep(0.1)
                         count += 1
@@ -504,6 +693,7 @@ class Adventure(BaseCog):
                         price=humanize_number(item_price),
                     )
                     total_price += item_price
+                    await asyncio.sleep(0.1)
                     item_price = max(item_price, 0)
                     if item_price > 0:
                         with contextlib.suppress(BalanceTooHigh):
@@ -617,7 +807,7 @@ class Adventure(BaseCog):
                 currency_name=currency_name,
             )
             if item.owned <= 0:
-                del character.backpack[item.name_formated]
+                del character.backpack[item.name]
             price = max(price, 0)
             if price > 0:
                 with contextlib.suppress(BalanceTooHigh):
@@ -633,7 +823,7 @@ class Adventure(BaseCog):
                 item.owned -= 1
                 price += price_shown
                 if item.owned <= 0:
-                    del character.backpack[item.name_formated]
+                    del character.backpack[item.name]
                 if not count % 10:
                     await asyncio.sleep(0.1)
                 count += 1
@@ -813,9 +1003,9 @@ class Adventure(BaseCog):
                                     ),
                                 )
                             await bank.transfer_credits(buyer, ctx.author, asking)
-                            c.backpack[item.name_formated].owned -= 1
-                            if c.backpack[item.name_formated].owned <= 0:
-                                del c.backpack[item.name_formated]
+                            c.backpack[item.name].owned -= 1
+                            if c.backpack[item.name].owned <= 0:
+                                del c.backpack[item.name]
                             await self.config.user(ctx.author).set(c.to_json())
                         async with self.get_lock(buyer):
                             try:
@@ -827,7 +1017,7 @@ class Adventure(BaseCog):
                                 buy_user.backpack[item.name_formated].owned += 1
                             else:
                                 item.owned = 1
-                                buy_user.backpack[item.name_formated] = item
+                                buy_user.backpack[item.name] = item
                                 await self.config.user(buyer).set(buy_user.to_json())
                         await trade_msg.edit(
                             content=(
@@ -1277,20 +1467,6 @@ class Adventure(BaseCog):
 
         Use the full name of the item including the rarity characters like . or []  or {}.
         """
-        ORDER = [
-            "head",
-            "neck",
-            "chest",
-            "gloves",
-            "belt",
-            "legs",
-            "boots",
-            "left",
-            "right",
-            "two handed",
-            "ring",
-            "charm",
-        ]
         async with self.get_lock(user):
             item = None
             try:
@@ -1315,7 +1491,7 @@ class Adventure(BaseCog):
                         ctx, _("{} does not have an item named `{}`.").format(user, full_item_name)
                     )
             with contextlib.suppress(KeyError):
-                del c.backpack[item.name_formated]
+                del c.backpack[item.name]
             await self.config.user(user).set(c.to_json())
         await ctx.send(
             _("{item} removed from {user}.").format(item=box(str(item), lang="css"), user=user)
@@ -1721,14 +1897,15 @@ class Adventure(BaseCog):
 
                 newitem = await self._to_forge(ctx, consumed, c)
                 for x in consumed:
-                    c.backpack[x.name_formated].owned -= 1
-                    if c.backpack[x.name_formated].owned <= 0:
-                        del c.backpack[x.name_formated]
+                    c.backpack[x.name].owned -= 1
+                    if c.backpack[x.name].owned <= 0:
+                        del c.backpack[x.name]
                     await self.config.user(ctx.author).set(c.to_json())
                 # save so the items are eaten up already
-                for it in c.get_current_equipment():
-                    if it.rarity in ["forged"]:
-                        c = await c.unequip_item(it)
+                lookup = list(i for n, i in c.backpack.items() if i.rarity in ["forged"])
+                for items in c.get_current_equipment():
+                    if item.rarity in ["forged"]:
+                        c = await c.unequip_item(items)
                 lookup = list(i for n, i in c.backpack.items() if i.rarity in ["forged"])
                 if len(lookup) > 0:
                     forge_str = box(
@@ -1766,7 +1943,7 @@ class Adventure(BaseCog):
                         for item in lookup:
                             del c.backpack[item.name_formated]
                         await ctx.send(created_item)
-                        c.backpack[newitem.name_formated] = newitem
+                        c.backpack[newitem.name] = newitem
                         await self.config.user(ctx.author).set(c.to_json())
                     else:
                         mad_forge = box(
@@ -1777,7 +1954,7 @@ class Adventure(BaseCog):
                         )
                         return await ctx.send(mad_forge)
                 else:
-                    c.backpack[newitem.name_formated] = newitem
+                    c.backpack[newitem.name] = newitem
                     await self.config.user(ctx.author).set(c.to_json())
                     forged_item = box(
                         _("{author}, your new {newitem} is lurking in your backpack.").format(
@@ -2259,7 +2436,7 @@ class Adventure(BaseCog):
                                         if item.rarity == "forged":
                                             tinker_wep.append(item)
                                     for item in tinker_wep:
-                                        del c.backpack[item.name_formated]
+                                        del c.backpack[item.name]
                                     await self.config.user(ctx.author).set(c.to_json())
                                     if tinker_wep:
                                         await class_msg.edit(
@@ -2407,7 +2584,7 @@ class Adventure(BaseCog):
                 items = await self._open_chests(ctx, ctx.author, box_type, amount)
                 msg = _(
                     "{}, you've opened the following items:\n"
-                    "( ATT  |  CHA  |  INT  |  DEX  |  LUCK)"
+                    "( ATT | CHA | INT | DEX | LUCK)"
                 ).format(self.escape(ctx.author.display_name))
                 rjust = max([len(str(i)) for n, i in items.items()])
                 for name, item in items.items():
@@ -2416,14 +2593,14 @@ class Adventure(BaseCog):
                     int_space = " " if len(str(item.int)) == 1 else ""
                     dex_space = " " if len(str(item.dex)) == 1 else ""
                     luck_space = " " if len(str(item.luck)) == 1 else ""
-                    msg += (
-                        f"\n {item.owned} - Lvl req {item.lvl} | {str(item):<{rjust}} - "
-                        f"({att_space}{item.att}  | "
-                        f"{int_space}{item.cha}  | "
-                        f"{cha_space}{item.int}  | "
-                        f"{dex_space}{item.dex}  | "
-                        f"{luck_space}{item.luck} )"
-                    )
+                    msg += (f"\n Lv {item.lvl:<2} | "
+                            f"{str(item):<{rjust}} - "
+                            f"({att_space}{item.att} |"
+                            f"{cha_space}{item.cha} |"
+                            f"{int_space}{item.int} |"
+                            f"{dex_space}{item.dex} |"
+                            f"{luck_space}{item.luck} )"
+                            )
                 msgs = []
                 for page in pagify(msg):
                     msgs.append(box(page, lang="css"))
@@ -3331,7 +3508,7 @@ class Adventure(BaseCog):
                 ).format(author=self.escape(ctx.author.display_name), current_item=current_item)
             else:
                 for current_item in c.get_current_equipment():
-                    if item.lower() in current_item.name_formated.lower():
+                    if item.lower() in current_item.name.lower():
                         await c.unequip_item(current_item)
                         msg = _(
                             "{author} removed the {current_item} and put it into their backpack."
@@ -3447,14 +3624,21 @@ class Adventure(BaseCog):
             log.exception("Error with the new character sheet", exc_info=True)
             return
         possible_monsters = []
+        stat_range = self._adv_results.get_stat_range()
         for e, (m, stats) in enumerate(monsters.items(), 1):
-            if e not in range(10) and (stats["hp"] + stats["dipl"]) > (
-                c.total_stats * min(max(c.rebirths, 1), 15)
-            ):
+            appropriate_range = (max(stats["hp"], stats["dipl"]) <=
+                    (max(c.att, c.int, c.cha) * 2))
+            if stat_range["max_stat"] > 0:
+                main_stat = (stats["hp"]
+                        if (stat_range["stat_type"] == "attack")
+                        else stats["dipl"])
+                appropriate_range = (main_stat >= stat_range["min_stat"]
+                        and main_stat <= stat_range["max_stat"])
+            if not appropriate_range:
                 continue
             if not stats["boss"] and not stats["miniboss"]:
                 count = 0
-                break_at = random.randint(1, 10)
+                break_at = random.randint(1, 15)
                 while count < break_at:
                     count += 1
                     possible_monsters.append(m)
@@ -3462,8 +3646,33 @@ class Adventure(BaseCog):
                         break
             else:
                 possible_monsters.append(m)
-        log.debug(possible_monsters)
-        return random.choice(possible_monsters)
+        if len(possible_monsters) == 0:
+            return random.choice(list(monsters.keys()))
+        else:
+            return random.choice(possible_monsters)
+        #  return random.choice(list(self.MONSTER_NOW.keys()))
+
+    async def update_monster_roster(self, user):
+
+        try:
+            c = await Character.from_json(self.config, user)
+        except Exception:
+            log.exception("Error with the new character sheet")
+            self.monster_stats = 1
+            self.MONSTER_NOW = self.MONSTERS
+            return
+        else:
+            self.monster_stats = 1
+
+        self.MONSTER_NOW = self.MONSTERS
+        ascended_mons = False
+        if c.rebirths >= 10:
+            self.MONSTER_NOW.update(self.AS_MONSTERS)
+            ascended_mons = True
+        if c.rebirths >= 15:
+            self.monster_stats = 1 + max((c.rebirths // 25) - 1, 0)
+
+        log.debug(f"Ascended mons: {ascended_mons}")
 
     async def update_monster_roster(self, user):
 
@@ -3537,15 +3746,32 @@ class Adventure(BaseCog):
 
     async def _choice(self, ctx: Context, adventure_msg):
         session = self._sessions[ctx.guild.id]
-
+        session..
+        hp = (
+                session.monsters[challenge]["hp"]
+                * self.ATTRIBS[challenge_attrib][0]
+                * session.monster_stats
+        )
+        dipl = (
+                session.monsters[challenge]["dipl"]
+                * self.ATTRIBS[challenge_attrib][1]
+                * session.monster_stats
+        )
         dragon_text = _(
-            "but **a{attr} {chall}** just landed in front of you glaring! \n\n"
+            "but **a{attr} {chall}** ("
+            "{hp_symbol} {hp}/"
+            "{dipl_symbol} {dipl}) "
+            "just landed in front of you glaring! \n\n"
             "What will you do and will other heroes be brave enough to help you?\n"
             "Heroes have 5 minutes to participate via reaction:"
             "\n\nReact with: {reactions}"
         ).format(
             attr=session.attribute,
             chall=session.challenge,
+            hp_symbol=self.emojis.hp,
+            hp=ceil(hp),
+            dipl_symbol=self.emojis.dipl,
+            dipl=ceil(dipl),
             reactions="**"
             + _("Fight")
             + "** - **"
@@ -3579,7 +3805,9 @@ class Adventure(BaseCog):
             + "**",
         )
         normal_text = _(
-            "but **a{attr} {chall}** "
+            "but **a{attr} {chall}** ("
+            "{hp_symbol} {hp}/"
+            "{dipl_symbol} {dipl}) "
             "is guarding it with{threat}. \n\n"
             "What will you do and will other heroes help your cause?\n"
             "Heroes have 2 minutes to participate via reaction:"
@@ -3587,6 +3815,10 @@ class Adventure(BaseCog):
         ).format(
             attr=session.attribute,
             chall=session.challenge,
+            hp_symbol=self.emojis.hp,
+            hp=ceil(hp),
+            dipl_symbol=self.emojis.dipl,
+            dipl=ceil(dipl),
             threat=random.choice(self.THREATEE),
             reactions="**"
             + _("Fight")
@@ -3706,7 +3938,6 @@ class Adventure(BaseCog):
             if reaction.message.id == self._current_traders[guild.id][
                 "msg"
             ] and not self.in_adventure(user=user):
-                log.debug("handling cart")
                 if user in self._current_traders[guild.id]["users"]:
                     return
                 await self._handle_cart(reaction, user)
@@ -3783,7 +4014,7 @@ class Adventure(BaseCog):
         currency_name = await bank.get_currency_name(guild)
         if currency_name.startswith("<"):
             currency_name = "credits"
-        item_data = box(items["itemname"] + " - " + humanize_number(items["price"]), lang="css")
+        item_data = box(items["item"].formatted_name + " - " + humanize_number(items["price"]), lang="css")
         to_delete = await channel.send(
             _("{user}, how many {item} would you like to buy?").format(
                 user=user.mention, item=item_data
@@ -3822,13 +4053,10 @@ class Adventure(BaseCog):
                 else:
                     item = items["item"]
                     item.owned = pred.result
-                    log.debug(item.name_formated)
-                    item_name = f"{item.name_formated}"
-                    if item_name in c.backpack:
-                        log.debug("item already in backpack")
-                        c.backpack[item_name].owned += pred.result
+                    if item.name in c.backpack:
+                        c.backpack[item.name].owned += pred.result
                     else:
-                        c.backpack[item_name] = item
+                        c.backpack[item.name] = item
                 await self.config.user(user).set(c.to_json())
                 with contextlib.suppress(discord.HTTPException):
                     await to_delete.delete()
@@ -3841,7 +4069,7 @@ class Adventure(BaseCog):
                         ).format(
                             author=self.escape(user.display_name),
                             p_result=pred.result,
-                            item_name=items["itemname"],
+                            item_name=item.formatted_name,
                             item_price=humanize_number(items["price"] * pred.result),
                             currency_name=currency_name,
                         ),
@@ -3923,15 +4151,16 @@ class Adventure(BaseCog):
             * session.monster_stats
         )
 
-        slain = (attack + magic) >= round(hp)
+        dmg_dealt = attack + magic
+        slain = dmg_dealt >= round(hp)
         persuaded = diplomacy >= round(dipl)
         damage_str = ""
         diplo_str = ""
-        if (attack + magic) > 0:
+        if dmg_dealt > 0:
             damage_str = _("The group {status} {challenge} **({result}/{int_hp})**.\n").format(
                 status=_("hit the") if failed or not slain else _("killed the"),
                 challenge=challenge,
-                result=humanize_number(attack + magic),
+                result=humanize_number(dmg_dealt),
                 int_hp=humanize_number(int(hp)),
             )
         if diplomacy > 0:
@@ -3944,6 +4173,13 @@ class Adventure(BaseCog):
                 diplomacy=humanize_number(diplomacy),
                 int_dipl=humanize_number(int(dipl)),
             )
+        if dmg_dealt >= diplomacy:
+            self._adv_results.add_result("attack", dmg_dealt, people,
+                    slain)
+        else:
+            self._adv_results.add_result("talk", diplomacy,
+                    people, persuaded)
+        #  log.debug(self._adv_results)
         result_msg = result_msg + "\n" + damage_str + diplo_str
 
         fight_name_list = []
@@ -3984,7 +4220,7 @@ class Adventure(BaseCog):
         text = ""
         if slain or persuaded and not failed:
             roll = random.randint(1, 10)
-            CR = hp + dipl
+            monster_amount = hp if slain else dipl
             treasure = [0, 0, 0, 0, 0]
             if session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
                 treasure = random.choice(
@@ -4010,17 +4246,26 @@ class Adventure(BaseCog):
                 session.miniboss
             ):  # rewards 50:50 rare:normal chest for killing something like the basilisk
                 treasure = random.choice([[1, 1, 1, 0, 0], [0, 0, 1, 1, 0]])
-            elif CR >= 800:  # super hard stuff
-                if roll <= 4:
-                    treasure = random.choice([[0, 0, 1, 0, 0], [0, 1, 0, 0, 0], [0, 0, 0, 1, 0]])
-            elif CR >= 640:  # rewards 50:50 rare:epic chest for killing hard stuff.
-                if roll <= 3:
-                    treasure = random.choice([[0, 0, 1, 0, 0], [0, 1, 0, 0, 0], [0, 1, 1, 0, 0]])
-            elif CR >= 360:  # rewards 50:50 rare:normal chest for killing hardish stuff
+            elif monster_amount >= 700:  # super hard stuff
+                if roll <= 7:
+                    treasure = random.choice([
+                        [0, 0, 1, 0, 0],
+                        [0, 1, 0, 0, 0],
+                        [0, 0, 0, 1, 0]])
+            elif monster_amount >= 500:  # rewards 50:50 rare:epic chest for killing hard stuff.
+                if roll <= 5:
+                    treasure = random.choice([
+                        [0, 0, 1, 0, 0],
+                        [0, 1, 0, 0, 0],
+                        [0, 1, 1, 0, 0]])
+            elif monster_amount >= 300:  # rewards 50:50 rare:normal chest for killing hardish stuff
                 if roll <= 2:
-                    treasure = random.choice([[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [1, 1, 0, 0, 0]])
+                    treasure = random.choice([
+                        [1, 0, 0, 0, 0],
+                        [0, 1, 0, 0, 0],
+                        [1, 1, 0, 0, 0]])
             elif (
-                CR >= 80
+                monster_amount >= 80
             ):  # small chance of a normal chest on killing stuff that's not terribly weak
                 if roll == 1:
                     treasure = [1, 0, 0, 0, 0]
@@ -4047,7 +4292,7 @@ class Adventure(BaseCog):
                 except Exception:
                     log.exception("Error with the new character sheet")
                     continue
-                multiplier = 0.02
+                multiplier = 0.1
                 if c.dex != 0:
                     if c.dex < 0:
                         dex = min(1 / abs(c.dex), 1)
@@ -4099,7 +4344,7 @@ class Adventure(BaseCog):
                 except Exception:
                     log.exception("Error with the new character sheet")
                     continue
-                multiplier = 0.02
+                multiplier = 0.1
                 if c.dex != 0:
                     if c.dex < 0:
                         dex = min(1 / abs(c.dex), 1)
@@ -4170,7 +4415,7 @@ class Adventure(BaseCog):
                     except Exception:
                         log.exception("Error with the new character sheet")
                         continue
-                    multiplier = 0.02
+                    multiplier = 0.1
                     if c.dex != 0:
                         if c.dex < 0:
                             dex = min(1 / abs(c.dex), 1)
@@ -4274,7 +4519,7 @@ class Adventure(BaseCog):
                     ctx,
                     fight_list + magic_list + talk_list + pray_list,
                     amount,
-                    round((((attack + magic) / hp) + (diplomacy / dipl)) * 0.25),
+                    round(((dmg_dealt / hp) + (diplomacy / dipl)) * 0.25),
                     treasure,
                 )
 
@@ -4341,7 +4586,7 @@ class Adventure(BaseCog):
                     ctx,
                     fight_list + magic_list + pray_list,
                     amount,
-                    round(((attack + magic) / hp) * 0.25),
+                    round((dmg_dealt / hp) * 0.25),
                     treasure,
                 )
 
@@ -4355,7 +4600,7 @@ class Adventure(BaseCog):
                     except Exception:
                         log.exception("Error with the new character sheet")
                         continue
-                    multiplier = 0.02
+                    multiplier = 0.1
                     if c.dex != 0:
                         if c.dex < 0:
                             dex = min(1 / abs(c.dex), 1)
@@ -4639,6 +4884,11 @@ class Adventure(BaseCog):
             else:
                 magic += int((roll + int_value) / mdef) + c.rebirths // 5
                 report += f"**{self.escape(user.display_name)}**: {self.emojis.dice}({roll}) + {self.emojis.magic}{str(int_value)}\n"
+        if fumble_count == len(attack_list):
+            report += _("No one!")
+        msg += report + "\n"
+                magic += int((roll + int_value) / mdef) + c.rebirths // 5
+                report += f"{bold(self.escape(user.display_name))}: {self.emojis.dice}({roll}) + {self.emojis.magic}{str(int_value)}\n"
         if fumble_count == len(attack_list):
             report += _("No one!")
         msg += report + "\n"
@@ -5025,59 +5275,64 @@ class Adventure(BaseCog):
                 await self._trader(ctx)
 
     async def _roll_chest(self, chest_type: str, c: Character):
-        multiplier = 600 + int(round(-c.luck * 3) - c.rebirths)
-        chest_logic = {"pet": 40, "normal": 10, "rare": 10, "epic": 20, "legendary": 10, "set": 60}
-        multiplier = max(multiplier, chest_logic.get(chest_type, 60))
-        # -multiplier because higher luck is better negative luck takes away
-        roll = random.randint(1, multiplier)
+        # set rarity to chest by default
+        rarity = chest_type
         if chest_type == "pet":
-            if roll <= 20:
-                chance = self.TR_LEGENDARY
-            elif roll <= 50:
-                chance = self.TR_EPIC
-            elif 50 < roll <= 200:
-                chance = self.TR_RARE
-            else:
-                chance = self.TR_COMMON
-        elif chest_type == "normal":
-            if roll <= 5:
-                chance = self.TR_EPIC
-            elif 5 < roll <= 125:
-                chance = self.TR_RARE
-            else:
-                chance = self.TR_COMMON
+            rarity = "normal"
+        INITIAL_MAX_ROLL = 400
+        # max luck for best chest odds
+        MAX_CHEST_LUCK = 200
+        # lower gives you better chances for better items
+        max_roll = INITIAL_MAX_ROLL - round(c.luck) - (c.rebirths * 2)
+        roll = random.randint(1, max(max_roll,
+            INITIAL_MAX_ROLL - MAX_CHEST_LUCK))
+        if chest_type == "normal":
+            # 5% to roll epic
+            if roll <= INITIAL_MAX_ROLL * .05:
+                rarity = "epic"
+            # 20% to roll rare
+            elif roll <= INITIAL_MAX_ROLL * .25:
+                rarity = "rare"
+            # 75% to roll common
         elif chest_type == "rare":
-            if roll <= 5:
-                chance = self.TR_EPIC
-            elif 5 < roll <= 350:
-                chance = self.TR_RARE
-            else:
-                chance = self.TR_COMMON
+            # 15% to roll epic
+            if roll <= INITIAL_MAX_ROLL * .2:
+                rarity = "epic"
+            # 70% to roll rare
+            # 10% to roll normal
+            elif roll >= INITIAL_MAX_ROLL * .9:
+                rarity = "normal"
         elif chest_type == "epic":
-            if roll <= 10:
-                chance = self.TR_LEGENDARY
-            elif 10 < roll <= 350:
-                chance = self.TR_EPIC
-            else:
-                chance = self.TR_RARE
+            # 10% to roll legendary
+            if roll <= INITIAL_MAX_ROLL * .1:
+                rarity = "legendary"
+            # 70% to roll epic
+            # 10% to roll rare
+            elif roll >= INITIAL_MAX_ROLL * .9:
+                rarity = "rare"
         elif chest_type == "legendary":
-            if roll < 2:
-                chance = self.TR_GEAR_SET
-            elif roll <= 125:
-                chance = self.TR_LEGENDARY
-            else:
-                chance = self.TR_EPIC
+            # 80% to roll legendary
+            # 20% to roll epic
+            if roll >= INITIAL_MAX_ROLL * .6:
+                rarity = "epic"
+        elif chest_type == "pet":
+            # 2% to roll legendary
+            if roll <= INITIAL_MAX_ROLL * .02:
+                rarity = "legendary"
+            # 5% to roll epic
+            elif roll <= INITIAL_MAX_ROLL * .07:
+                rarity = "epic"
+            # 50% to roll rare
+            elif roll <= INITIAL_MAX_ROLL * .57:
+                rarity = "rare"
+            # 43% to roll common
         elif chest_type == "set":
-            if roll <= 50:
-                chance = self.TR_GEAR_SET
+            if roll <= INITIAL_MAX_ROLL * .45:
+                rarity = "set"
             else:
-                chance = self.TR_LEGENDARY
-        else:
-            chance = self.TR_COMMON
-            # not sure why this was put here but just incase someone
-            # tries to add a new loot type we give them normal loot instead
-        itemname = random.choice(list(chance.keys()))
-        return Item.from_json({itemname: chance[itemname]})
+                rarity = "legendary"
+
+        return await self._genitem(rarity)
 
     async def _open_chests(self, ctx: Context, user: discord.Member, chest_type: str, amount: int):
         """This allows you you to open multiple chests at once and put them in your inventory."""
@@ -5360,7 +5615,6 @@ class Adventure(BaseCog):
             if roll == 5 and c.heroclass["name"] == "Ranger" and c.heroclass["pet"]:
                 petxp = int(userxp * c.heroclass["pet"]["bonus"])
                 newxp += petxp
-                log.debug(f"{user}: user gained the following xp: {userxp}")
                 self._rewards[user.id]["xp"] = userxp
                 petcp = int(usercp * c.heroclass["pet"]["bonus"])
                 newcp += petcp
@@ -5375,7 +5629,6 @@ class Adventure(BaseCog):
                 )
 
             else:
-                log.debug(f"{user}: user gained the following xp: {userxp}")
                 self._rewards[user.id]["xp"] = userxp
                 self._rewards[user.id]["cp"] = usercp
             if special is not False:
@@ -5455,7 +5708,6 @@ class Adventure(BaseCog):
         return max(price, base[0])
 
     async def _trader(self, ctx: Context, bypass=False):
-
         em_list = ReactionPredicate.NUMBER_EMOJIS
 
         cart = await self.config.cart_name()
@@ -5521,7 +5773,7 @@ class Adventure(BaseCog):
                         "[{hand}]) for {item_price} {currency_name}."
                     ).format(
                         i=str(index + 1),
-                        item_name=item["itemname"],
+                        item_name=item["item"].formatted_name,
                         lvl=item["item"].lvl,
                         str_att=str(att),
                         str_int=str(intel),
@@ -5565,104 +5817,41 @@ class Adventure(BaseCog):
         items = {}
         output = {}
 
-        chest_type = random.randint(1, 100)
         chest_enable = await self.config.enable_chests()
         while len(items) < howmany:
-            chance = None
-            roll = random.randint(1, 100)
-            if chest_type <= 60:
-                if roll <= 5:
-                    chance = self.TR_EPIC
-                elif 5 < roll <= 25:
-                    chance = self.TR_RARE
-                elif roll >= 90 and chest_enable:
-                    chest = [1, 0, 0]
-                    types = ["normal chest", ".rare_chest", "[epic chest]"]
-                    if "normal chest" not in items:
-                        items.update(
-                            {
-                                "normal chest": {
-                                    "itemname": _("normal chest"),
-                                    "item": chest,
-                                    "price": 100000,
-                                }
-                            }
-                        )
-                else:
-                    chance = self.TR_COMMON
-            elif chest_type <= 75:
-                if roll <= 15:
-                    chance = self.TR_EPIC
-                elif 15 < roll <= 45:
-                    chance = self.TR_RARE
-                elif roll >= 90 and chest_enable:
-                    chest = random.choice([[0, 1, 0], [1, 0, 0]])
-                    types = ["normal chest", ".rare_chest", "[epic chest]"]
-                    prices = [10000, 50000, 100000]
-                    chesttext = types[chest.index(1)]
-                    price = prices[chest.index(1)]
-                    if chesttext not in items:
-                        items.update(
-                            {
-                                chesttext: {
-                                    "itemname": "{}".format(chesttext),
-                                    "item": chest,
-                                    "price": price,
-                                }
-                            }
-                        )
-                else:
-                    chance = self.TR_COMMON
-            else:
-                if roll <= 25:
-                    chance = self.TR_EPIC
-                elif roll >= 90 and chest_enable:
-                    chest = random.choice([[0, 1, 0], [0, 0, 1]])
-                    types = ["normal chest", ".rare_chest", "[epic chest]"]
-                    prices = [10000, 50000, 100000]
-                    chesttext = types[chest.index(1)]
-                    price = prices[chest.index(1)]
-                    if chesttext not in items:
-                        items.update(
-                            {
-                                chesttext: {
-                                    "itemname": "{}".format(chesttext),
-                                    "item": chest,
-                                    "price": price,
-                                }
-                            }
-                        )
-                else:
-                    chance = self.TR_RARE
+            item = await self._genitem("normal")
+            # 1 stat for normal, want to be <1k
+            price = random.randint(250, 500)
+            rarity_roll = random.random()
+            #  rarity_roll = .9
+            # 1% legendary
+            if rarity_roll >= .01:
+                item = await self._genitem("legendary")
+                # min. 10 stat for legendary, want to be about 50k
+                price = random.randint(70000, 100000) * item.
+            # 20% epic
+            elif rarity_roll >= .7:
+                item = await self._genitem("epic")
+                # min. 5 stat for epic, want to be about 25k
+                price = random.randint(10000, 50000) * * item.
+            # 35% rare
+            elif rarity_roll >= .35:
+                item = await self._genitem("rare")
+                # around 3 stat for rare, want to be about 3k
+                price = random.randint(2000, 5000) * * item.
+            # 35% normal
+            price *= * item.
 
-            if chance is not None:
-                itemname = random.choice(list(chance.keys()))
-                item = Item.from_json({itemname: chance[itemname]})
-                if len(item.slot) == 2:  # two handed weapons add their bonuses twice
-                    att = item.att * 2
-                    cha = item.cha * 2
-                    intel = item.int * 2
-                else:
-                    att = item.att
-                    cha = item.cha
-                    intel = item.int
-                if item.rarity == "epic":
-                    price = random.randint(10000, 50000) * max(att + cha + intel, 1)
-                elif item.rarity == "rare":
-                    price = random.randint(2000, 5000) * max(att + cha + intel, 1)
-                else:
-                    price = random.randint(100, 250) * max(att + cha + intel, 1)
-                if itemname not in items:
-                    items.update(
-                        {
-                            itemname: {
-                                "itemname": itemname,
-                                "item": item,
-                                "price": price,
-                                "lvl": item.lvl,
-                            }
-                        }
-                    )
+            items.update(
+                {
+                    item.name: {
+                        "itemname": item.name,
+                        "item": item,
+                        "price": price,
+                        "lvl": item.lvl,
+                    }
+                }
+            )
 
         for index, item in enumerate(items):
             output.update({index: items[item]})
@@ -5675,7 +5864,6 @@ class Adventure(BaseCog):
             self._init_task.cancel()
 
         for msg_id, task in self.tasks.items():
-            log.debug(f"removing task {task}")
             task.cancel()
 
     async def get_leaderboard(
