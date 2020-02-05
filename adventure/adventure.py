@@ -76,7 +76,7 @@ log = logging.getLogger("red.cogs.adventure")
 
 REBIRTH_LVL = 20
 REBIRTH_STEP = 5
-
+_SCHEMA_VERSION = 2
 _config: Config = None
 
 
@@ -88,6 +88,7 @@ async def smart_embed(ctx, message):
     if use_embeds:
         return await ctx.maybe_send_embed(message)
     return await ctx.send(message)
+
 
 class AdventureResults:
     """Object to store recent adventure results."""
@@ -171,11 +172,6 @@ class AdventureResults:
         if win_percent < .6:
             min_stat = avg_amount * win_percent
             max_stat = avg_amount * 1.25
-        log.debug(stat_type)
-        log.debug(f"win %: {win_percent}")
-        log.debug(f"avg. dmg: {avg_amount}")
-        log.debug(f"min stat: {min_stat}")
-        log.debug(f"max stat: {max_stat}")
 
         stats_dict = {}
         for var in ('stat_type', 'min_stat', 'max_stat'):
@@ -317,6 +313,7 @@ class Adventure(BaseCog):
             "embed": True,
             "enable_chests": True,
             "currentweek": date.today().isocalendar()[1],
+            "schema_version": 1,
         }
         self.RAISINS: list = None
         self.THREATEE: list = None
@@ -332,6 +329,7 @@ class Adventure(BaseCog):
         self.config.register_global(**default_global)
         self.config.register_user(**default_user)
         self.cleanup_loop = self.bot.loop.create_task(self.cleanup_tasks())
+        log.exception("Creating Task", exc_info=False)
         self._init_task = self.bot.loop.create_task(self.initialize())
         self._ready_event = asyncio.Event()
 
@@ -344,79 +342,79 @@ class Adventure(BaseCog):
 
     async def initialize(self):
         """This will load all the bundled data into respective variables."""
-        global _config
-        _config = self.config
-        theme = await self.config.theme()
-        as_monster_fp = cog_data_path(self) / f"{theme}/as_monsters.json"
-        attribs_fp = cog_data_path(self) / f"{theme}/attribs.json"
-        locations_fp = cog_data_path(self) / f"{theme}/locations.json"
-        monster_fp = cog_data_path(self) / f"{theme}/monsters.json"
-        pets_fp = cog_data_path(self) / f"{theme}/pets.json"
-        raisins_fp = cog_data_path(self) / f"{theme}/raisins.json"
-        threatee_fp = cog_data_path(self) / f"{theme}/threatee.json"
-        tr_common_fp = cog_data_path(self) / f"{theme}/tr_common.json"
-        tr_rare_fp = cog_data_path(self) / f"{theme}/tr_rare.json"
-        tr_epic_fp = cog_data_path(self) / f"{theme}/tr_epic.json"
-        tr_legendary_fp = cog_data_path(self) / f"{theme}/tr_legendary.json"
-        tr_set_fp = cog_data_path(self) / f"{theme}/tr_set.json"
-        prefixes_fp = cog_data_path(self) / f"{theme}/prefixes.json"
-        materials_fp = cog_data_path(self) / f"{theme}/materials.json"
-        equipment_fp = cog_data_path(self) / f"{theme}/equipment.json"
-        suffixes_fp = cog_data_path(self) / f"{theme}/suffixes.json"
-        files = {
-            "pets": pets_fp,
-            "attr": attribs_fp,
-            "monster": monster_fp,
-            "location": locations_fp,
-            "raisins": raisins_fp,
-            "threatee": threatee_fp,
-            "common": tr_common_fp,
-            "rare": tr_rare_fp,
-            "epic": tr_epic_fp,
-            "legendary": tr_legendary_fp,
-            "set": tr_set_fp,
-            "as_monsters": as_monster_fp,
-            "prefixes": prefixes_fp,
-            "materials": materials_fp,
-            "equipment": equipment_fp,
-            "suffixes": suffixes_fp,
-        }
-        for name, file in files.items():
-            if not file.exists():
-                files[name] = bundled_data_path(self) / "default" / f"{file.name}"
-        with files["pets"].open("r") as f:
-            self.PETS = json.load(f)
-        with files["attr"].open("r") as f:
-            self.ATTRIBS = json.load(f)
-        with files["monster"].open("r") as f:
-            self.MONSTERS = json.load(f)
-        with files["as_monsters"].open("r") as f:
-            self.AS_MONSTERS = json.load(f)
-        with files["location"].open("r") as f:
-            self.LOCATIONS = json.load(f)
-        with files["raisins"].open("r") as f:
-            self.RAISINS = json.load(f)
-        with files["threatee"].open("r") as f:
-            self.THREATEE = json.load(f)
-        with files["set"].open("r") as f:
-            self.TR_GEAR_SET = json.load(f)
-        with files["prefixes"].open("r") as f:
-            self.PREFIXES = json.load(f)
-        with files["materials"].open("r") as f:
-            self.MATERIALS = json.load(f)
-        with files["equipment"].open("r") as f:
-            self.EQUIPMENT = json.load(f)
-        with files["suffixes"].open("r") as f:
-            self.SUFFIXES = json.load(f)
+        await self.bot.wait_until_ready()
+        try:
+            global _config
+            _config = self.config
+            theme = await self.config.theme()
+            as_monster_fp = cog_data_path(self) / f"{theme}" /"as_monsters.json"
+            attribs_fp = cog_data_path(self) / f"{theme}" /"attribs.json"
+            locations_fp = cog_data_path(self) / f"{theme}" /"locations.json"
+            monster_fp = cog_data_path(self) / f"{theme}" /"monsters.json"
+            pets_fp = cog_data_path(self) / f"{theme}" /"pets.json"
+            raisins_fp = cog_data_path(self) / f"{theme}" /"raisins.json"
+            threatee_fp = cog_data_path(self) / f"{theme}" /"threatee.json"
+            tr_set_fp = cog_data_path(self) / f"{theme}" /"tr_set.json"
+            prefixes_fp = cog_data_path(self) / f"{theme}" /"prefixes.json"
+            materials_fp = cog_data_path(self) / f"{theme}" /"materials.json"
+            equipment_fp = cog_data_path(self) / f"{theme}" /"equipment.json"
+            suffixes_fp = cog_data_path(self) / f"{theme}" /"suffixes.json"
+            files = {
+                "pets": pets_fp,
+                "attr": attribs_fp,
+                "monster": monster_fp,
+                "location": locations_fp,
+                "raisins": raisins_fp,
+                "threatee": threatee_fp,
+                "set": tr_set_fp,
+                "as_monsters": as_monster_fp,
+                "prefixes": prefixes_fp,
+                "materials": materials_fp,
+                "equipment": equipment_fp,
+                "suffixes": suffixes_fp,
+            }
+            for name, file in files.items():
+                if not file.exists():
+                    files[name] = bundled_data_path(self) / "default" / f"{file.name}"
+            with files["pets"].open("r") as f:
+                self.PETS = json.load(f)
+            with files["attr"].open("r") as f:
+                self.ATTRIBS = json.load(f)
+            with files["monster"].open("r") as f:
+                self.MONSTERS = json.load(f)
+            with files["as_monsters"].open("r") as f:
+                self.AS_MONSTERS = json.load(f)
+            with files["location"].open("r") as f:
+                self.LOCATIONS = json.load(f)
+            with files["raisins"].open("r") as f:
+                self.RAISINS = json.load(f)
+            with files["threatee"].open("r") as f:
+                self.THREATEE = json.load(f)
+            with files["set"].open("r") as f:
+                self.TR_GEAR_SET = json.load(f)
+            with files["prefixes"].open("r") as f:
+                self.PREFIXES = json.load(f)
+            with files["materials"].open("r") as f:
+                self.MATERIALS = json.load(f)
+            with files["equipment"].open("r") as f:
+                self.EQUIPMENT = json.load(f)
+            with files["suffixes"].open("r") as f:
+                self.SUFFIXES = json.load(f)
 
-        adventure.charsheet.TR_GEAR_SET = self.TR_GEAR_SET
-        adventure.charsheet.PETS = self.PETS
-        adventure.charsheet.REBIRTH_LVL = REBIRTH_LVL
-        adventure.charsheet.REBIRTH_STEP = REBIRTH_STEP
-        self._ready_event.set()
+            adventure.charsheet.TR_GEAR_SET = self.TR_GEAR_SET
+            adventure.charsheet.PETS = self.PETS
+            adventure.charsheet.REBIRTH_LVL = REBIRTH_LVL
+            adventure.charsheet.REBIRTH_STEP = REBIRTH_STEP
+            await self._migrate_config(
+                from_version=await self.config.schema_version(), to_version=_SCHEMA_VERSION
+            )
+        except Exception as err:
+            log.exception("Everything is burning", exc_info=err)
+        else:
+            self._ready_event.set()
 
     async def cleanup_tasks(self):
-        await self.bot.wait_until_ready()
+        await self._ready_event.wait()
         while self is self.bot.get_cog("Adventure"):
             to_delete = []
             for msg_id, task in self.tasks.items():
@@ -425,6 +423,79 @@ class Adventure(BaseCog):
             for task in to_delete:
                 del self.tasks[task]
             await asyncio.sleep(300)
+
+    async def _migrate_config(self, from_version: int, to_version: int) -> None:
+        database_entries = []
+        log.error(f"from_version: {from_version} to_version:{to_version}")
+        if from_version == to_version:
+            return
+        if from_version < 2 <= to_version:
+            # _guilds = [g for g in self.bot.guilds if not g.unavailable and g.large and not g.chunked]
+            # _uguilds = [g for g in self.bot.guilds if g.unavailable]
+            group = self.config._get_base_group(self.config.USER)
+            # await self.bot.request_offline_members(*_guilds)
+            accounts = await group.all()
+            tmp = accounts.copy()
+            # members = self.bot.get_all_members()
+            # user_list = {str(m.id) for m in members if m.guild not in _uguilds}
+
+            async with group.all() as adventurers_data:
+                for user in tmp:
+                    # if user not in user_list:
+                    #     del adventurers_data[user]
+                    # else:
+                    new_backpack = {}
+                    new_loadout = {}
+                    user_equipped_items = adventurers_data[user]["items"]
+                    for slot in user_equipped_items.keys():
+                        if user_equipped_items[slot]:
+                            for slot_item_name, slot_item in list(user_equipped_items[slot].items())[:1]:
+                                # update slot item if item equipped
+                                new_name, slot_item = self._convert_item_migration(slot_item_name, slot_item)
+                                adventurers_data[user]["items"][slot] = {new_name: slot_item}
+                    if "backpack" not in adventurers_data[user]:
+                        adventurers_data[user]["backpack"] = {}
+                    for backpack_item_name, backpack_item in adventurers_data[user]["backpack"].items():
+                        new_name, backpack_item = self._convert_item_migration(backpack_item_name, backpack_item)
+                        new_backpack[new_name] = backpack_item
+                    adventurers_data[user]["backpack"] = new_backpack
+                    if "loadouts" not in adventurers_data[user]:
+                        adventurers_data[user]["loadouts"] = {}
+                    try:
+                        for loadout_name, loadout in adventurers_data[user]["loadouts"].items():
+                            for slot, equipped_loadout in loadout.items():
+                                new_loadout[slot] = {}
+                                for loadout_item_name, loadout_item in equipped_loadout.items():
+
+                                    new_name, loadout_item = self._convert_item_migration(loadout_item_name, loadout_item)
+                                    new_loadout[slot][new_name] = loadout_item
+                        adventurers_data[user]["loadouts"] = new_loadout
+                    except Exception:
+                        adventurers_data[user]["loadouts"] = {}
+        await self.config.schema_version.set(to_version)
+
+    def _convert_item_migration(self, item_name, item_dict):
+        new_name = item_name
+        if "name" in item_dict:
+            del item_dict['name']
+        if "rarity" not in item_name:
+            item_dict["rarity"] = "common"
+        if item_dict["rarity"] == "legendary":
+            new_name = item_name.replace("{Legendary:'", "").replace("'}", "")
+        if item_dict["rarity"] == "epic":
+            new_name = item_name.replace("[", "").replace("]", "")
+        if item_dict["rarity"] == "rare":
+            new_name = item_name.replace("_", " ").replace(".", "")
+        if item_dict["rarity"] == "set":
+            new_name = item_name.replace("{Gear_Set:'", "").replace("'}", "")
+        if item_dict["rarity"] != "set":
+            if "bonus" in item_dict:
+                del item_dict["bonus"]
+            if "parts" in item_dict:
+                del item_dict["parts"]
+            if "set" in item_dict:
+                del item_dict["set"]
+        return new_name, item_dict
 
     def in_adventure(self, ctx=None, user=None):
         author = user or ctx.author
@@ -469,6 +540,32 @@ class Adventure(BaseCog):
 
     async def _genitem(self, rarity: str = None, slot: str = None):
         """Generate an item."""
+        if rarity == "set":
+            item_name, item_data = random.choice(list(self.TR_GEAR_SET.items()))
+            name = Item.remove_markdowns(item_name)
+            return Item(
+                name=name,
+                slot=item_data.get("slot"),
+                rarity=rarity,
+                att=item_data.get("att", 0),
+                int=item_data.get("int", 0),
+                cha=item_data.get("cha", 0),
+                dex=item_data.get("dex", 0),
+                luck=item_data.get("luck", 0),
+                owned=1,
+                parts=item_data.get("parts", 1),
+                bonus=item_data.get("bonus", {
+                "att": 0,
+                "cha": 0,
+                "int": 0,
+                "dex": 0,
+                "luck": 0,
+                "statmult": 1,
+                "xpmult": 1,
+                "cpmult": 1,
+            },),
+            )
+
         RARE_INDEX = RARITIES.index("rare")
         EPIC_INDEX = RARITIES.index("epic")
         PREFIX_CHANCE = { "rare": .5, "epic": .75, "legendary": .9 }
@@ -2707,7 +2804,7 @@ class Adventure(BaseCog):
         )
         roll = random.randint(1, 50)
         versus = random.randint(10, 60)
-        xp_mod = random.randint(1, 20)
+        xp_mod = random.randint(1, 10)
         weekend = datetime.today().weekday() in [5, 6]
         wedfriday = datetime.today().weekday() in [2, 4]
         daymult = 2 if weekend else 1.5 if wedfriday else 1
@@ -2720,15 +2817,8 @@ class Adventure(BaseCog):
                 return
         xp_to_max = int((c.maxlevel + 1) ** 3)
         ten_percent = xp_to_max * 0.1
-        xp_randomizer = random.randint(1, 100)
         xp_won = ten_percent if xp_won > ten_percent else xp_won
-        xp_won = (
-            xp_randomizer
-            / 100
-            * xp_won
-            * (min(max(random.randint(0, c.rebirths // 10), 1), 3) / 10 + 1)
-        )
-
+        xp_won = xp_won * (min(max(random.randint(0, c.rebirths), 1), 50) / 100 + 1)
         if roll < 10:
             loss = round(bal // 3)
             try:
@@ -3658,28 +3748,6 @@ class Adventure(BaseCog):
             c = await Character.from_json(self.config, user)
         except Exception:
             log.exception("Error with the new character sheet")
-            self.monster_stats = 1
-            self.MONSTER_NOW = self.MONSTERS
-            return
-        else:
-            self.monster_stats = 1
-
-        self.MONSTER_NOW = self.MONSTERS
-        ascended_mons = False
-        if c.rebirths >= 10:
-            self.MONSTER_NOW.update(self.AS_MONSTERS)
-            ascended_mons = True
-        if c.rebirths >= 15:
-            self.monster_stats = 1 + max((c.rebirths // 25) - 1, 0)
-
-        log.debug(f"Ascended mons: {ascended_mons}")
-
-    async def update_monster_roster(self, user):
-
-        try:
-            c = await Character.from_json(self.config, user)
-        except Exception:
-            log.exception("Error with the new character sheet")
             return self.MONSTERS, 1
         else:
             monster_stats = 1
@@ -3746,15 +3814,14 @@ class Adventure(BaseCog):
 
     async def _choice(self, ctx: Context, adventure_msg):
         session = self._sessions[ctx.guild.id]
-        session..
         hp = (
-                session.monsters[challenge]["hp"]
-                * self.ATTRIBS[challenge_attrib][0]
+                session.monsters[session.challenge]["hp"]
+                * self.ATTRIBS[session.attribute][0]
                 * session.monster_stats
         )
         dipl = (
-                session.monsters[challenge]["dipl"]
-                * self.ATTRIBS[challenge_attrib][1]
+                session.monsters[session.challenge]["dipl"]
+                * self.ATTRIBS[session.attribute][1]
                 * session.monster_stats
         )
         dragon_text = _(
@@ -3819,7 +3886,7 @@ class Adventure(BaseCog):
             hp=ceil(hp),
             dipl_symbol=self.emojis.dipl,
             dipl=ceil(dipl),
-            threat=random.choice(self.THREATEE),
+                        threat=random.choice(self.THREATEE),
             reactions="**"
             + _("Fight")
             + "** - **"
@@ -3920,6 +3987,7 @@ class Adventure(BaseCog):
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
         """This will be a cog level reaction_add listener for game logic."""
+        await self.bot.wait_until_ready()
         if user.bot:
             return
         try:
@@ -4887,11 +4955,6 @@ class Adventure(BaseCog):
         if fumble_count == len(attack_list):
             report += _("No one!")
         msg += report + "\n"
-                magic += int((roll + int_value) / mdef) + c.rebirths // 5
-                report += f"{bold(self.escape(user.display_name))}: {self.emojis.dice}({roll}) + {self.emojis.magic}{str(int_value)}\n"
-        if fumble_count == len(attack_list):
-            report += _("No one!")
-        msg += report + "\n"
         for user in fumblelist:
             if user in session.fight:
                 session.fight.remove(user)
@@ -5256,6 +5319,7 @@ class Adventure(BaseCog):
 
     @commands.Cog.listener()
     async def on_message_without_command(self, message):
+        await self._ready_event.wait()
         if not message.guild:
             return
         channels = await self.config.guild(message.guild).cart_channels()
@@ -5295,7 +5359,7 @@ class Adventure(BaseCog):
                 rarity = "rare"
             # 75% to roll common
         elif chest_type == "rare":
-            # 15% to roll epic
+            #20% to roll epic
             if roll <= INITIAL_MAX_ROLL * .2:
                 rarity = "epic"
             # 70% to roll rare
@@ -5326,13 +5390,13 @@ class Adventure(BaseCog):
             elif roll <= INITIAL_MAX_ROLL * .57:
                 rarity = "rare"
             # 43% to roll common
-        elif chest_type == "set":
-            if roll <= INITIAL_MAX_ROLL * .45:
-                rarity = "set"
-            else:
-                rarity = "legendary"
+            elif chest_type == "set":
+                if roll <= INITIAL_MAX_ROLL * .55:
+                     rarity = "set"
+                else:
+                    rarity = "legendary"
 
-        return await self._genitem(rarity)
+        return self._genitem(rarity)
 
     async def _open_chests(self, ctx: Context, user: discord.Member, chest_type: str, amount: int):
         """This allows you you to open multiple chests at once and put them in your inventory."""
@@ -5692,10 +5756,8 @@ class Adventure(BaseCog):
             base = (100, 200)
         else:
             base = (10, 75)
-        price = random.randint(base[0], base[1]) * max(
-            [item.att, item.cha, item.int, item.dex, item.luck], default=1
-        )
-        price += price * int((c.total_cha + c.total_int) / 1000)
+        price = random.randint(base[0], base[1]) * item.max_main_stat
+        price += price * int((c.total_cha) / 1000)
 
         if c.luck > 0:
             price = price + round(price * (c.luck / 1000))
@@ -5817,30 +5879,29 @@ class Adventure(BaseCog):
         items = {}
         output = {}
 
-        chest_enable = await self.config.enable_chests()
         while len(items) < howmany:
             item = await self._genitem("normal")
             # 1 stat for normal, want to be <1k
-            price = random.randint(250, 500)
+            price = random.randint(100, 500)
             rarity_roll = random.random()
             #  rarity_roll = .9
             # 1% legendary
-            if rarity_roll >= .01:
+            if rarity_roll >= .99:
                 item = await self._genitem("legendary")
                 # min. 10 stat for legendary, want to be about 50k
-                price = random.randint(70000, 100000) * item.
+                price = random.randint(2500, 5000)
             # 20% epic
             elif rarity_roll >= .7:
                 item = await self._genitem("epic")
                 # min. 5 stat for epic, want to be about 25k
-                price = random.randint(10000, 50000) * * item.
+                price = random.randint(1000, 2000)
             # 35% rare
             elif rarity_roll >= .35:
                 item = await self._genitem("rare")
                 # around 3 stat for rare, want to be about 3k
-                price = random.randint(2000, 5000) * * item.
+                price = random.randint(500, 1000)
             # 35% normal
-            price *= * item.
+            price *= item.max_main_stat
 
             items.update(
                 {

@@ -47,7 +47,7 @@ ORDER = [
 ]
 TINKER_OPEN = r"{.:'"
 TINKER_CLOSE = r"':.}"
-LEGENDARY_OPEN = r"{L:'"
+LEGENDARY_OPEN = r"{Legendary:'"
 LEGENDARY_CLOSE = r"'}"
 SET_OPEN = r"{Set:'"
 
@@ -76,7 +76,8 @@ LUCK = re.compile(r"([\d]*) (luck)")
 DEX = re.compile(r"([\d]*) (dex(?:terity)?)")
 SLOT = re.compile(r"(head|neck|chest|gloves|belt|legs|boots|left|right|ring|charm|twohanded)")
 RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged)")
-RARITIES = ("normal", "rare", "epic", "legendary")
+RARITIES = ("normal", "rare", "epic", "legendary", "set")
+
 
 class Stats(Converter):
     """This will parse a string for specific keywords like attack and dexterity followed by a
@@ -127,7 +128,7 @@ class Item:
     """An object to represent an item in the game world."""
 
     def __init__(self, **kwargs):
-        self.name: str = kwargs.pop("name")
+        self.name: str = kwargs.pop("name").lower()
         self.slot: List[str] = kwargs.pop("slot")
         self.att: int = kwargs.pop("att")
         self.int: int = kwargs.pop("int")
@@ -154,13 +155,13 @@ class Item:
         self.max_main_stat = max(self.att, self.int, self.cha, 1)
         self.lvl: int = self.get_equip_level()
         self.parts: int = kwargs.pop("parts")
-        self.degrade = kwargs.pop("degrade", 2)
+        self.degrade = kwargs.pop("degrade", 3)
 
     def __str__(self):
         if self.rarity == "normal":
             return self.name
         elif self.rarity == "rare":
-            return "." + self.name.replace(" ", "_")
+            return f".{self.name.replace(' ', '_')}"
         elif self.rarity == "epic":
             return f"[{self.name}]"
         elif self.rarity == "legendary":
@@ -171,6 +172,7 @@ class Item:
             name = self.name.replace("'", "’")
             return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
             # Thanks Sinbad!
+        return self.name
     @property
     def formatted_name(self):
         return str(self)
@@ -180,8 +182,7 @@ class Item:
         if self.rarity not in ["forged"]:
             # epic and legendary stats too similar so make level req's
             # the same
-            rarity_multiplier = min(RARITIES.index(self.rarity),
-                    RARITIES.index("epic"))
+            rarity_multiplier = min(RARITIES.index(self.rarity) if self.rarity in RARITIES else 1, 5)
             lvl = self.max_main_stat * (rarity_multiplier + 3)
         return max(round(lvl), 1)
 
@@ -219,7 +220,7 @@ class Item:
             name = name.replace("{Gear_Set:'", "").replace("'}", "")
             rarity = "set"
         elif name.startswith("{Set:'"):
-            name = name.replace("{Gear_Set:'", "").replace("'}", "")
+            name = name.replace("{Set:'", "").replace("'}", "")
             rarity = "set"
         elif name.startswith("{.:'"):
             name = name.replace("{.:'", "").replace("':.}", "")
@@ -234,7 +235,7 @@ class Item:
         lvl = data["lvl"] if "lvl" in data else 1
         _set = data["set"] if "set" in data else False
         slots = data["slot"]
-        degrade = data["degrade"] if "degrade" in data else 2
+        degrade = data["degrade"] if "degrade" in data else 3
         bonus = (
             data["bonus"]
             if "bonus" in data
@@ -296,7 +297,7 @@ class Item:
 
         data = {
             self.name: {
--                "slot": self.slot,
+                "slot": self.slot,
                 "att": self.att,
                 "int": self.int,
                 "cha": self.cha,
@@ -304,14 +305,14 @@ class Item:
                 "dex": self.dex,
                 "luck": self.luck,
                 "owned": self.owned,
-                "set": self.set,
-                "bonus": self.bonus,
-                "lvl": self.lvl,
-                "parts": self.parts,
             }
         }
         if self.rarity == "legendary":
-            data[self.name].update({"degrade": self.degrade})
+            data[self.name]["degrade"] = self.degrade
+        if self.rarity == "set":
+            data[self.name]["bonus"] = self.bonus
+            data[self.name]["parts"] = self.parts
+            data[self.name]["set"] = self.set
 
         return data
 
@@ -515,7 +516,8 @@ class Character(Item):
         legend = _("( ATT | CHA | INT | DEX | LUCK )")
         return _(
             "[{user}'s Character Sheet]\n\n"
-            "{{Rebirths: {rebirths}, \n Max Level: {maxlevel}}}\n\n"
+            "{{Rebirths: {rebirths}, \n Max Level: {maxlevel}}}\n"
+            "{rebirth_text}"
             "A level {lvl} {class_desc} \n\n- "
             "ATTACK: {att} [+{att_skill}] - "
             "CHARISMA: {cha} [+{cha_skill}] - "
@@ -530,6 +532,7 @@ class Character(Item):
             user=self.user.display_name,
             rebirths=self.rebirths,
             lvl=self.lvl if self.lvl < self.maxlevel else self.maxlevel,
+            rebirth_text="\n" if self.lvl < self.maxlevel else _("You have reached max level to continue gaining level you will have to rebirth\n\n"),
             maxlevel=self.maxlevel,
             class_desc=class_desc,
             att=self.att,
@@ -552,7 +555,7 @@ class Character(Item):
         """Define a secondary like __str__ to show our equipment."""
         form_string = ""
         last_slot = ""
-        rjust = max([len(str(getattr(self, i))) for i in ORDER if i != "two handed"])
+        rjust = max([len(str(getattr(self, i, 1))) for i in ORDER if i != "two handed"])
         for slots in ORDER:
             if slots == "two handed":
                 continue
