@@ -70,6 +70,9 @@
     "cha": 3,
     "dex": 5
   },
+  "Shiny": {
+    "cha": 3
+  },
   "Blessed": {
     "att": 2,
     "cha": 4,

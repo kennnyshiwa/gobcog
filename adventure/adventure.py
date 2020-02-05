@@ -634,6 +634,7 @@ class Adventure(BaseCog):
                 )
 
     @commands.command()
+    @commands.is_owner()
     async def genitems(self, ctx: Context, num: int = 15, rarity: str = None, slot: str = None):
         """Generate random items."""
         user = ctx.author
@@ -5396,28 +5397,7 @@ class Adventure(BaseCog):
                 else:
                     rarity = "legendary"
 
-        return self._genitem(rarity)
-
-    async def _open_chests(self, ctx: Context, user: discord.Member, chest_type: str, amount: int):
-        """This allows you you to open multiple chests at once and put them in your inventory."""
-        async with self.get_lock(user):
-            try:
-                c = await Character.from_json(self.config, ctx.author)
-            except Exception:
-                log.exception("Error with the new character sheet")
-                return
-            items = {}
-            for i in range(0, max(amount, 0)):
-                item = await self._roll_chest(chest_type, c)
-                if item.name_formated in items:
-                    items[item.name_formated].owned += 1
-                else:
-                    items[item.name_formated] = item
-
-            for name, item in items.items():
-                await c.add_to_backpack(item)
-            await self.config.user(ctx.author).set(c.to_json())
-            return items
+        return await self._genitem(rarity)
 
     async def _open_chest(self, ctx: Context, user, chest_type):
         if hasattr(user, "display_name"):
