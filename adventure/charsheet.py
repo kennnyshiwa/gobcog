@@ -532,7 +532,7 @@ class Character(Item):
             user=self.user.display_name,
             rebirths=self.rebirths,
             lvl=self.lvl if self.lvl < self.maxlevel else self.maxlevel,
-            rebirth_text="\n" if self.lvl < self.maxlevel else _("You have reached max level to continue gaining level you will have to rebirth\n\n"),
+            rebirth_text="\n" if self.lvl < self.maxlevel else _("You have reached max level to continue gaining levels you will have to rebirth.\n\n"),
             maxlevel=self.maxlevel,
             class_desc=class_desc,
             att=self.att,
