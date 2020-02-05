@@ -128,7 +128,10 @@ class Item:
     """An object to represent an item in the game world."""
 
     def __init__(self, **kwargs):
-        self.name: str = kwargs.pop("name").lower()
+        if kwargs.get("rarity") in ["set", "legendary"]:
+            self.name: str = kwargs.pop("name").title()
+        else:
+            self.name: str = kwargs.pop("name").lower()
         self.slot: List[str] = kwargs.pop("slot")
         self.att: int = kwargs.pop("att")
         self.int: int = kwargs.pop("int")
@@ -167,7 +170,7 @@ class Item:
         elif self.rarity == "legendary":
             return f"{LEGENDARY_OPEN}{self.name}{LEGENDARY_CLOSE}"
         elif self.rarity == "set":
-            return f"{SET_OPEN}{self.name}{LEGENDARY_CLOSE}"
+            return f"{SET_OPEN}'{self.name}'{LEGENDARY_CLOSE}"
         elif self.rarity == "forged":
             name = self.name.replace("'", "’")
             return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
@@ -194,10 +197,16 @@ class Item:
             item = item.replace("[", "").replace("]", "")
         if item.startswith("{Legendary:'"):
             item = item.replace("{Legendary:'", "").replace("'}", "")
+        if item.startswith("{legendary:'"):
+            item = item.replace("{legendary:'", "").replace("'}", "")
         if item.startswith("{Gear_Set:'"):
             item = item.replace("{Gear_Set:'", "").replace("'}", "")
+        if item.startswith("{gear_set:'"):
+            item = item.replace("{gear_set:'", "").replace("'}", "")
         if item.startswith("{Set:'"):
-            item = item.replace("{Set:'", "").replace("'}", "")
+            item = item.replace("{Set:''", "").replace("''}", "")
+        if item.startswith("{set:'"):
+            item = item.replace("{set:''", "").replace("''}", "")
         if item.startswith("{.:'"):
             item = item.replace("{.:'", "").replace("':.}", "")
         return item
@@ -216,11 +225,20 @@ class Item:
         elif name.startswith("{Legendary:'"):
             name = name.replace("{Legendary:'", "").replace("'}", "")
             rarity = "legendary"
+        elif name.startswith("{legendary:'"):
+            name = name.replace("{legendary:'", "").replace("'}", "")
+            rarity = "legendary"
         elif name.startswith("{Gear_Set:'"):
             name = name.replace("{Gear_Set:'", "").replace("'}", "")
             rarity = "set"
+        elif name.startswith("{gear_set:'"):
+            name = name.replace("{gear_set:'", "").replace("'}", "")
+            rarity = "set"
         elif name.startswith("{Set:'"):
-            name = name.replace("{Set:'", "").replace("'}", "")
+            name = name.replace("{Set:''", "").replace("''}", "")
+            rarity = "set"
+        elif name.startswith("{set:'"):
+            name = name.replace("{set:''", "").replace("''}", "")
             rarity = "set"
         elif name.startswith("{.:'"):
             name = name.replace("{.:'", "").replace("':.}", "")
@@ -973,14 +991,14 @@ class Character(Item):
                             backpack[n] = i
 
         tresure = [0, 0, 0, 0, 0]
-        if self.rebirths >= 50:
-            tresure[3] += max(int(self.rebirths // 50), 0)
-        if self.rebirths >= 20:
-            tresure[2] += max(int(self.rebirths // 20), 0)
+        if self.rebirths >= 15:
+            tresure[3] += max(int(self.rebirths // 15), 0)
         if self.rebirths >= 10:
-            tresure[1] += max(int(self.rebirths // 10), 0)
+            tresure[2] += max(int(self.rebirths // 10), 0)
         if self.rebirths >= 5:
-            tresure[0] += max(int(self.rebirths // 5), 0)
+            tresure[1] += max(int(self.rebirths // 5), 0)
+        if self.rebirths > 0:
+            tresure[0] += max(int(self.rebirths), 0)
 
         self.weekly_score.update({"rebirths": self.weekly_score.get("rebirths", 0) + 1})
 

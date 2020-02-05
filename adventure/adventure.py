@@ -481,13 +481,13 @@ class Adventure(BaseCog):
         if "rarity" not in item_name:
             item_dict["rarity"] = "common"
         if item_dict["rarity"] == "legendary":
-            new_name = item_name.replace("{Legendary:'", "").replace("'}", "")
+            new_name = item_name.replace("{Legendary:'", "").replace("legendary:'", "").replace("'}", "")
         if item_dict["rarity"] == "epic":
             new_name = item_name.replace("[", "").replace("]", "")
         if item_dict["rarity"] == "rare":
             new_name = item_name.replace("_", " ").replace(".", "")
         if item_dict["rarity"] == "set":
-            new_name = item_name.replace("{Gear_Set:'", "").replace("'}", "")
+            new_name = item_name.replace("{Gear_Set:'", "").replace("{gear_set:'", "").replace("'}", "")
         if item_dict["rarity"] != "set":
             if "bonus" in item_dict:
                 del item_dict["bonus"]
@@ -568,8 +568,8 @@ class Adventure(BaseCog):
 
         RARE_INDEX = RARITIES.index("rare")
         EPIC_INDEX = RARITIES.index("epic")
-        PREFIX_CHANCE = { "rare": .5, "epic": .75, "legendary": .9 }
-        SUFFIX_CHANCE = { "epic": .5, "legendary": .75 }
+        PREFIX_CHANCE = { "rare": .5, "epic": .75, "legendary": .9 , "set": 0}
+        SUFFIX_CHANCE = { "epic": .5, "legendary": .75}
 
         if rarity is None:
             rarity = random.choice(RARITIES)
@@ -592,8 +592,7 @@ class Adventure(BaseCog):
                     stats[stat] += word_stats[stat]
 
         # only rare and above should have prefix with PREFIX_CHANCE
-        if (RARITIES.index(rarity) >= RARE_INDEX
-                and random.random() <= PREFIX_CHANCE[rarity]):
+        if (RARITIES.index(rarity) >= RARE_INDEX and random.random() <= PREFIX_CHANCE[rarity]):
             #  log.debug(f"Prefix %: {PREFIX_CHANCE[rarity]}")
             prefix, prefix_stats = random.choice(list(self.PREFIXES.items()))
             name += f"{prefix} "
@@ -859,7 +858,7 @@ class Adventure(BaseCog):
                 log.exception("Error with the new character sheet")
                 return
             try:
-                item = c.backpack[item.name_formated]
+                item = c.backpack[item.name]
             except KeyError:
                 return
 
@@ -1006,7 +1005,7 @@ class Adventure(BaseCog):
                     author=self.escape(ctx.author.display_name)
                 ),
             )
-        lookup = list(x for n, x in c.backpack.items() if item.lower() in x.name_formated.lower())
+        lookup = list(x for n, x in c.backpack.items() if item.lower() in x.name.lower())
         if len(lookup) > 1:
             await smart_embed(
                 ctx,
@@ -1111,8 +1110,8 @@ class Adventure(BaseCog):
                             except Exception:
                                 log.exception("Error with the new character sheet")
                                 return
-                            if item.name_formated in buy_user.backpack:
-                                buy_user.backpack[item.name_formated].owned += 1
+                            if item.name in buy_user.backpack:
+                                buy_user.backpack[item.name].owned += 1
                             else:
                                 item.owned = 1
                                 buy_user.backpack[item.name] = item
@@ -1576,7 +1575,7 @@ class Adventure(BaseCog):
                 if slot == "two handed":
                     continue
                 equipped_item = getattr(c, slot)
-                if equipped_item and equipped_item.name_formated.lower() == full_item_name.lower():
+                if equipped_item and equipped_item.name.lower() == full_item_name.lower():
                     item = equipped_item
             if item:
                 with contextlib.suppress(Exception):
@@ -2039,7 +2038,7 @@ class Adventure(BaseCog):
                             lang="css",
                         )
                         for item in lookup:
-                            del c.backpack[item.name_formated]
+                            del c.backpack[item.name]
                         await ctx.send(created_item)
                         c.backpack[newitem.name] = newitem
                         await self.config.user(ctx.author).set(c.to_json())
@@ -2819,7 +2818,7 @@ class Adventure(BaseCog):
         xp_to_max = int((c.maxlevel + 1) ** 3)
         ten_percent = xp_to_max * 0.1
         xp_won = ten_percent if xp_won > ten_percent else xp_won
-        xp_won = xp_won * (min(max(random.randint(0, c.rebirths), 1), 50) / 100 + 1)
+        xp_won = int(xp_won * (min(max(random.randint(0, c.rebirths), 1), 50) / 100 + 1))
         if roll < 10:
             loss = round(bal // 3)
             try:
@@ -2842,6 +2841,7 @@ class Adventure(BaseCog):
                     loss_msg=loss_msg,
                 )
             )
+            ctx.command.reset_cooldown(ctx)
         elif roll == 50 and versus < 50:
             await nega_msg.edit(
                 content=_(
@@ -2875,6 +2875,7 @@ class Adventure(BaseCog):
             )
             await self._add_rewards(ctx, ctx.message.author, xp_won, 0, False)
         elif roll == versus:
+            ctx.command.reset_cooldown(ctx)
             await nega_msg.edit(
                 content=_(
                     "{content}\n**{author}** "
@@ -2915,6 +2916,7 @@ class Adventure(BaseCog):
                     loss_msg=loss_msg,
                 )
             )
+            ctx.command.reset_cooldown(ctx)
 
     @commands.group(autohelp=False)
     @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
@@ -5201,7 +5203,7 @@ class Adventure(BaseCog):
             lvl_end = lvl_end if lvl_end < c.maxlevel else c.maxlevel
             levelup_emoji = self.emojis.level_up
             rebirth_emoji = self.emojis.rebirth
-            if lvl_end == c.maxlevel:
+            if lvl_end >= c.maxlevel:
                 rebirthextra = _("{} You can now Rebirth {}").format(rebirth_emoji, user.mention)
             if lvl_start < lvl_end:
                 # recalculate free skillpoint pool based on new level and already spent points.
@@ -5221,30 +5223,30 @@ class Adventure(BaseCog):
                         levelup_emoji, user.mention, lvl_end, extra, rebirthextra
                     ),
                 )
-            if c.rebirths > 10:
+            if c.rebirths > 1:
                 roll = random.randint(1, 100)
                 if lvl_end == c.maxlevel:
                     roll += random.randint(50, 100)
                 if special is False:
                     special = [0, 0, 0, 0, 0]
-                    if c.rebirths > 5 and roll < 50:
+                    if c.rebirths > 1 and roll < 50:
                         special[0] += 1
-                    if c.rebirths > 15 and roll < 30:
+                    if c.rebirths > 5 and roll < 30:
                         special[1] += 1
-                    if c.rebirths > 20 > roll:
+                    if c.rebirths > 10 > roll:
                         special[2] += 1
-                    if c.rebirths > 50 and roll < 5:
+                    if c.rebirths > 15 and roll < 5:
                         special[3] += 1
                     if special == [0, 0, 0, 0, 0]:
                         special = False
                 else:
-                    if c.rebirths > 5 and roll < 50:
+                    if c.rebirths > 1 and roll < 50:
                         special[0] += 1
-                    if c.rebirths > 10 and roll < 30:
+                    if c.rebirths > 5 and roll < 30:
                         special[1] += 1
-                    if c.rebirths > 20 > roll:
+                    if c.rebirths > 10 > roll:
                         special[2] += 1
-                    if c.rebirths > 50 and roll < 5:
+                    if c.rebirths > 15 and roll < 5:
                         special[3] += 1
                     if special == [0, 0, 0, 0, 0]:
                         special = False
@@ -5401,11 +5403,11 @@ class Adventure(BaseCog):
 
     async def _open_chest(self, ctx: Context, user, chest_type):
         if hasattr(user, "display_name"):
-            chest_msg = _("**{}** is opening a treasure chest. What riches lay inside?").format(
+            chest_msg = _("{} is opening a treasure chest. What riches lay inside?").format(
                 self.escape(user.display_name)
             )
         else:
-            chest_msg = _("**{user}'s** {f} is foraging for treasure. What will it find?").format(
+            chest_msg = _("{user}'s {f} is foraging for treasure. What will it find?").format(
                 user=self.escape(ctx.author.display_name), f=(user[:1] + user[1:])
             )
         try:
@@ -5434,7 +5436,7 @@ class Adventure(BaseCog):
             slot = _("two handed")
         if hasattr(user, "display_name"):
             chest_msg2 = (
-                _("**{user}** found {item} [{slot}] | Lvl req {lv}.").format(
+                _("{user} found {item} [{slot}] | Lvl req {lv}.").format(
                     user=self.escape(user.display_name),
                     item=str(item),
                     slot=slot,
@@ -5698,8 +5700,8 @@ class Adventure(BaseCog):
             ).format(
                 b_reward=to_reward,
                 word=word,
-                xp=humanize_number(newxp),
-                cp=humanize_number(newcp),
+                xp=humanize_number(int(newxp)),
+                cp=humanize_number(int(newcp)),
                 currency_name=currency_name,
                 chest_type=chest_type,
             )
@@ -5710,8 +5712,8 @@ class Adventure(BaseCog):
             ).format(
                 b_reward=to_reward,
                 word=word,
-                xp=humanize_number(newxp),
-                cp=humanize_number(newcp),
+                xp=humanize_number(int(newxp)),
+                cp=humanize_number(int(newcp)),
                 currency_name=currency_name,
             )
         else:
@@ -5720,8 +5722,8 @@ class Adventure(BaseCog):
             ).format(
                 b_reward=to_reward,
                 word=word,
-                xp=humanize_number(newxp),
-                cp=humanize_number(newcp),
+                xp=humanize_number(int(newxp)),
+                cp=humanize_number(int(newcp)),
                 currency_name=currency_name,
             )
         return phrase
@@ -5729,13 +5731,13 @@ class Adventure(BaseCog):
     @staticmethod
     def _sell(c: Character, item: Item, *, amount: int = 1):
         if item.rarity == "legendary":
-            base = (750, 1000)
+            base = (1000, 2000)
         elif item.rarity == "epic":
-            base = (250, 500)
+            base = (500, 750)
         elif item.rarity == "rare":
-            base = (100, 200)
+            base = (250, 500)
         else:
-            base = (10, 75)
+            base = (10, 100)
         price = random.randint(base[0], base[1]) * item.max_main_stat
         price += price * int((c.total_cha) / 1000)
 
