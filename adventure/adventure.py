@@ -487,7 +487,7 @@ class Adventure(BaseCog):
         if item_dict["rarity"] == "rare":
             new_name = item_name.replace("_", " ").replace(".", "")
         if item_dict["rarity"] == "set":
-            new_name = item_name.replace("{Gear_Set:'", "").replace("{gear_set:'", "").replace("'}", "")
+            new_name = item_name.replace("{Gear_Set:'", "").replace("{gear_set:'", "").replace("{Gear Set:'", "").replace("'}", "")
         if item_dict["rarity"] != "set":
             if "bonus" in item_dict:
                 del item_dict["bonus"]

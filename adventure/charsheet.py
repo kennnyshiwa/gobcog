@@ -203,6 +203,8 @@ class Item:
             item = item.replace("{Gear_Set:'", "").replace("'}", "")
         if item.startswith("{gear_set:'"):
             item = item.replace("{gear_set:'", "").replace("'}", "")
+        if item.startswith("{Gear Set:'"):
+            item = item.replace("{Gear Set:'", "").replace("'}", "")
         if item.startswith("{Set:'"):
             item = item.replace("{Set:''", "").replace("''}", "")
         if item.startswith("{set:'"):
@@ -230,6 +232,9 @@ class Item:
             rarity = "legendary"
         elif name.startswith("{Gear_Set:'"):
             name = name.replace("{Gear_Set:'", "").replace("'}", "")
+            rarity = "set"
+        elif name.startswith("{Gear Set:'"):
+            name = name.replace("{Gear Set:'", "").replace("'}", "")
             rarity = "set"
         elif name.startswith("{gear_set:'"):
             name = name.replace("{gear_set:'", "").replace("'}", "")
