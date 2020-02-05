@@ -3828,9 +3828,9 @@ class Adventure(BaseCog):
                 * session.monster_stats
         )
         dragon_text = _(
-            "but **a{attr} {chall}** ("
-            "{hp_symbol} {hp}/"
-            "{dipl_symbol} {dipl}) "
+            "but **a{attr} {chall}** "
+            # "({hp_symbol} {hp}/"
+            # "{dipl_symbol} {dipl}) "
             "just landed in front of you glaring! \n\n"
             "What will you do and will other heroes be brave enough to help you?\n"
             "Heroes have 5 minutes to participate via reaction:"
@@ -3838,10 +3838,10 @@ class Adventure(BaseCog):
         ).format(
             attr=session.attribute,
             chall=session.challenge,
-            hp_symbol=self.emojis.hp,
-            hp=ceil(hp),
-            dipl_symbol=self.emojis.dipl,
-            dipl=ceil(dipl),
+            # hp_symbol=self.emojis.hp,
+            # hp=ceil(hp),
+            # dipl_symbol=self.emojis.dipl,
+            # dipl=ceil(dipl),
             reactions="**"
             + _("Fight")
             + "** - **"
@@ -3875,9 +3875,9 @@ class Adventure(BaseCog):
             + "**",
         )
         normal_text = _(
-            "but **a{attr} {chall}** ("
-            "{hp_symbol} {hp}/"
-            "{dipl_symbol} {dipl}) "
+            "but **a{attr} {chall}** "
+            # "({hp_symbol} {hp}/"
+            # "{dipl_symbol} {dipl}) "
             "is guarding it with{threat}. \n\n"
             "What will you do and will other heroes help your cause?\n"
             "Heroes have 2 minutes to participate via reaction:"
@@ -3885,11 +3885,11 @@ class Adventure(BaseCog):
         ).format(
             attr=session.attribute,
             chall=session.challenge,
-            hp_symbol=self.emojis.hp,
-            hp=ceil(hp),
-            dipl_symbol=self.emojis.dipl,
-            dipl=ceil(dipl),
-                        threat=random.choice(self.THREATEE),
+            # hp_symbol=self.emojis.hp,
+            # hp=ceil(hp),
+            # dipl_symbol=self.emojis.dipl,
+            # dipl=ceil(dipl),
+            threat=random.choice(self.THREATEE),
             reactions="**"
             + _("Fight")
             + "** - **"
