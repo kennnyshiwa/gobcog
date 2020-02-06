@@ -2354,7 +2354,7 @@ class Adventure(BaseCog):
                     "Wizards have the option to focus and add large bonuses to their magic, "
                     "but their focus can sometimes go astray...\nUse the focus command when attacking in an adventure."
                 ),
-                "cooldown": 0.0,
+                "cooldown": time.time(),
             },
             "Tinkerer": {
                 "name": _("Tinkerer"),
@@ -2363,7 +2363,7 @@ class Adventure(BaseCog):
                     "Tinkerers can forge two different items into a device "
                     "bound to their very soul.\nUse the forge command."
                 ),
-                "cooldown": 0.0,
+                "cooldown": time.time(),
             },
             "Berserker": {
                 "name": _("Berserker"),
@@ -2372,6 +2372,7 @@ class Adventure(BaseCog):
                     "Berserkers have the option to rage and add big bonuses to attacks, "
                     "but fumbles hurt.\nUse the rage command when attacking in an adventure."
                 ),
+                "cooldown": time.time(),
             },
             "Cleric": {
                 "name": _("Cleric"),
@@ -2380,7 +2381,7 @@ class Adventure(BaseCog):
                     "Clerics can bless the entire group when praying.\n"
                     "Use the bless command when fighting in an adventure."
                 ),
-                "cooldown": 0.0,
+                "cooldown": time.time(),
             },
             "Ranger": {
                 "name": _("Ranger"),
@@ -2390,7 +2391,8 @@ class Adventure(BaseCog):
                     "reward bonuses.\nUse the pet command to see pet options."
                 ),
                 "pet": {},
-                "cooldown": 0.0,
+                "cooldown": time.time(),
+                "catch_cooldown": time.time(),
             },
             "Bard": {
                 "name": _("Bard"),
@@ -2399,7 +2401,7 @@ class Adventure(BaseCog):
                     "Bards can perform to aid their comrades in diplomacy.\n"
                     "Use the music command when being diplomatic in an adventure."
                 ),
-                "cooldown": 0.0,
+                "cooldown": time.time(),
             },
         }
 
@@ -2430,6 +2432,15 @@ class Adventure(BaseCog):
                 if str(currency_name).startswith("<"):
                     currency_name = "credits"
                 spend = round(bal * 0.2)
+                try:
+                    c = await Character.from_json(self.config, ctx.author)
+                except Exception:
+                    log.exception("Error with the new character sheet")
+                    return
+                if c.heroclass["name"] == clz:
+                    return await smart_embed(
+                        ctx, _("You already are a {}.").format(clz)
+                    )
                 class_msg = await ctx.send(
                     box(
                         _(
@@ -2449,11 +2460,6 @@ class Adventure(BaseCog):
                     ),
                     lang="css",
                 )
-                try:
-                    c = await Character.from_json(self.config, ctx.author)
-                except Exception:
-                    log.exception("Error with the new character sheet")
-                    return
                 start_adding_reactions(class_msg, ReactionPredicate.YES_OR_NO_EMOJIS)
                 pred = ReactionPredicate.yes_or_no(class_msg, ctx.author)
                 try:
@@ -2549,6 +2555,7 @@ class Adventure(BaseCog):
                                     c.heroclass["ability"] = False
                                     c.heroclass["pet"] = {}
                                     c.heroclass = classes[clz]
+
                                     await self.config.user(ctx.author).set(c.to_json())
                                     await self._clear_react(class_msg)
                                     await class_msg.edit(
@@ -2562,6 +2569,19 @@ class Adventure(BaseCog):
                                 if c.skill["pool"] < 0:
                                     c.skill["pool"] = 0
                                 c.heroclass = classes[clz]
+                                if c.heroclass["name"] == "Wizard":
+                                    c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                                elif c.heroclass["name"] == "Ranger":
+                                    c.heroclass["cooldown"] = max(1800, (7200 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                                    c.heroclass["catch_cooldown"] = max(600, (3600 - ( c.luck * 2 + c.total_int * 2))) + time.time()
+                                elif c.heroclass["name"] == "Berserker":
+                                    c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_att) * 2))) + time.time()
+                                elif c.heroclass["name"] == "Cleric":
+                                    c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                                elif c.heroclass["name"] == "Bard":
+                                    c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_cha) * 2))) + time.time()
+                                elif c.heroclass["name"] == "Tinkerer":
+                                    c.heroclass["cooldown"] = max(900, (3600 - (c.luck - c.total_int) * 2)) + time.time()
                                 await self.config.user(ctx.author).set(c.to_json())
                                 await self._clear_react(class_msg)
                                 return await class_msg.edit(
@@ -2574,6 +2594,26 @@ class Adventure(BaseCog):
                             if c.skill["pool"] < 0:
                                 c.skill["pool"] = 0
                             c.heroclass = classes[clz]
+                            if c.heroclass["name"] == "Wizard":
+                                c.heroclass["cooldown"] = max(300, (
+                                            1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                            elif c.heroclass["name"] == "Ranger":
+                                c.heroclass["cooldown"] = max(1800, (
+                                            7200 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                                c.heroclass["catch_cooldown"] = max(600, (
+                                            3600 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                            elif c.heroclass["name"] == "Berserker":
+                                c.heroclass["cooldown"] = max(300, (
+                                            1200 - ((c.luck + c.total_att) * 2))) + time.time()
+                            elif c.heroclass["name"] == "Cleric":
+                                c.heroclass["cooldown"] = max(300, (
+                                            1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                            elif c.heroclass["name"] == "Bard":
+                                c.heroclass["cooldown"] = max(300, (
+                                            1200 - ((c.luck + c.total_cha) * 2))) + time.time()
+                            elif c.heroclass["name"] == "Tinkerer":
+                                c.heroclass["cooldown"] = max(900, (
+                                            3600 - (c.luck - c.total_int) * 2)) + time.time()
                             await self.config.user(ctx.author).set(c.to_json())
                             await self._clear_react(class_msg)
                             await class_msg.edit(content=box(now_class_msg, lang="css"))
