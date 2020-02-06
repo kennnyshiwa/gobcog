@@ -2566,57 +2566,38 @@ class Adventure(BaseCog):
                                             lang="css",
                                         )
                                     )
-                                if c.skill["pool"] < 0:
-                                    c.skill["pool"] = 0
-                                c.heroclass = classes[clz]
-                                if c.heroclass["name"] == "Wizard":
-                                    c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_int) * 2))) + time.time()
-                                elif c.heroclass["name"] == "Ranger":
-                                    c.heroclass["cooldown"] = max(1800, (7200 - (c.luck * 2 + c.total_int * 2))) + time.time()
-                                    c.heroclass["catch_cooldown"] = max(600, (3600 - ( c.luck * 2 + c.total_int * 2))) + time.time()
-                                elif c.heroclass["name"] == "Berserker":
-                                    c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_att) * 2))) + time.time()
-                                elif c.heroclass["name"] == "Cleric":
-                                    c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_int) * 2))) + time.time()
-                                elif c.heroclass["name"] == "Bard":
-                                    c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_cha) * 2))) + time.time()
-                                elif c.heroclass["name"] == "Tinkerer":
-                                    c.heroclass["cooldown"] = max(900, (3600 - (c.luck - c.total_int) * 2)) + time.time()
-                                await self.config.user(ctx.author).set(c.to_json())
-                                await self._clear_react(class_msg)
-                                return await class_msg.edit(
+                                await class_msg.edit(
                                     content=class_msg.content + box(now_class_msg, lang="css")
                                 )
                             else:
                                 ctx.command.reset_cooldown(ctx)
                                 return
-                        else:
-                            if c.skill["pool"] < 0:
-                                c.skill["pool"] = 0
-                            c.heroclass = classes[clz]
-                            if c.heroclass["name"] == "Wizard":
-                                c.heroclass["cooldown"] = max(300, (
-                                            1200 - ((c.luck + c.total_int) * 2))) + time.time()
-                            elif c.heroclass["name"] == "Ranger":
-                                c.heroclass["cooldown"] = max(1800, (
-                                            7200 - (c.luck * 2 + c.total_int * 2))) + time.time()
-                                c.heroclass["catch_cooldown"] = max(600, (
-                                            3600 - (c.luck * 2 + c.total_int * 2))) + time.time()
-                            elif c.heroclass["name"] == "Berserker":
-                                c.heroclass["cooldown"] = max(300, (
-                                            1200 - ((c.luck + c.total_att) * 2))) + time.time()
-                            elif c.heroclass["name"] == "Cleric":
-                                c.heroclass["cooldown"] = max(300, (
-                                            1200 - ((c.luck + c.total_int) * 2))) + time.time()
-                            elif c.heroclass["name"] == "Bard":
-                                c.heroclass["cooldown"] = max(300, (
-                                            1200 - ((c.luck + c.total_cha) * 2))) + time.time()
-                            elif c.heroclass["name"] == "Tinkerer":
-                                c.heroclass["cooldown"] = max(900, (
-                                            3600 - (c.luck - c.total_int) * 2)) + time.time()
-                            await self.config.user(ctx.author).set(c.to_json())
-                            await self._clear_react(class_msg)
-                            await class_msg.edit(content=box(now_class_msg, lang="css"))
+                        if c.skill["pool"] < 0:
+                            c.skill["pool"] = 0
+                        c.heroclass = classes[clz]
+                        if c.heroclass["name"] == "Wizard":
+                            c.heroclass["cooldown"] = max(300, (
+                                        1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                        elif c.heroclass["name"] == "Ranger":
+                            c.heroclass["cooldown"] = max(1800, (
+                                        7200 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                            c.heroclass["catch_cooldown"] = max(600, (
+                                        3600 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                        elif c.heroclass["name"] == "Berserker":
+                            c.heroclass["cooldown"] = max(300, (
+                                        1200 - ((c.luck + c.total_att) * 2))) + time.time()
+                        elif c.heroclass["name"] == "Cleric":
+                            c.heroclass["cooldown"] = max(300, (
+                                        1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                        elif c.heroclass["name"] == "Bard":
+                            c.heroclass["cooldown"] = max(300, (
+                                        1200 - ((c.luck + c.total_cha) * 2))) + time.time()
+                        elif c.heroclass["name"] == "Tinkerer":
+                            c.heroclass["cooldown"] = max(900, (
+                                        3600 - (c.luck - c.total_int) * 2)) + time.time()
+                        await self.config.user(ctx.author).set(c.to_json())
+                        await self._clear_react(class_msg)
+                        await class_msg.edit(content=box(now_class_msg, lang="css"))
                         try:
                             await bank.withdraw_credits(ctx.author, spend)
                         except ValueError:
