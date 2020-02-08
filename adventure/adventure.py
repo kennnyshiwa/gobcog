@@ -2603,7 +2603,7 @@ class Adventure(BaseCog):
 
     @commands.command()
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.user)
-    async def loot(self, ctx: Context, box_type: str = None, amount: int = 1):
+    async def loot(self, ctx: Context, box_type: str = None):
         """This opens one of your precious treasure chests.
 
         Use the box rarity type with the command: normal, rare, epic, legendary or set.
@@ -2617,8 +2617,6 @@ class Adventure(BaseCog):
             )
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
-        if amount < 1 or amount > 20:
-            return await smart_embed(ctx, _("Nice try :smirk:"))
         try:
             c = await Character.from_json(self.config, ctx.author)
         except Exception:
@@ -2659,7 +2657,7 @@ class Adventure(BaseCog):
                 ),
             )
         treasure = c.treasure[redux.index(1)]
-        if treasure < amount:
+        if treasure < 1:
             await smart_embed(
                 ctx,
                 _("**{author}**, you do not have enough {box} treasure chest to open.").format(
@@ -2675,34 +2673,8 @@ class Adventure(BaseCog):
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
-                c.treasure[redux.index(1)] -= amount
+                c.treasure[redux.index(1)] -= 1
                 await self.config.user(ctx.author).set(c.to_json())
-            if amount > 1:
-                items = await self._open_chests(ctx, ctx.author, box_type, amount)
-                msg = _(
-                    "{}, you've opened the following items:\n"
-                    "( ATT | CHA | INT | DEX | LUCK)"
-                ).format(self.escape(ctx.author.display_name))
-                rjust = max([len(str(i)) for n, i in items.items()])
-                for name, item in items.items():
-                    att_space = " " if len(str(item.att)) == 1 else ""
-                    cha_space = " " if len(str(item.cha)) == 1 else ""
-                    int_space = " " if len(str(item.int)) == 1 else ""
-                    dex_space = " " if len(str(item.dex)) == 1 else ""
-                    luck_space = " " if len(str(item.luck)) == 1 else ""
-                    msg += (f"\n Lv {item.lvl:<2} | "
-                            f"{str(item):<{rjust}} - "
-                            f"({att_space}{item.att} |"
-                            f"{cha_space}{item.cha} |"
-                            f"{int_space}{item.int} |"
-                            f"{dex_space}{item.dex} |"
-                            f"{luck_space}{item.luck} )"
-                            )
-                msgs = []
-                for page in pagify(msg):
-                    msgs.append(box(page, lang="css"))
-                await menu(ctx, msgs, DEFAULT_CONTROLS)
-            else:
                 await self._open_chest(ctx, ctx.author, box_type)  # returns item and msg
 
     @commands.command(name="negaverse", aliases=["nv"])
