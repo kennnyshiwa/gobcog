@@ -358,6 +358,7 @@ class GameSession:
     talk: List[discord.Member] = []
     pray: List[discord.Member] = []
     run: List[discord.Member] = []
+    insight = (0, None)
 
     def __init__(self, **kwargs):
         self.challenge: str = kwargs.pop("challenge")
