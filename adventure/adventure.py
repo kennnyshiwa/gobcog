@@ -5926,8 +5926,9 @@ class Adventure(BaseCog):
         room = await self.config.guild(ctx.guild).cartroom()
         if room:
             room = ctx.guild.get_channel(room)
-        if room is None:
+        if room is None or bypass:
             room = ctx
+
 
         self.bot.dispatch("adventure_cart", ctx)  # dispatch after silent return
 
