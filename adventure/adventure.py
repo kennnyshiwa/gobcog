@@ -220,16 +220,14 @@ class Adventure(BaseCog):
         self.emojis.sell = "\N{MONEY BAG}"
         self.emojis.skills = SimpleNamespace()
         self.emojis.skills.bless = "\N{SCROLL}"
-        self.emojis.skills.psychic = "\N{SIX POINTED STAR WITH MIDDLE DOT}"
+        # self.emojis.skills.psychic = "\N{SIX POINTED STAR WITH MIDDLE DOT}"
         self.emojis.skills.berserker = self.emojis.berserk
         self.emojis.skills.wizzard = self.emojis.magic_crit
-
-        self.emojis.skills.bard = (
+        self.emojisskills.bard = (
             "\N{EIGHTH NOTE}\N{BEAMED EIGHTH NOTES}\N{BEAMED SIXTEENTH NOTES}"
         )
         self.emojis.hp = "\N{HEAVY BLACK HEART}\N{VARIATION SELECTOR-16}"
         self.emojis.dipl = self.emojis.talk
-
 
         self._adventure_actions = [
             self.emojis.attack,
@@ -2437,16 +2435,6 @@ class Adventure(BaseCog):
                 ),
                 "cooldown": time.time(),
             },
-            "Psychic": {
-                "name": _("Psychic"),
-                "ability": False,
-                "desc": _(
-                    "Psychics can show the enemy's weaknesses to their group "
-                    "allowing them to target the monster's weakpoints.\n"
-                    "Use the insight command in an adventure."
-                ),
-                "cooldown": time.time(),
-            },
         }
 
         if clz is None:
@@ -2455,7 +2443,7 @@ class Adventure(BaseCog):
                 ctx,
                 _(
                     "So you feel like taking on a class, **{author}**?\n"
-                    "Available classes are: Tinkerer, Berserker, Wizard, Cleric, Ranger, Bard and Psychic.\n"
+                    "Available classes are: Tinkerer, Berserker, Wizard, Cleric, Ranger and Bard.\n"
                     "Use `{prefix}heroclass name-of-class` to choose one."
                 ).format(author=self.escape(ctx.author.display_name), prefix=ctx.prefix),
             )
@@ -2639,8 +2627,6 @@ class Adventure(BaseCog):
                         elif c.heroclass["name"] == "Tinkerer":
                             c.heroclass["cooldown"] = max(900, (
                                         3600 - (c.luck - c.total_int) * 2)) + time.time()
-                        elif c.heroclass["name"] == "Psychic":
-                            c.heroclass["cooldown"] = max(120, (3600 - (c.luck - c.total_cha) * 2)) + time.time()
                         await self.config.user(ctx.author).set(c.to_json())
                         await self._clear_react(class_msg)
                         await class_msg.edit(content=box(now_class_msg, lang="css"))
@@ -3401,153 +3387,6 @@ class Adventure(BaseCog):
                     ).format(humanize_timedelta(seconds=int(cooldown_time))),
                 )
 
-    @commands.command()
-    @commands.guild_only()
-    async def insight(self, ctx: Context):
-        """[Psychic Class Only]
-
-        This allows a Psychic to expose the current enemy's weakeness to the party.
-        """
-        try:
-            c = await Character.from_json(self.config, ctx.author)
-        except Exception:
-            log.exception("Error with the new character sheet")
-            return
-        if c.heroclass["name"] != "Psychic":
-            ctx.command.reset_cooldown(ctx)
-            return await smart_embed(
-                ctx,
-                _("{}, you need to be a Psychic to do this.").format(
-                    self.escape(ctx.author.display_name)
-                ),
-            )
-        else:
-            if ctx.guild.id not in self._sessions:
-                ctx.command.reset_cooldown(ctx)
-                return await smart_embed(
-                    ctx,
-                    _(
-                        "There is no active adventures."
-                    ),
-                )
-            if not self.in_adventure(ctx):
-                ctx.command.reset_cooldown(ctx)
-                return await smart_embed(
-                    ctx,
-                    _(
-                        "You tried to expose the enemy's weaknesses, then you realised you were "
-                        "by yourself, alone in a dark alley and the enemy was just your shadow."
-                    ),
-                )
-            if c.heroclass["ability"]:
-                return await smart_embed(
-                    ctx,
-                    _("{}, ability already in use.").format(self.escape(ctx.author.display_name)),
-                )
-            cooldown_time = max(120, (3600 - ((c.luck + c.total_cha) * 2)))
-            if "cooldown" not in c.heroclass:
-                c.heroclass["cooldown"] = cooldown_time + 1
-            if c.heroclass["cooldown"] + cooldown_time <= time.time():
-                roll = random.randint(min(c.rebirths, 40), 50) / 50
-                if ctx.guild.id in self._sessions and self._sessions[ctx.guild.id].insight[0] < roll:
-                    self._sessions[ctx.guild.id].insight = roll, c
-                    good = True
-                else:
-                    good = False
-                    await smart_embed(
-                        ctx,
-                        _(
-                            "Another hero already done a better job than you."
-                        )
-                    )
-                c.heroclass["ability"] = True
-                c.heroclass["cooldown"] = time.time()
-                async with self.get_lock(c.user):
-                    await self.config.user(ctx.author).set(c.to_json())
-                    if good:
-                        await smart_embed(
-                            ctx,
-                            _("{skill} **{c}** is focusing on the monster ahead...{skill}").format(
-                                c=self.escape(ctx.author.display_name), skill=self.emojis.skills.psychic,
-                            ),
-                        )
-                if good:
-                    session = self._sessions[ctx.guild.id]
-                    pdef = session.monsters[session.challenge]["pdef"]
-                    mdef = session.monsters[session.challenge]["mdef"]
-                    msg = ""
-                    if roll <= .4:
-                        return await smart_embed(
-                        ctx,
-                        _(
-                            "You suck."
-                        )
-                    )
-                    if roll >= .9:
-                        hp = (
-                                session.monsters[session.challenge]["hp"]
-                                * self.ATTRIBS[session.attribute][0]
-                                * session.monster_stats
-                        )
-                        dipl = (
-                                session.monsters[session.challenge]["dipl"]
-                                * self.ATTRIBS[session.attribute][1]
-                                * session.monster_stats
-                        )
-                        msg += _(
-                            "This monster is **a{attr} {challenge}** ({hp_symbol} {hp}/{dipl_symbol} {dipl})\n"
-                        ).format(challenge=session.challenge, attr=session.attribute,
-                                 hp_symbol=self.emojis.hp,
-                                 hp=ceil(hp),
-                                 dipl_symbol=self.emojis.dipl,
-                                 dipl=ceil(dipl),
-                                 )
-                    if roll >= .4:
-                        if pdef >= 1.5:
-                            msg += _(
-                                "Swords bounce off this monster as it's skin is **almost impenetrable!**\n"
-                            )
-                        elif pdef >= 1.25:
-                            msg += _("This monster has **extremely tough** armour!\n")
-                        elif pdef > 1:
-                            msg += _("Swords don't cut this monster **quite as well!**\n")
-                        elif pdef > 0.75:
-                            msg += _("This monster is **soft and easy** to slice!\n")
-                        else:
-                            msg += _(
-                                "Swords slice through this monster like a **hot knife through butter!**\n"
-                            )
-                    if roll >= .6:
-                        if mdef >= 1.5:
-                            msg += _(
-                                "Magic? Pfft, magic is **no match** for this creature!\n")
-                        elif mdef >= 1.25:
-                            msg += _("This monster has **substantial magic resistance!**\n")
-                        elif mdef > 1:
-                            msg += _("This monster has increased **magic resistance!**\n")
-                        elif mdef > 0.75:
-                            msg += _("This monster's hide **melts to magic!**\n")
-                        else:
-                            msg += _("Magic spells are **hugely effective** against this monster!\n")
-
-                    if msg:
-                        return await smart_embed(
-                            ctx,
-                            msg
-                        )
-                    else:
-                        return await smart_embed(
-                            ctx,
-                            _("You have failed to discover anything about this monster.")
-                        )
-            else:
-                cooldown_time = (c.heroclass["cooldown"]) + cooldown_time - time.time()
-                return await smart_embed(
-                    ctx,
-                    _(
-                        "Your hero is currently recovering from the last time they used this skill. Try again in {}"
-                    ).format(humanize_timedelta(seconds=int(cooldown_time))),
-                )
 
     @commands.command()
     async def skill(self, ctx: Context, spend: str = None, amount: int = 1):
@@ -4969,6 +4808,34 @@ class Adventure(BaseCog):
         failed_emoji = self.emojis.fumble
         if len(attack_list) >= 1:
             msg = ""
+            if len(fight_list) >= 1:
+                # TODO: Remove me when psychic gets added
+                if pdef >= 1.5:
+                    msg += _(
+                        "Swords bounce off this monster as it's skin is **almost impenetrable!**\n"
+                    )
+                elif pdef >= 1.25:
+                    msg += _("This monster has **extremely tough** armour!\n")
+                elif pdef > 1:
+                    msg += _("Swords don't cut this monster **quite as well!**\n")
+                elif 0.75 <= pdef < 1:
+                    msg += _("This monster is **soft and easy** to slice!\n")
+                elif pdef > 0 and pdef != 1:
+                    msg += _(
+                        "Swords slice through this monster like a **hot knife through butter!**\n"
+                    )
+            if len(magic_list) >= 1:
+                if mdef >= 1.5:
+                    msg += _("Magic? Pfft, your puny magic is **no match** for this creature!\n")
+                elif mdef >= 1.25:
+                    msg += _("This monster has **substantial magic resistance!**\n")
+                elif mdef > 1:
+                    msg += _("This monster has increased **magic resistance!**\n")
+                elif 0.75 <= mdef < 1:
+                    msg += _("This monster's hide **melts to magic!**\n")
+                elif mdef > 0 and mdef != 1:
+                    msg += _("Magic spells are **hugely effective** against this monster!\n")
+
             report = _("Attack Party: \n\n")
         else:
             return (fumblelist, critlist, attack, magic, "")
@@ -5033,8 +4900,6 @@ class Adventure(BaseCog):
             else:
                 attack += int((roll + att_value) / pdef) + c.rebirths // 5
                 report += f"**{self.escape(user.display_name)}**: {self.emojis.dice}({roll}) + {self.emojis.attack}{str(att_value)}\n"
-            if session.insight[0] == 1:
-                attack += session.insight[1].total_att
         for user in magic_list:
             try:
                 c = await Character.from_json(self.config, user)
@@ -5097,19 +4962,13 @@ class Adventure(BaseCog):
             else:
                 magic += int((roll + int_value) / mdef) + c.rebirths // 5
                 report += f"**{self.escape(user.display_name)}**: {self.emojis.dice}({roll}) + {self.emojis.magic}{str(int_value)}\n"
-            if session.insight[0] == 1:
-                attack += session.insight[1].total_int
         if fumble_count == len(attack_list):
             report += _("No one!")
         msg += report + "\n"
         for user in fumblelist:
             if user in session.fight:
-                if session.insight[0] == 1:
-                    attack -= session.insight[1].total_att
                 session.fight.remove(user)
             elif user in session.magic:
-                if session.insight[0] == 1:
-                    attack -= session.insight[1].total_int
                 session.magic.remove(user)
         return (fumblelist, critlist, attack, magic, msg)
 
@@ -5283,15 +5142,11 @@ class Adventure(BaseCog):
             else:
                 diplomacy += roll + dipl_value + c.rebirths // 5
                 report += f"**{self.escape(user.display_name)}** {self.emojis.dice}({roll}) + {self.emojis.talk}{str(dipl_value)}\n"
-            if session.insight[0] == 1:
-                diplomacy += session.insight[1].total_cha
         if fumble_count == len(talk_list):
             report += _("No one!")
         msg = msg + report + "\n"
         for user in fumblelist:
             if user in talk_list:
-                if session.insight[0] == 1:
-                    diplomacy -= session.insight[1].total_cha
                 session.talk.remove(user)
         return fumblelist, critlist, diplomacy, msg
 
@@ -5928,10 +5783,7 @@ class Adventure(BaseCog):
             room = ctx.guild.get_channel(room)
         if room is None or bypass:
             room = ctx
-
-
         self.bot.dispatch("adventure_cart", ctx)  # dispatch after silent return
-
         stockcount = random.randint(3, 9)
         controls = {em_list[i + 1]: i for i in range(stockcount)}
         self._curent_trader_stock[ctx.guild.id] = stockcount, controls
