@@ -646,7 +646,7 @@ class Adventure(BaseCog):
 
     @commands.command()
     @commands.is_owner()
-    async def genitems(self, ctx: Context, num: int = 15, rarity: str = None, slot: str = None):
+    async def genitems(self, ctx: Context, rarity: str, slot: str, num: int = 15):
         """Generate random items."""
         user = ctx.author
         async with self.get_lock(user):
