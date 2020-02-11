@@ -176,6 +176,7 @@ class Item:
             return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
             # Thanks Sinbad!
         return self.name
+
     @property
     def formatted_name(self):
         return str(self)
@@ -185,7 +186,9 @@ class Item:
         if self.rarity not in ["forged"]:
             # epic and legendary stats too similar so make level req's
             # the same
-            rarity_multiplier = min(RARITIES.index(self.rarity) if self.rarity in RARITIES else 1, 5)
+            rarity_multiplier = min(
+                RARITIES.index(self.rarity) if self.rarity in RARITIES else 1, 5
+            )
             lvl = self.max_main_stat * (rarity_multiplier + 3)
         return max(round(lvl), 1)
 
@@ -537,7 +540,7 @@ class Character(Item):
                     class_desc += _("\n\n- Current pet: {}").format(self.heroclass["pet"]["name"])
         else:
             class_desc = _("Hero.")
-        legend = _("( ATT | CHA | INT | DEX | LUCK )")
+        legend = _("( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | OWNED | SET (SET PIECES)")
         return _(
             "[{user}'s Character Sheet]\n\n"
             "{{Rebirths: {rebirths}, \n Max Level: {maxlevel}}}\n"
@@ -556,7 +559,11 @@ class Character(Item):
             user=self.user.display_name,
             rebirths=self.rebirths,
             lvl=self.lvl if self.lvl < self.maxlevel else self.maxlevel,
-            rebirth_text="\n" if self.lvl < self.maxlevel else _("You have reached max level. To continue gaining levels and xp, you will have to rebirth.\n\n"),
+            rebirth_text="\n"
+            if self.lvl < self.maxlevel
+            else _(
+                "You have reached max level. To continue gaining levels and xp, you will have to rebirth.\n\n"
+            ),
             maxlevel=self.maxlevel,
             class_desc=class_desc,
             att=self.att,
@@ -635,8 +642,9 @@ class Character(Item):
             int_space = " " if len(str(inter)) == 1 else ""
             dex_space = " " if len(str(dex)) == 1 else ""
             luck_space = " " if len(str(luck)) == 1 else ""
+            owned = f" | {self.owned}"
             if item.set:
-                settext += f" | Set `{item.set}` ({item.parts})"
+                settext += f" | Set `{item.set}` ({item.parts}pcs)"
             form_string += (
                 f"\n Lv {equip_level(self, item):<2} | "
                 f"{str(item):<{rjust}} - "
@@ -644,7 +652,7 @@ class Character(Item):
                 f"{cha_space}{cha} |"
                 f"{int_space}{inter} |"
                 f"{dex_space}{dex} |"
-                f"{luck_space}{luck} ){settext}"
+                f"{luck_space}{luck} ){owned}{settext}"
             )
 
         return form_string + "\n"
@@ -709,13 +717,15 @@ class Character(Item):
         if consumed is None:
             consumed = []
         bkpk = self.get_sorted_backpack(self.backpack)
-        form_string = _("Items in Backpack: \n( ATT | CHA | INT | DEX | LUCK )")
+        form_string = _(
+            "Items in Backpack: \n( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | OWNED | SET (SET PIECES)"
+        )
         consumed_list = [i for i in consumed]
+        rjust = max([len(str(i[1])) + 3 for slot_group in bkpk for i in slot_group])
         for slot_group in bkpk:
             slot_name = slot_group[0][1].slot
             slot_name = slot_name[0] if len(slot_name) < 2 else _("two handed")
-            form_string += f"\n\n {slot_name.title()} slot"
-            rjust = max([len(str(i[1])) for i in slot_group])
+            form_string += f"\n\n {slot_name.title()} slot\n"
             for item in slot_group:
                 if forging and (item[1].rarity == "forged" or item[1] in consumed_list):
                     continue
@@ -725,17 +735,19 @@ class Character(Item):
                 int_space = " " if len(str(item[1].int)) == 1 else ""
                 dex_space = " " if len(str(item[1].dex)) == 1 else ""
                 luck_space = " " if len(str(item[1].luck)) == 1 else ""
+                owned = f" | {item[1].owned}"
                 if item[1].set:
-                    settext += f" | Set `{item[1].set}` ({item[1].parts})"
+                    settext += f" | Set `{item[1].set}` ({item[1].parts}pcs)"
                 form_string += (
-                        f"\n Lv {equip_level(self, item[1]):<2} | "
-                        f"{str(item[1]):<{rjust}} - "
-                        f"({att_space}{item[1].att} |"
-                        f"{cha_space}{item[1].cha} |"
-                        f"{int_space}{item[1].int} |"
-                        f"{dex_space}{item[1].dex} |"
-                        f"{luck_space}{item[1].luck} ){settext}"
-                        )
+                    f"\n{str(item[1]):<{rjust}} - "
+                    f"({att_space}{item[1].att} |"
+                    f"{cha_space}{item[1].cha} |"
+                    f"{int_space}{item[1].int} |"
+                    f"{dex_space}{item[1].dex} |"
+                    f"{luck_space}{item[1].luck} )"
+                    f" | Lv {equip_level(self, item[1]):<3}"
+                    f"{owned}{settext}"
+                )
 
         return form_string + "\n"
 

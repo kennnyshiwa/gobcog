@@ -93,9 +93,7 @@ async def smart_embed(ctx, message, success=None):
                 colour = discord.Colour.dark_red()
             else:
                 colour = await ctx.embed_colour()
-            return await ctx.send(
-                embed=discord.Embed(description=message, color=colour)
-            )
+            return await ctx.send(embed=discord.Embed(description=message, color=colour))
         else:
             return await ctx.send(message)
     return await ctx.send(message)
@@ -121,7 +119,7 @@ class AdventureResults:
         if len(self._last_raids) >= self._num_raids:
             self._last_raids.pop(0)
         raid_dict = {}
-        for var in ('main_action', 'amount', 'num_ppl', 'success'):
+        for var in ("main_action", "amount", "num_ppl", "success"):
             raid_dict[var] = locals()[var]
         self._last_raids.append(raid_dict)
 
@@ -137,10 +135,10 @@ class AdventureResults:
         SOLO_RAID_SCALE = 0.25
         if len(self._last_raids) == 0:
             return {
-                    'stat_type': "hp",
-                    'min_stat': 0,
-                    'max_stat': 0,
-                    }
+                "stat_type": "hp",
+                "min_stat": 0,
+                "max_stat": 0,
+            }
 
         # tally up stats for raids
         num_attack = 0
@@ -176,21 +174,22 @@ class AdventureResults:
             avg_amount = talk_amount / num_talk
 
         # return main stat and range
-        min_stat = avg_amount * .75
+        min_stat = avg_amount * 0.75
         max_stat = avg_amount * 1.5
         # want win % to be at least 50%, even when solo
         # if win % is below 50%, scale back min/max for easier mons
-        if win_percent < .5:
+        if win_percent < 0.5:
             min_stat = avg_amount * win_percent
             max_stat = avg_amount * 1.25
 
         stats_dict = {}
-        for var in ('stat_type', 'min_stat', 'max_stat'):
+        for var in ("stat_type", "min_stat", "max_stat"):
             stats_dict[var] = locals()[var]
         return stats_dict
 
     def __str__(self):
         return str(self._last_raids)
+
 
 @cog_i18n(_)
 class Adventure(BaseCog):
@@ -359,18 +358,18 @@ class Adventure(BaseCog):
             global _config
             _config = self.config
             theme = await self.config.theme()
-            as_monster_fp = cog_data_path(self) / f"{theme}" /"as_monsters.json"
-            attribs_fp = cog_data_path(self) / f"{theme}" /"attribs.json"
-            locations_fp = cog_data_path(self) / f"{theme}" /"locations.json"
-            monster_fp = cog_data_path(self) / f"{theme}" /"monsters.json"
-            pets_fp = cog_data_path(self) / f"{theme}" /"pets.json"
-            raisins_fp = cog_data_path(self) / f"{theme}" /"raisins.json"
-            threatee_fp = cog_data_path(self) / f"{theme}" /"threatee.json"
-            tr_set_fp = cog_data_path(self) / f"{theme}" /"tr_set.json"
-            prefixes_fp = cog_data_path(self) / f"{theme}" /"prefixes.json"
-            materials_fp = cog_data_path(self) / f"{theme}" /"materials.json"
-            equipment_fp = cog_data_path(self) / f"{theme}" /"equipment.json"
-            suffixes_fp = cog_data_path(self) / f"{theme}" /"suffixes.json"
+            as_monster_fp = cog_data_path(self) / f"{theme}" / "as_monsters.json"
+            attribs_fp = cog_data_path(self) / f"{theme}" / "attribs.json"
+            locations_fp = cog_data_path(self) / f"{theme}" / "locations.json"
+            monster_fp = cog_data_path(self) / f"{theme}" / "monsters.json"
+            pets_fp = cog_data_path(self) / f"{theme}" / "pets.json"
+            raisins_fp = cog_data_path(self) / f"{theme}" / "raisins.json"
+            threatee_fp = cog_data_path(self) / f"{theme}" / "threatee.json"
+            tr_set_fp = cog_data_path(self) / f"{theme}" / "tr_set.json"
+            prefixes_fp = cog_data_path(self) / f"{theme}" / "prefixes.json"
+            materials_fp = cog_data_path(self) / f"{theme}" / "materials.json"
+            equipment_fp = cog_data_path(self) / f"{theme}" / "equipment.json"
+            suffixes_fp = cog_data_path(self) / f"{theme}" / "suffixes.json"
             files = {
                 "pets": pets_fp,
                 "attr": attribs_fp,
@@ -461,14 +460,22 @@ class Adventure(BaseCog):
                     user_equipped_items = adventurers_data[user]["items"]
                     for slot in user_equipped_items.keys():
                         if user_equipped_items[slot]:
-                            for slot_item_name, slot_item in list(user_equipped_items[slot].items())[:1]:
+                            for slot_item_name, slot_item in list(
+                                user_equipped_items[slot].items()
+                            )[:1]:
                                 # update slot item if item equipped
-                                new_name, slot_item = self._convert_item_migration(slot_item_name, slot_item)
+                                new_name, slot_item = self._convert_item_migration(
+                                    slot_item_name, slot_item
+                                )
                                 adventurers_data[user]["items"][slot] = {new_name: slot_item}
                     if "backpack" not in adventurers_data[user]:
                         adventurers_data[user]["backpack"] = {}
-                    for backpack_item_name, backpack_item in adventurers_data[user]["backpack"].items():
-                        new_name, backpack_item = self._convert_item_migration(backpack_item_name, backpack_item)
+                    for backpack_item_name, backpack_item in adventurers_data[user][
+                        "backpack"
+                    ].items():
+                        new_name, backpack_item = self._convert_item_migration(
+                            backpack_item_name, backpack_item
+                        )
                         new_backpack[new_name] = backpack_item
                     adventurers_data[user]["backpack"] = new_backpack
                     if "loadouts" not in adventurers_data[user]:
@@ -479,7 +486,9 @@ class Adventure(BaseCog):
                                 new_loadout[slot] = {}
                                 for loadout_item_name, loadout_item in equipped_loadout.items():
 
-                                    new_name, loadout_item = self._convert_item_migration(loadout_item_name, loadout_item)
+                                    new_name, loadout_item = self._convert_item_migration(
+                                        loadout_item_name, loadout_item
+                                    )
                                     new_loadout[slot][new_name] = loadout_item
                         adventurers_data[user]["loadouts"] = new_loadout
                     except Exception:
@@ -489,17 +498,24 @@ class Adventure(BaseCog):
     def _convert_item_migration(self, item_name, item_dict):
         new_name = item_name
         if "name" in item_dict:
-            del item_dict['name']
+            del item_dict["name"]
         if "rarity" not in item_name:
             item_dict["rarity"] = "common"
         if item_dict["rarity"] == "legendary":
-            new_name = item_name.replace("{Legendary:'", "").replace("legendary:'", "").replace("'}", "")
+            new_name = (
+                item_name.replace("{Legendary:'", "").replace("legendary:'", "").replace("'}", "")
+            )
         if item_dict["rarity"] == "epic":
             new_name = item_name.replace("[", "").replace("]", "")
         if item_dict["rarity"] == "rare":
             new_name = item_name.replace("_", " ").replace(".", "")
         if item_dict["rarity"] == "set":
-            new_name = item_name.replace("{Gear_Set:'", "").replace("{gear_set:'", "").replace("{Gear Set:'", "").replace("'}", "")
+            new_name = (
+                item_name.replace("{Gear_Set:'", "")
+                .replace("{gear_set:'", "")
+                .replace("{Gear Set:'", "")
+                .replace("'}", "")
+            )
         if item_dict["rarity"] != "set":
             if "bonus" in item_dict:
                 del item_dict["bonus"]
@@ -553,49 +569,34 @@ class Adventure(BaseCog):
     async def _genitem(self, rarity: str = None, slot: str = None):
         """Generate an item."""
         if rarity == "set":
-            item_name, item_data = random.choice(list(self.TR_GEAR_SET.items()))
-            name = Item.remove_markdowns(item_name)
-            return Item(
-                name=name,
-                slot=item_data.get("slot"),
-                rarity=rarity,
-                att=item_data.get("att", 0),
-                int=item_data.get("int", 0),
-                cha=item_data.get("cha", 0),
-                dex=item_data.get("dex", 0),
-                luck=item_data.get("luck", 0),
-                owned=1,
-                parts=item_data.get("parts", 1),
-                bonus=item_data.get("bonus", {
-                "att": 0,
-                "cha": 0,
-                "int": 0,
-                "dex": 0,
-                "luck": 0,
-                "statmult": 1,
-                "xpmult": 1,
-                "cpmult": 1,
-            },),
-            )
+            items = list(self.TR_GEAR_SET.items())
+            items = [
+                i
+                for i in items
+                if i[1]["slot"] == [slot]
+                or (slot == "two handed" and i[1]["slot"] == ["left", "right"])
+            ]
+            item_name, item_data = random.choice(items)
+            return Item.from_json({item_name: item_data})
 
         RARE_INDEX = RARITIES.index("rare")
         EPIC_INDEX = RARITIES.index("epic")
-        PREFIX_CHANCE = { "rare": .5, "epic": .75, "legendary": .9 , "set": 0}
-        SUFFIX_CHANCE = { "epic": .5, "legendary": .75}
+        PREFIX_CHANCE = {"rare": 0.5, "epic": 0.75, "legendary": 0.9, "set": 0}
+        SUFFIX_CHANCE = {"epic": 0.5, "legendary": 0.75}
 
-        if rarity is None:
-            rarity = random.choice(RARITIES)
+        if rarity not in RARITIES:
+            rarity = "normal"
         if slot is None:
             slot = random.choice(ORDER)
             #  slot = random.choice(["right", "chest"])
         name = ""
         stats = {
-                "att": 0,
-                "cha": 0,
-                "int": 0,
-                "dex": 0,
-                "luck": 0,
-                }
+            "att": 0,
+            "cha": 0,
+            "int": 0,
+            "dex": 0,
+            "luck": 0,
+        }
 
         def add_stats(word_stats):
             """Add stats in word's dict to local stats dict."""
@@ -604,64 +605,69 @@ class Adventure(BaseCog):
                     stats[stat] += word_stats[stat]
 
         # only rare and above should have prefix with PREFIX_CHANCE
-        if (RARITIES.index(rarity) >= RARE_INDEX and random.random() <= PREFIX_CHANCE[rarity]):
+        if RARITIES.index(rarity) >= RARE_INDEX and random.random() <= PREFIX_CHANCE[rarity]:
             #  log.debug(f"Prefix %: {PREFIX_CHANCE[rarity]}")
             prefix, prefix_stats = random.choice(list(self.PREFIXES.items()))
             name += f"{prefix} "
             add_stats(prefix_stats)
 
-        material, material_stat = random.choice(
-                list(self.MATERIALS[rarity].items()))
+        material, material_stat = random.choice(list(self.MATERIALS[rarity].items()))
         name += f"{material} "
         for stat in stats.keys():
             stats[stat] += material_stat
 
-        equipment, equipment_stats = random.choice(
-                list(self.EQUIPMENT[slot].items()))
+        equipment, equipment_stats = random.choice(list(self.EQUIPMENT[slot].items()))
         name += f"{equipment}"
         add_stats(equipment_stats)
 
         # only epic and above should have suffix with SUFFIX_CHANCE
-        if (RARITIES.index(rarity) >= EPIC_INDEX
-                and random.random() <= SUFFIX_CHANCE[rarity]):
+        if RARITIES.index(rarity) >= EPIC_INDEX and random.random() <= SUFFIX_CHANCE[rarity]:
             #  log.debug(f"Suffix %: {SUFFIX_CHANCE[rarity]}")
             suffix, suffix_stats = random.choice(list(self.SUFFIXES.items()))
-            of_keyword = ("of" if 'the' not in suffix_stats else "of the")
+            of_keyword = "of" if "the" not in suffix_stats else "of the"
             name += f" {of_keyword} {suffix}"
             add_stats(suffix_stats)
 
         slot_list = [slot] if slot != "two handed" else ["left", "right"]
         return Item(
-                name=name,
-                slot=slot_list,
-                rarity=rarity,
-                att=stats["att"],
-                int=stats["int"],
-                cha=stats["cha"],
-                dex=stats["dex"],
-                luck=stats["luck"],
-                owned=1,
-                parts=1,
-                )
+            name=name,
+            slot=slot_list,
+            rarity=rarity,
+            att=stats["att"],
+            int=stats["int"],
+            cha=stats["cha"],
+            dex=stats["dex"],
+            luck=stats["luck"],
+            owned=1,
+            parts=1,
+        )
 
     @commands.command()
     @commands.is_owner()
-    async def genitems(self, ctx: Context, rarity: str, slot: str, num: int = 15):
+    async def genitems(self, ctx: Context, rarity: str, slot: str, num: int = 1):
         """Generate random items."""
         user = ctx.author
+        rarity = rarity.lower()
+        slot = slot.lower()
+        if rarity not in RARITIES:
+            return await smart_embed(
+                ctx,
+                _("Invalid rarity; choose one of {list}.").format(list=humanize_list(RARITIES)),
+            )
+        elif slot not in ORDER:
+            return await smart_embed(
+                ctx, _("Invalid slot; choose one of {list}.").format(list=humanize_list(ORDER))
+            )
         async with self.get_lock(user):
             try:
                 c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
-            c.backpack = {}
             for i in range(num):
-                await c.add_to_backpack(await self._genitem(
-                    rarity, slot))
-            backpack_contents = _("```css\n{backpack}\n```").format(
-                    backpack=c.get_backpack())
-            await ctx.send(backpack_contents)
+                await c.add_to_backpack(await self._genitem(rarity, slot))
+            await self.config.user(ctx.author).set(c.to_json())
+        await ctx.invoke(self._backpack)
 
     @commands.command()
     @commands.is_owner()
@@ -1290,7 +1296,13 @@ class Adventure(BaseCog):
 
     @commands.is_owner()
     @commands.command()
-    async def devrebirth(self, ctx: Context, rebirth_level: int = 1, character_level: int = 1, user: discord.Member = None):
+    async def devrebirth(
+        self,
+        ctx: Context,
+        rebirth_level: int = 1,
+        character_level: int = 1,
+        user: discord.Member = None,
+    ):
         """Set a users rebith level."""
         target = user or ctx.author
         async with self.get_lock(target):
@@ -1338,7 +1350,6 @@ class Adventure(BaseCog):
             c.heroclass["cooldown"] = 0
             await self.config.user(ctx.author).set(c.to_json())
         await ctx.tick()
-
 
     @loadout.command(name="delete", aliases=["del", "rem", "remove"])
     async def remove_loadout(self, ctx: Context, name: str):
@@ -2470,9 +2481,7 @@ class Adventure(BaseCog):
                     log.exception("Error with the new character sheet")
                     return
                 if c.heroclass["name"] == clz:
-                    return await smart_embed(
-                        ctx, _("You already are a {}.").format(clz)
-                    )
+                    return await smart_embed(ctx, _("You already are a {}.").format(clz))
                 class_msg = await ctx.send(
                     box(
                         _(
@@ -2608,25 +2617,32 @@ class Adventure(BaseCog):
                             c.skill["pool"] = 0
                         c.heroclass = classes[clz]
                         if c.heroclass["name"] == "Wizard":
-                            c.heroclass["cooldown"] = max(300, (
-                                        1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(300, (1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                            )
                         elif c.heroclass["name"] == "Ranger":
-                            c.heroclass["cooldown"] = max(1800, (
-                                        7200 - (c.luck * 2 + c.total_int * 2))) + time.time()
-                            c.heroclass["catch_cooldown"] = max(600, (
-                                        3600 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(1800, (7200 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                            )
+                            c.heroclass["catch_cooldown"] = (
+                                max(600, (3600 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                            )
                         elif c.heroclass["name"] == "Berserker":
-                            c.heroclass["cooldown"] = max(300, (
-                                        1200 - ((c.luck + c.total_att) * 2))) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(300, (1200 - ((c.luck + c.total_att) * 2))) + time.time()
+                            )
                         elif c.heroclass["name"] == "Cleric":
-                            c.heroclass["cooldown"] = max(300, (
-                                        1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(300, (1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                            )
                         elif c.heroclass["name"] == "Bard":
-                            c.heroclass["cooldown"] = max(300, (
-                                        1200 - ((c.luck + c.total_cha) * 2))) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(300, (1200 - ((c.luck + c.total_cha) * 2))) + time.time()
+                            )
                         elif c.heroclass["name"] == "Tinkerer":
-                            c.heroclass["cooldown"] = max(900, (
-                                        3600 - (c.luck - c.total_int) * 2)) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(900, (3600 - (c.luck - c.total_int) * 2)) + time.time()
+                            )
                         await self.config.user(ctx.author).set(c.to_json())
                         await self._clear_react(class_msg)
                         await class_msg.edit(content=box(now_class_msg, lang="css"))
@@ -3387,7 +3403,6 @@ class Adventure(BaseCog):
                     ).format(humanize_timedelta(seconds=int(cooldown_time))),
                 )
 
-
     @commands.command()
     async def skill(self, ctx: Context, spend: str = None, amount: int = 1):
         """This allows you to spend skillpoints.
@@ -3745,13 +3760,10 @@ class Adventure(BaseCog):
         possible_monsters = []
         stat_range = self._adv_results.get_stat_range()
         for e, (m, stats) in enumerate(monsters.items(), 1):
-            appropriate_range = (max(stats["hp"], stats["dipl"]) <=
-                    (max(c.att, c.int, c.cha) * 2))
+            appropriate_range = max(stats["hp"], stats["dipl"]) <= (max(c.att, c.int, c.cha) * 2)
             if stat_range["max_stat"] > 0:
-                main_stat = (stats["hp"]
-                        if (stat_range["stat_type"] == "attack")
-                        else stats["dipl"])
-                appropriate_range = (stat_range["min_stat"] <= main_stat <= stat_range["max_stat"])
+                main_stat = stats["hp"] if (stat_range["stat_type"] == "attack") else stats["dipl"]
+                appropriate_range = stat_range["min_stat"] <= main_stat <= stat_range["max_stat"]
             if not appropriate_range:
                 continue
             if not stats["boss"] and not stats["miniboss"]:
@@ -4088,7 +4100,9 @@ class Adventure(BaseCog):
         currency_name = await bank.get_currency_name(guild)
         if currency_name.startswith("<"):
             currency_name = "credits"
-        item_data = box(items["item"].formatted_name + " - " + humanize_number(items["price"]), lang="css")
+        item_data = box(
+            items["item"].formatted_name + " - " + humanize_number(items["price"]), lang="css"
+        )
         to_delete = await channel.send(
             _("{user}, how many {item} would you like to buy?").format(
                 user=user.mention, item=item_data
@@ -4248,11 +4262,9 @@ class Adventure(BaseCog):
                 int_dipl=humanize_number(int(dipl)),
             )
         if dmg_dealt >= diplomacy:
-            self._adv_results.add_result("attack", dmg_dealt, people,
-                    slain)
+            self._adv_results.add_result("attack", dmg_dealt, people, slain)
         else:
-            self._adv_results.add_result("talk", diplomacy,
-                    people, persuaded)
+            self._adv_results.add_result("talk", diplomacy, people, persuaded)
         #  log.debug(self._adv_results)
         result_msg = result_msg + "\n" + damage_str + diplo_str
 
@@ -4324,22 +4336,15 @@ class Adventure(BaseCog):
                 treasure = random.choice([[1, 1, 1, 0, 0], [0, 0, 1, 1, 0]])
             elif monster_amount >= 700:  # super hard stuff
                 if roll <= 7:
-                    treasure = random.choice([
-                        [0, 0, 1, 0, 0],
-                        [0, 1, 0, 0, 0],
-                        [0, 0, 0, 1, 0]])
+                    treasure = random.choice([[0, 0, 1, 0, 0], [0, 1, 0, 0, 0], [0, 0, 0, 1, 0]])
             elif monster_amount >= 500:  # rewards 50:50 rare:epic chest for killing hard stuff.
                 if roll <= 5:
-                    treasure = random.choice([
-                        [0, 0, 1, 0, 0],
-                        [0, 1, 0, 0, 0],
-                        [0, 1, 1, 0, 0]])
-            elif monster_amount >= 300:  # rewards 50:50 rare:normal chest for killing hardish stuff
+                    treasure = random.choice([[0, 0, 1, 0, 0], [0, 1, 0, 0, 0], [0, 1, 1, 0, 0]])
+            elif (
+                monster_amount >= 300
+            ):  # rewards 50:50 rare:normal chest for killing hardish stuff
                 if roll <= 2:
-                    treasure = random.choice([
-                        [1, 0, 0, 0, 0],
-                        [0, 1, 0, 0, 0],
-                        [1, 1, 0, 0, 0]])
+                    treasure = random.choice([[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [1, 1, 0, 0, 0]])
             elif (
                 monster_amount >= 80
             ):  # small chance of a normal chest on killing stuff that's not terribly weak
@@ -5359,51 +5364,50 @@ class Adventure(BaseCog):
         MAX_CHEST_LUCK = 200
         # lower gives you better chances for better items
         max_roll = INITIAL_MAX_ROLL - round(c.luck) - (c.rebirths * 2)
-        roll = random.randint(1, max(max_roll,
-            INITIAL_MAX_ROLL - MAX_CHEST_LUCK))
+        roll = random.randint(1, max(max_roll, INITIAL_MAX_ROLL - MAX_CHEST_LUCK))
         if chest_type == "normal":
             # 5% to roll epic
-            if roll <= INITIAL_MAX_ROLL * .05:
+            if roll <= INITIAL_MAX_ROLL * 0.05:
                 rarity = "epic"
             # 20% to roll rare
-            elif roll <= INITIAL_MAX_ROLL * .25:
+            elif roll <= INITIAL_MAX_ROLL * 0.25:
                 rarity = "rare"
             # 75% to roll common
         elif chest_type == "rare":
-            #20% to roll epic
-            if roll <= INITIAL_MAX_ROLL * .2:
+            # 20% to roll epic
+            if roll <= INITIAL_MAX_ROLL * 0.2:
                 rarity = "epic"
             # 70% to roll rare
             # 10% to roll normal
-            elif roll >= INITIAL_MAX_ROLL * .9:
+            elif roll >= INITIAL_MAX_ROLL * 0.9:
                 rarity = "normal"
         elif chest_type == "epic":
             # 10% to roll legendary
-            if roll <= INITIAL_MAX_ROLL * .1:
+            if roll <= INITIAL_MAX_ROLL * 0.1:
                 rarity = "legendary"
             # 70% to roll epic
             # 10% to roll rare
-            elif roll >= INITIAL_MAX_ROLL * .9:
+            elif roll >= INITIAL_MAX_ROLL * 0.9:
                 rarity = "rare"
         elif chest_type == "legendary":
             # 80% to roll legendary
             # 20% to roll epic
-            if roll >= INITIAL_MAX_ROLL * .6:
+            if roll >= INITIAL_MAX_ROLL * 0.6:
                 rarity = "epic"
         elif chest_type == "pet":
             # 2% to roll legendary
-            if roll <= INITIAL_MAX_ROLL * .02:
+            if roll <= INITIAL_MAX_ROLL * 0.02:
                 rarity = "legendary"
             # 5% to roll epic
-            elif roll <= INITIAL_MAX_ROLL * .07:
+            elif roll <= INITIAL_MAX_ROLL * 0.07:
                 rarity = "epic"
             # 50% to roll rare
-            elif roll <= INITIAL_MAX_ROLL * .57:
+            elif roll <= INITIAL_MAX_ROLL * 0.57:
                 rarity = "rare"
             # 43% to roll common
             elif chest_type == "set":
-                if roll <= INITIAL_MAX_ROLL * .55:
-                     rarity = "set"
+                if roll <= INITIAL_MAX_ROLL * 0.55:
+                    rarity = "set"
                 else:
                     rarity = "legendary"
 
@@ -5860,17 +5864,17 @@ class Adventure(BaseCog):
             rarity_roll = random.random()
             #  rarity_roll = .9
             # 1% legendary
-            if rarity_roll >= .99:
+            if rarity_roll >= 0.99:
                 item = await self._genitem("legendary")
                 # min. 10 stat for legendary, want to be about 50k
                 price = random.randint(2500, 5000)
             # 20% epic
-            elif rarity_roll >= .7:
+            elif rarity_roll >= 0.7:
                 item = await self._genitem("epic")
                 # min. 5 stat for epic, want to be about 25k
                 price = random.randint(1000, 2000)
             # 35% rare
-            elif rarity_roll >= .35:
+            elif rarity_roll >= 0.35:
                 item = await self._genitem("rare")
                 # around 3 stat for rare, want to be about 3k
                 price = random.randint(500, 1000)
