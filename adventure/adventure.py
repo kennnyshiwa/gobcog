@@ -1272,7 +1272,10 @@ class Adventure(BaseCog):
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
-
+                if c.lvl < c.maxlevel:
+                    return await smart_embed(
+                        ctx, _("You need to be Level `{c.maxlevel}` to rebirth").format(c=c)
+                    )
                 bal = await bank.get_balance(ctx.author)
                 if bal >= 1000:
                     withdraw = bal - 1000
