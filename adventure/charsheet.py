@@ -642,7 +642,7 @@ class Character(Item):
             int_space = " " if len(str(inter)) == 1 else ""
             dex_space = " " if len(str(dex)) == 1 else ""
             luck_space = " " if len(str(luck)) == 1 else ""
-            owned = f" | {self.owned}"
+            owned = f" | {item.owned}"
             if item.set:
                 settext += f" | Set `{item.set}` ({item.parts}pcs)"
             form_string += (
