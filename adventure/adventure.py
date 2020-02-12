@@ -2813,7 +2813,9 @@ class Adventure(BaseCog):
                 )
                 return await self._clear_react(nv_msg)
 
-        entry_roll = random.randint(1, 20)
+        percentage_offered = (offering / bal) * 100
+        min_roll = int(percentage_offered / 10)
+        entry_roll = random.randint(max(1, min_roll), 20)
         if entry_roll == 1:
             tax_mod = random.randint(4, 8)
             tax = round(bal / tax_mod)
@@ -2846,7 +2848,7 @@ class Adventure(BaseCog):
                 author=self.escape(ctx.author.display_name), negachar=negachar
             )
         )
-        roll = random.randint(1, 50)
+        roll = random.randint(max(1, min_roll * 2), 50)
         versus = random.randint(10, 60)
         xp_mod = random.randint(1, 10)
         weekend = datetime.today().weekday() in [5, 6]
