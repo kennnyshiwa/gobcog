@@ -3409,6 +3409,7 @@ class Adventure(BaseCog):
                 )
 
     @commands.command()
+    @commands.cooldown(rate=1, per=2, type=commands.BucketType.user)
     async def skill(self, ctx: Context, spend: str = None, amount: int = 1):
         """This allows you to spend skillpoints.
 
