@@ -570,12 +570,16 @@ class Adventure(BaseCog):
         """Generate an item."""
         if rarity == "set":
             items = list(self.TR_GEAR_SET.items())
-            items = [
-                i
-                for i in items
-                if i[1]["slot"] == [slot]
-                or (slot == "two handed" and i[1]["slot"] == ["left", "right"])
-            ] if slot else items
+            items = (
+                [
+                    i
+                    for i in items
+                    if i[1]["slot"] == [slot]
+                    or (slot == "two handed" and i[1]["slot"] == ["left", "right"])
+                ]
+                if slot
+                else items
+            )
             item_name, item_data = random.choice(items)
             return Item.from_json({item_name: item_data})
 
@@ -2675,11 +2679,13 @@ class Adventure(BaseCog):
 
     @commands.command()
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.user)
-    async def loot(self, ctx: Context, box_type: str = None):
+    async def loot(self, ctx: Context, box_type: str = None, number: int = 1):
         """This opens one of your precious treasure chests.
 
         Use the box rarity type with the command: normal, rare, epic, legendary or set.
         """
+        if number > 100:
+            return await smart_embed(ctx, _("Nice try :smirk:."),)
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx,
@@ -2737,17 +2743,50 @@ class Adventure(BaseCog):
                 ),
             )
         else:
+            if number > 1:
+                items = await self._open_chests(ctx, ctx.author, box_type, number, character=c)
+                msg = _(
+                    "{}, you've opened the following items:\n"
+                    "( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | LOOTED | SET (SET PIECES)"
+                ).format(self.escape(ctx.author.display_name))
+                rjust = max([len(str(i)) for i in items.values()])
+                for item in items.values():
+                    await asyncio.sleep(0)
+                    settext = ""
+                    att_space = " " if len(str(item.att)) == 1 else ""
+                    cha_space = " " if len(str(item.cha)) == 1 else ""
+                    int_space = " " if len(str(item.int)) == 1 else ""
+                    dex_space = " " if len(str(item.dex)) == 1 else ""
+                    luck_space = " " if len(str(item.luck)) == 1 else ""
+                    owned = f" | {item.owned}"
+                    if item.set:
+                        settext += f" | Set `{item.set}` ({item.parts}pcs)"
+                    msg += (
+                        f"\n{str(item):<{rjust}} - "
+                        f"({att_space}{item.att} |"
+                        f"{cha_space}{item.cha} |"
+                        f"{int_space}{item.int} |"
+                        f"{dex_space}{item.dex} |"
+                        f"{luck_space}{item.luck} )"
+                        f" | Lv {equip_level(c, item):<3}"
+                        f"{owned}{settext}"
+                    )
+                msgs = []
+                for page in pagify(msg):
+                    msgs.append(box(page, lang="css"))
+            else:
+                msgs = []
+                await self._open_chest(
+                    ctx, ctx.author, box_type, character=c
+                )  # returns item and msg
+
             async with self.get_lock(ctx.author):
                 # atomically save reduced loot count then lock again when saving inside
                 # open chests
-                try:
-                    c = await Character.from_json(self.config, ctx.author)
-                except Exception:
-                    log.exception("Error with the new character sheet")
-                    return
-                c.treasure[redux.index(1)] -= 1
+                c.treasure[redux.index(1)] -= number
                 await self.config.user(ctx.author).set(c.to_json())
-            await self._open_chest(ctx, ctx.author, box_type)
+            if msgs:
+                await menu(ctx, msgs, DEFAULT_CONTROLS)
 
     @commands.command(name="negaverse", aliases=["nv"])
     @commands.cooldown(rate=1, per=3600, type=commands.BucketType.user)
@@ -3135,7 +3174,7 @@ class Adventure(BaseCog):
         if "cooldown" not in c.heroclass:
             c.heroclass["cooldown"] = cooldown_time + 1
         if c.heroclass["cooldown"] + cooldown_time <= time.time():
-            await self._open_chest(ctx, c.heroclass["pet"]["name"], "pet")
+            await self._open_chest(ctx, c.heroclass["pet"]["name"], "pet", character=c)
             async with self.get_lock(ctx.author):
                 try:
                     c = await Character.from_json(self.config, ctx.author)
@@ -3756,6 +3795,23 @@ class Adventure(BaseCog):
 
         while ctx.guild.id in self._sessions:
             del self._sessions[ctx.guild.id]
+
+    @_adventure.error
+    async def _error_handler(self, ctx: commands.Context, error: Exception) -> None:
+        error = getattr(error, "original", error)
+        if not isinstance(
+            error,
+            (
+                commands.CheckFailure,
+                commands.UserInputError,
+                commands.DisabledCommand,
+                commands.CommandOnCooldown,
+            ),
+        ):
+            while ctx.guild.id in self._sessions:
+                del self._sessions[ctx.guild.id]
+
+        await ctx.bot.on_command_error(ctx, error, unhandled_by_cog=True)
 
     async def get_challenge(self, ctx: Context, monsters):
         try:
@@ -5369,57 +5425,79 @@ class Adventure(BaseCog):
         # max luck for best chest odds
         MAX_CHEST_LUCK = 200
         # lower gives you better chances for better items
-        max_roll = INITIAL_MAX_ROLL - round(c.luck) - (c.rebirths * 2)
-        roll = random.randint(1, max(max_roll, INITIAL_MAX_ROLL - MAX_CHEST_LUCK))
+        max_roll = INITIAL_MAX_ROLL - round(c.luck) - (c.rebirths // 2)
+        top_range = max(max_roll, INITIAL_MAX_ROLL - MAX_CHEST_LUCK)
+        roll = random.randint(1, top_range)
         if chest_type == "normal":
-            # 5% to roll epic
-            if roll <= INITIAL_MAX_ROLL * 0.05:
+            if roll <= top_range * 0.025:  # 2.5% to roll epic
                 rarity = "epic"
-            # 20% to roll rare
-            elif roll <= INITIAL_MAX_ROLL * 0.25:
+            elif roll <= top_range * 0.2:  # 17.5% to roll rare
                 rarity = "rare"
-            # 75% to roll common
+            else:
+                pass  # 80% to roll common
         elif chest_type == "rare":
-            # 20% to roll epic
-            if roll <= INITIAL_MAX_ROLL * 0.2:
+            if roll <= top_range * 0.2:  # 20% to roll epic
                 rarity = "epic"
-            # 70% to roll rare
-            # 10% to roll normal
-            elif roll >= INITIAL_MAX_ROLL * 0.9:
-                rarity = "normal"
+            elif roll <= top_range * 0.8:  # 60% to roll rare
+                pass
+            else:
+                rarity = "normal"  # 20% to roll normal
         elif chest_type == "epic":
-            # 10% to roll legendary
-            if roll <= INITIAL_MAX_ROLL * 0.1:
+            if roll <= top_range * 0.05:  # 5% to roll legendary
                 rarity = "legendary"
-            # 70% to roll epic
-            # 10% to roll rare
-            elif roll >= INITIAL_MAX_ROLL * 0.9:
+            elif roll <= top_range * 0.85:  # 80% to roll epic
+                pass
+            elif roll <= top_range * 0.95:  # 10% to roll rare
                 rarity = "rare"
+            else:
+                rarity = "normal"  # 5% to roll common
         elif chest_type == "legendary":
-            # 80% to roll legendary
-            # 20% to roll epic
-            if roll >= INITIAL_MAX_ROLL * 0.6:
+            if roll <= top_range * 0.55:  # 55% to roll legendary
+                pass
+            elif roll <= top_range * 0.95:  # 40% to roll epic
                 rarity = "epic"
+            else:
+                rarity = "rare"  # 5% to roll rare
         elif chest_type == "pet":
-            # 2% to roll legendary
-            if roll <= INITIAL_MAX_ROLL * 0.02:
+            if roll <= top_range * 0.05:  # 5% to roll legendary
                 rarity = "legendary"
-            # 5% to roll epic
-            elif roll <= INITIAL_MAX_ROLL * 0.07:
+            elif roll <= top_range * 0.15:  # 10% to roll epic
                 rarity = "epic"
-            # 50% to roll rare
-            elif roll <= INITIAL_MAX_ROLL * 0.57:
+            elif roll <= top_range * 0.57:  # 42% to roll rare
                 rarity = "rare"
-            # 43% to roll common
-            elif chest_type == "set":
-                if roll <= INITIAL_MAX_ROLL * 0.55:
-                    rarity = "set"
-                else:
-                    rarity = "legendary"
+            else:
+                rarity = "normal"  # 47% to roll common
+        elif chest_type == "set":
+            if roll <= top_range * 0.55:  # 55% to roll set
+                rarity = "set"
+            else:
+                rarity = "legendary"  # 45% to roll legendary
 
         return await self._genitem(rarity)
 
-    async def _open_chest(self, ctx: Context, user, chest_type):
+    async def _open_chests(
+        self,
+        ctx: Context,
+        user: discord.Member,
+        chest_type: str,
+        amount: int,
+        character: Character,
+    ):
+        async with self.get_lock(user):
+            items = {}
+            for i in range(0, max(amount, 0)):
+                await asyncio.sleep(0)
+                item = await self._roll_chest(chest_type, character)
+                item_name = str(item)
+                if item_name in items:
+                    items[item_name].owned += 1
+                else:
+                    items[item_name] = item
+                await character.add_to_backpack(item)
+            await self.config.user(ctx.author).set(character.to_json())
+            return items
+
+    async def _open_chest(self, ctx: Context, user, chest_type, character):
         if hasattr(user, "display_name"):
             chest_msg = _("{} is opening a treasure chest. What riches lay inside?").format(
                 self.escape(user.display_name)
@@ -5428,15 +5506,10 @@ class Adventure(BaseCog):
             chest_msg = _("{user}'s {f} is foraging for treasure. What will it find?").format(
                 user=self.escape(ctx.author.display_name), f=(user[:1] + user[1:])
             )
-        try:
-            c = await Character.from_json(self.config, ctx.author)
-        except Exception:
-            log.exception("Error with the new character sheet")
-            return
         open_msg = await ctx.send(box(chest_msg, lang="css"))
         await asyncio.sleep(2)
 
-        item = await self._roll_chest(chest_type, c)
+        item = await self._roll_chest(chest_type, character)
         if chest_type == "pet" and not item:
             await open_msg.edit(
                 content=box(
@@ -5448,7 +5521,7 @@ class Adventure(BaseCog):
             )
             return None
         slot = item.slot[0]
-        old_item = getattr(c, item.slot[0], None)
+        old_item = getattr(character, item.slot[0], None)
         old_stats = ""
         if len(item.slot) > 1:
             slot = _("two handed")
@@ -5458,7 +5531,7 @@ class Adventure(BaseCog):
                     user=self.escape(user.display_name),
                     item=str(item),
                     slot=slot,
-                    lv=equip_level(c, item),
+                    lv=equip_level(character, item),
                 )
                 + f" (ATT: {str(item.att)}, "
                 f"CHA: {str(item.cha)}, "
@@ -5473,7 +5546,7 @@ class Adventure(BaseCog):
                 old_stats = (
                     _(
                         "You currently have {item} [{slot}] equipped | Lvl req {lv} equipped."
-                    ).format(item=old_item, slot=old_slot, lv=equip_level(c, old_item))
+                    ).format(item=old_item, slot=old_slot, lv=equip_level(character, old_item))
                     + f" (ATT: {str(old_item.att)}, "
                     f"CHA: {str(old_item.cha)}, "
                     f"INT: {str(old_item.int)}, "
@@ -5493,7 +5566,7 @@ class Adventure(BaseCog):
         else:
             chest_msg2 = (
                 _("The {user} found {item} [{slot}] | Lvl req {lv}.").format(
-                    user=user, item=str(item), slot=slot, lv=equip_level(c, item)
+                    user=user, item=str(item), slot=slot, lv=equip_level(character, item)
                 )
                 + f" (ATT: {str(item.att)}, "
                 f"CHA: {str(item.cha)}, "
@@ -5521,17 +5594,11 @@ class Adventure(BaseCog):
                 tuple(self._treasure_controls.keys()), open_msg, ctx.author
             )
         try:
-            react, user = await ctx.bot.wait_for("reaction_add", check=pred, timeout=60)
+            react, user = await self.bot.wait_for("reaction_add", check=pred, timeout=60)
         except asyncio.TimeoutError:
             await self._clear_react(open_msg)
             async with self.get_lock(ctx.author):
-                try:
-                    c = await Character.from_json(self.config, ctx.author)
-                except Exception:
-                    log.exception("Error with the new character sheet")
-                    return
-
-                await c.add_to_backpack(item)
+                await character.add_to_backpack(item)
                 await open_msg.edit(
                     content=(
                         box(
@@ -5542,11 +5609,11 @@ class Adventure(BaseCog):
                         )
                     )
                 )
-                await self.config.user(ctx.author).set(c.to_json())
+                await self.config.user(ctx.author).set(character.to_json())
             return
         await self._clear_react(open_msg)
         if self._treasure_controls[react.emoji] == "sell":
-            price = self._sell(c, item)
+            price = self._sell(character, item)
             price = max(price, 0)
             if price > 0:
                 with contextlib.suppress(BalanceTooHigh):
@@ -5569,27 +5636,21 @@ class Adventure(BaseCog):
             )
             await self._clear_react(open_msg)
             async with self.get_lock(ctx.author):
-                await self.config.user(ctx.author).set(c.to_json())
+                await self.config.user(ctx.author).set(character.to_json())
             return
         elif self._treasure_controls[react.emoji] == "equip":
             async with self.get_lock(ctx.author):
-                try:
-                    c = await Character.from_json(self.config, ctx.author)
-                except Exception:
-                    log.exception("Error with the new character sheet")
-                    return
-
-                equiplevel = equip_level(c, item)
-                if self.is_dev(ctx.author):  # FIXME:
+                equiplevel = equip_level(character, item)
+                if self.is_dev(ctx.author):
                     equiplevel = 0
-                if not can_equip(c, item):
-                    await c.add_to_backpack(item)
-                    await self.config.user(ctx.author).set(c.to_json())
+                if not can_equip(character, item):
+                    await character.add_to_backpack(item)
+                    await self.config.user(ctx.author).set(character.to_json())
                     return await smart_embed(
                         ctx,
                         f"**{self.escape(ctx.author.display_name)}**, You need to be level `{equiplevel}` to equip this item, I've put it in your backpack",
                     )
-                if not getattr(c, item.slot[0]):
+                if not getattr(character, item.slot[0]):
                     equip_msg = box(
                         _("{user} equipped {item} ({slot} slot).").format(
                             user=self.escape(ctx.author.display_name), item=item, slot=slot
@@ -5605,22 +5666,17 @@ class Adventure(BaseCog):
                             user=self.escape(ctx.author.display_name),
                             item=item,
                             slot=slot,
-                            old_item=getattr(c, item.slot[0]),
+                            old_item=getattr(character, item.slot[0]),
                         ),
                         lang="css",
                     )
                 await open_msg.edit(content=equip_msg)
-                c = await c.equip_item(item, False, self.is_dev(ctx.author))
-                await self.config.user(ctx.author).set(c.to_json())
+                character = await character.equip_item(item, False, self.is_dev(ctx.author))
+                await self.config.user(ctx.author).set(character.to_json())
             return
         else:
             async with self.get_lock(ctx.author):
-                try:
-                    c = await Character.from_json(self.config, ctx.author)
-                except Exception:
-                    log.exception("Error with the new character sheet")
-                    return
-                await c.add_to_backpack(item)
+                await character.add_to_backpack(item)
                 await open_msg.edit(
                     content=(
                         box(
@@ -5632,7 +5688,7 @@ class Adventure(BaseCog):
                     )
                 )
                 await self._clear_react(open_msg)
-                await self.config.user(ctx.author).set(c.to_json())
+                await self.config.user(ctx.author).set(character.to_json())
             return
 
     @staticmethod
