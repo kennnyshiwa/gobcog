@@ -1355,6 +1355,8 @@ class Adventure(BaseCog):
                 return
             c.heroclass["ability"] = False
             c.heroclass["cooldown"] = 0
+            if "catch_cooldown" in c.heroclass:
+                c.heroclass["catch_cooldown"] = 0
             await self.config.user(ctx.author).set(c.to_json())
         await ctx.tick()
 
