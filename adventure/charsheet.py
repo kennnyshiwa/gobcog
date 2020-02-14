@@ -721,7 +721,7 @@ class Character(Item):
             "Items in Backpack: \n( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | OWNED | SET (SET PIECES)"
         )
         consumed_list = [i for i in consumed]
-        rjust = max([len(str(i[1])) + 3 for slot_group in bkpk for i in slot_group])
+        rjust = max([len(str(i[1])) + 3 for slot_group in bkpk for i in slot_group] or [1, 2])
         for slot_group in bkpk:
             slot_name = slot_group[0][1].slot
             slot_name = slot_name[0] if len(slot_name) < 2 else _("two handed")

@@ -575,7 +575,7 @@ class Adventure(BaseCog):
                 for i in items
                 if i[1]["slot"] == [slot]
                 or (slot == "two handed" and i[1]["slot"] == ["left", "right"])
-            ]
+            ] if slot else items
             item_name, item_data = random.choice(items)
             return Item.from_json({item_name: item_data})
 
@@ -2747,7 +2747,7 @@ class Adventure(BaseCog):
                     return
                 c.treasure[redux.index(1)] -= 1
                 await self.config.user(ctx.author).set(c.to_json())
-                await self._open_chest(ctx, ctx.author, box_type)  # returns item and msg
+            await self._open_chest(ctx, ctx.author, box_type)
 
     @commands.command(name="negaverse", aliases=["nv"])
     @commands.cooldown(rate=1, per=3600, type=commands.BucketType.user)
@@ -5543,7 +5543,7 @@ class Adventure(BaseCog):
                     )
                 )
                 await self.config.user(ctx.author).set(c.to_json())
-                return
+            return
         await self._clear_react(open_msg)
         if self._treasure_controls[react.emoji] == "sell":
             price = self._sell(c, item)
@@ -5568,7 +5568,9 @@ class Adventure(BaseCog):
                 )
             )
             await self._clear_react(open_msg)
-            await self.config.user(ctx.author).set(c.to_json())
+            async with self.get_lock(ctx.author):
+                await self.config.user(ctx.author).set(c.to_json())
+            return
         elif self._treasure_controls[react.emoji] == "equip":
             async with self.get_lock(ctx.author):
                 try:
@@ -5610,6 +5612,7 @@ class Adventure(BaseCog):
                 await open_msg.edit(content=equip_msg)
                 c = await c.equip_item(item, False, self.is_dev(ctx.author))
                 await self.config.user(ctx.author).set(c.to_json())
+            return
         else:
             async with self.get_lock(ctx.author):
                 try:
@@ -5630,6 +5633,7 @@ class Adventure(BaseCog):
                 )
                 await self._clear_react(open_msg)
                 await self.config.user(ctx.author).set(c.to_json())
+            return
 
     @staticmethod
     async def _remaining(epoch):
