@@ -361,6 +361,7 @@ class GameSession:
     talk: List[discord.Member] = []
     pray: List[discord.Member] = []
     run: List[discord.Member] = []
+    message: discord.Message = None
     insight = (0, None)
 
     def __init__(self, **kwargs):
@@ -373,6 +374,7 @@ class GameSession:
         self.monster: dict = kwargs.pop("monster")
         self.monsters: List[Mapping] = kwargs.pop("monsters", [])
         self.monster_stats: int = kwargs.pop("monster_stats", 1)
+        self.message = kwargs.pop("message", 1)
         self.message_id: int = 0
         self.reacted = False
         self.participants: Set[discord.Member] = set()

@@ -3733,7 +3733,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx,
                 _("You need {req} {name} to start an adventure.").format(
-                    req=500, name=currency_name
+                    req=250, name=currency_name
                 ),
             )
         guild_settings = await self.config.guild(ctx.guild).all()
@@ -3902,6 +3902,7 @@ class Adventure(BaseCog):
             monster=monster_roaster[challenge],
             monsters=monster_roaster,
             monster_stats=monster_stats,
+            message=ctx.message
         )
         adventure_msg = (
             f"{adventure_msg}{text}\n{random.choice(self.LOCATIONS)}\n"
