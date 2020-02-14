@@ -3201,6 +3201,10 @@ class Adventure(BaseCog):
     @pet.command(name="free")
     async def _free(self, ctx: Context):
         """Free your pet :cry:"""
+        if self.in_adventure(ctx):
+            return await smart_embed(
+                ctx, _("You're too distracted with the monster you are facing.")
+            )
         try:
             c = await Character.from_json(self.config, ctx.author)
         except Exception:
