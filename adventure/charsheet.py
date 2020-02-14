@@ -69,11 +69,11 @@ REBIRTH_STEP = 5
 TR_GEAR_SET = {}
 PETS = {}
 
-ATT = re.compile(r"([\d]*) (att(?:ack)?)")
-CHA = re.compile(r"([\d]*) (cha(?:risma)?|dip(?:lo?(?:macy)?)?)")
-INT = re.compile(r"([\d]*) (int(?:elligence)?)")
-LUCK = re.compile(r"([\d]*) (luck)")
-DEX = re.compile(r"([\d]*) (dex(?:terity)?)")
+ATT = re.compile(r"(-?\d*) (att(?:ack)?)")
+CHA = re.compile(r"(-?\d*) (cha(?:risma)?|dip(?:lo?(?:macy)?)?)")
+INT = re.compile(r"(-?\d*) (int(?:elligence)?)")
+LUCK = re.compile(r"(-?\d*) (luck)")
+DEX = re.compile(r"(-?\d*) (dex(?:terity)?)")
 SLOT = re.compile(r"(head|neck|chest|gloves|belt|legs|boots|left|right|ring|charm|twohanded)")
 RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged)")
 RARITIES = ("normal", "rare", "epic", "legendary", "set")
