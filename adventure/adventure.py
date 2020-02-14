@@ -1930,7 +1930,7 @@ class Adventure(BaseCog):
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx,
-                _("You tried to forging a mistic item.. but there no functional forges nearby."),
+                _("You tried to forging a mystic item.. but there no functional forges nearby."),
             )
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
@@ -3012,7 +3012,7 @@ class Adventure(BaseCog):
         """
         if self.in_adventure(ctx):
             return await smart_embed(
-                ctx, _("Your pet is too distracted with the monster you are facing.")
+                ctx, _("You're too distracted with the monster you are facing.")
             )
 
         if not await self.allow_in_dm(ctx):
@@ -3154,6 +3154,10 @@ class Adventure(BaseCog):
     @pet.command(name="forage")
     async def _forage(self, ctx: Context):
         """Use your pet to forage for items!"""
+        if self.in_adventure(ctx):
+            return await smart_embed(
+                ctx, _("You're too distracted with the monster you are facing.")
+            )
         try:
             c = await Character.from_json(self.config, ctx.author)
         except Exception:
@@ -5524,6 +5528,20 @@ class Adventure(BaseCog):
         slot = item.slot[0]
         old_item = getattr(character, item.slot[0], None)
         old_stats = ""
+        if old_item:
+            old_slot = old_item.slot[0]
+            if len(old_item.slot) > 1:
+                old_slot = _("two handed")
+            old_stats = (
+                    _(
+                        "You currently have {item} [{slot}] equipped | Lvl req {lv} equipped."
+                    ).format(item=old_item, slot=old_slot, lv=equip_level(character, old_item))
+                    + f" (ATT: {str(old_item.att)}, "
+                      f"CHA: {str(old_item.cha)}, "
+                      f"INT: {str(old_item.int)}, "
+                      f"DEX: {str(old_item.dex)}, "
+                      f"LUCK: {str(old_item.luck)}) "
+            )
         if len(item.slot) > 1:
             slot = _("two handed")
         if hasattr(user, "display_name"):
@@ -5540,20 +5558,7 @@ class Adventure(BaseCog):
                 f"DEX: {str(item.dex)}, "
                 f"LUCK: {str(item.luck)}) "
             )
-            if old_item:
-                old_slot = old_item.slot[0]
-                if len(old_item.slot) > 1:
-                    old_slot = _("two handed")
-                old_stats = (
-                    _(
-                        "You currently have {item} [{slot}] equipped | Lvl req {lv} equipped."
-                    ).format(item=old_item, slot=old_slot, lv=equip_level(character, old_item))
-                    + f" (ATT: {str(old_item.att)}, "
-                    f"CHA: {str(old_item.cha)}, "
-                    f"INT: {str(old_item.int)}, "
-                    f"DEX: {str(old_item.dex)}, "
-                    f"LUCK: {str(old_item.luck)}) "
-                )
+
             await open_msg.edit(
                 content=box(
                     _(
@@ -5579,8 +5584,8 @@ class Adventure(BaseCog):
                 content=box(
                     _(
                         "{c_msg}\n{c_msg_2}\nDo you want to equip "
-                        "this item, put in your backpack, or sell this item?"
-                    ).format(c_msg=chest_msg, c_msg_2=chest_msg2),
+                        "this item, put in your backpack, or sell this item?\n\n{old_stats}"
+                    ).format(c_msg=chest_msg, c_msg_2=chest_msg2, old_stats=old_stats),
                     lang="css",
                 )
             )
@@ -5745,7 +5750,7 @@ class Adventure(BaseCog):
                 newcp += petcp
                 self._rewards[user.id]["cp"] = usercp
                 percent = round((c.heroclass["pet"]["bonus"] - 1.0) * 100)
-                phrase = _(
+                phrase += _(
                     "\n**{user}** received a **{percent}%** reward bonus from their {pet_name}."
                 ).format(
                     user=self.escape(user.display_name),
