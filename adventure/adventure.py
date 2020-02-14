@@ -4368,11 +4368,11 @@ class Adventure(BaseCog):
         await calc_msg.delete()
         text = ""
         success = False
+        treasure = [0, 0, 0, 0, 0]
         if slain or persuaded and not failed:
             success = True
             roll = random.randint(1, 10)
             monster_amount = hp if slain else dipl
-            treasure = [0, 0, 0, 0, 0]
             if session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
                 treasure = random.choice(
                     [
@@ -5771,7 +5771,7 @@ class Adventure(BaseCog):
 
         word = "has" if len(userlist) == 1 else "have"
         if special is not False and sum(special) == 1:
-            types = [" normal", " rare", "n epic", " legendary"]
+            types = [" normal", " rare", "n epic", " legendary", " set"]
             chest_type = types[special.index(1)]
             phrase += _(
                 "\n{b_reward} {word} been awarded {xp} xp and found {cp} {currency_name} (split based on stats). "
