@@ -725,8 +725,8 @@ class Character(Item):
         consumed_list = [i for i in consumed]
         rjust = max([len(str(i[1])) + 3 for slot_group in bkpk for i in slot_group] or [1, 3])
         for slot_group in bkpk:
-            slot_name = slot_group[0][1].slot
-            slot_name = slot_name[0] if len(slot_name) < 2 else _("two handed")
+            slot_name_org = slot_group[0][1].slot
+            slot_name = slot_name[0] if len(slot_name_org) < 2 else _("two handed")
             form_string += f"\n\n {slot_name.title()} slot\n"
             for item in slot_group:
                 if forging and (item[1].rarity == "forged" or item[1] in consumed_list):
@@ -742,11 +742,11 @@ class Character(Item):
                     settext += f" | Set `{item[1].set}` ({item[1].parts}pcs)"
                 form_string += (
                     f"\n{str(item[1]):<{rjust}} - "
-                    f"({att_space}{item[1].att if len(item[0].slot) == 1 else item[1].att * 2} |"
-                    f"{cha_space}{item[1].cha if len(item[0].slot) == 1 else item[1].cha * 2} |"
-                    f"{int_space}{item[1].int if len(item[0].slot) == 1 else item[1].int * 2} |"
-                    f"{dex_space}{item[1].dex if len(item[0].slot) == 1 else item[1].dex * 2} |"
-                    f"{luck_space}{item[1].luck if len(item[0].slot) == 1 else item[1].luck * 2} )"
+                    f"({att_space}{item[1].att if len(slot_name_org)  < 2 else item[1].att * 2} |"
+                    f"{cha_space}{item[1].cha if len(slot_name_org)  < 2 else item[1].cha * 2} |"
+                    f"{int_space}{item[1].int if len(slot_name_org) < 2 else item[1].int * 2} |"
+                    f"{dex_space}{item[1].dex if len(slot_name_org) < 2 else item[1].dex * 2} |"
+                    f"{luck_space}{item[1].luck if len(slot_name_org) < 2 else item[1].luck * 2} )"
                     f" | Lv {equip_level(self, item[1]):<3}"
                     f"{owned}{settext}"
                 )
