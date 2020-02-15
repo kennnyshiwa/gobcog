@@ -3912,7 +3912,7 @@ class Adventure(BaseCog):
             monster=monster_roaster[challenge],
             monsters=monster_roaster,
             monster_stats=monster_stats,
-            message=ctx.message
+            message=ctx.message,
         )
         adventure_msg = (
             f"{adventure_msg}{text}\n{random.choice(self.LOCATIONS)}\n"
@@ -5539,14 +5539,14 @@ class Adventure(BaseCog):
             if len(old_item.slot) > 1:
                 old_slot = _("two handed")
             old_stats = (
-                    _(
-                        "You currently have {item} [{slot}] equipped | Lvl req {lv} equipped."
-                    ).format(item=old_item, slot=old_slot, lv=equip_level(character, old_item))
-                    + f" (ATT: {str(old_item.att)}, "
-                      f"CHA: {str(old_item.cha)}, "
-                      f"INT: {str(old_item.int)}, "
-                      f"DEX: {str(old_item.dex)}, "
-                      f"LUCK: {str(old_item.luck)}) "
+                _("You currently have {item} [{slot}] equipped | Lvl req {lv} equipped.").format(
+                    item=old_item, slot=old_slot, lv=equip_level(character, old_item)
+                )
+                + f" (ATT: {str(old_item.att)}, "
+                f"CHA: {str(old_item.cha)}, "
+                f"INT: {str(old_item.int)}, "
+                f"DEX: {str(old_item.dex)}, "
+                f"LUCK: {str(old_item.luck)}) "
             )
         if len(item.slot) > 1:
             slot = _("two handed")
