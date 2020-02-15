@@ -3852,7 +3852,6 @@ class Adventure(BaseCog):
             return random.choice(list(monsters.keys()))
         else:
             return random.choice(possible_monsters)
-        #  return random.choice(list(self.MONSTER_NOW.keys()))
 
     async def update_monster_roster(self, user):
 
@@ -4382,23 +4381,23 @@ class Adventure(BaseCog):
         if slain or persuaded and not failed:
             success = True
             roll = random.randint(1, 10)
-            monster_amount = hp if slain else dipl
+            monster_amount = hp + dipl if slain and persuaded else hp if slain else dipl
             if session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
                 treasure = random.choice(
                     [
                         [0, 1, 1, 0, 0],
                         [0, 1, 1, 0, 0],
-                        [0, 1, 1, 0, 0],
-                        [0, 1, 1, 0, 0],
-                        [0, 1, 1, 0, 0],
-                        [0, 1, 1, 0, 0],
-                        [0, 1, 1, 0, 0],
-                        [0, 1, 1, 0, 0],
-                        [0, 1, 1, 0, 0],
-                        [0, 0, 1, 1, 0],
-                        [0, 0, 1, 1, 0],
-                        [0, 0, 0, 2, 0],
-                        [0, 0, 0, 2, 0],
+                        [0, 2, 1, 0, 0],
+                        [0, 2, 1, 0, 0],
+                        [0, 3, 1, 0, 0],
+                        [0, 3, 1, 0, 0],
+                        [0, 1, 2, 0, 0],
+                        [0, 2, 2, 0, 0],
+                        [0, 3, 2, 0, 0],
+                        [0, 0, 3, 1, 0],
+                        [0, 0, 1, 2, 0],
+                        [0, 0, 0, 3, 0],
+                        [0, 0, 0, 1, 1],
                         [0, 0, 0, 0, 1],
                         [0, 0, 0, 0, 1],
                     ]
@@ -4406,7 +4405,7 @@ class Adventure(BaseCog):
             elif (
                 session.miniboss
             ):  # rewards 50:50 rare:normal chest for killing something like the basilisk
-                treasure = random.choice([[1, 1, 1, 0, 0], [0, 0, 1, 1, 0]])
+                treasure = random.choice([[1, 1, 1, 0, 0], [0, 0, 1, 1, 0], [0, 0, 2, 2, 0], [0, 1, 0, 2, 0]])
             elif monster_amount >= 700:  # super hard stuff
                 if roll <= 7:
                     treasure = random.choice([[0, 0, 1, 0, 0], [0, 1, 0, 0, 0], [0, 0, 0, 1, 0]])
