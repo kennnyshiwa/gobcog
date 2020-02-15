@@ -742,11 +742,11 @@ class Character(Item):
                     settext += f" | Set `{item[1].set}` ({item[1].parts}pcs)"
                 form_string += (
                     f"\n{str(item[1]):<{rjust}} - "
-                    f"({att_space}{item[1].att} |"
-                    f"{cha_space}{item[1].cha} |"
-                    f"{int_space}{item[1].int} |"
-                    f"{dex_space}{item[1].dex} |"
-                    f"{luck_space}{item[1].luck} )"
+                    f"({att_space}{item[1].att if len(item[0].slot) == 1 else item[1].att * 2} |"
+                    f"{cha_space}{item[1].cha if len(item[0].slot) == 1 else item[1].cha * 2} |"
+                    f"{int_space}{item[1].int if len(item[0].slot) == 1 else item[1].int * 2} |"
+                    f"{dex_space}{item[1].dex if len(item[0].slot) == 1 else item[1].dex * 2} |"
+                    f"{luck_space}{item[1].luck if len(item[0].slot) == 1 else item[1].luck * 2} )"
                     f" | Lv {equip_level(self, item[1]):<3}"
                     f"{owned}{settext}"
                 )
