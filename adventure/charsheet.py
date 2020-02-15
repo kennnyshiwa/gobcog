@@ -999,10 +999,14 @@ class Character(Item):
         ]:
             if item and item.to_json() not in list(self.pieces_to_keep.values()):
                 await self.add_to_backpack(item)
-
+        forged = 0
         for k, v in self.backpack.items():
             for n, i in v.to_json().items():
                 if i.get("rarity", False) in ["set", "forged"] or str(v) in [".mirror_shield"]:
+                    if i.get("rarity", False) in ["forged"]:
+                        if forged > 0:
+                            continue
+                        forged += 1
                     backpack[n] = i
                 elif self.rebirths < 50 and i.get("rarity", False) in ["legendary"]:
                     if "degrade" in i:
