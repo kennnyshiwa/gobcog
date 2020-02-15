@@ -5,10 +5,10 @@ import json
 import logging
 import os
 import random
+import re
 import time
 from collections import namedtuple
 from datetime import date, datetime
-from math import ceil, floor
 from types import SimpleNamespace
 from typing import List, Optional, Union
 
@@ -20,7 +20,6 @@ from redbot.core.data_manager import bundled_data_path, cog_data_path
 from redbot.core.errors import BalanceTooHigh
 from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.chat_formatting import (
-    bold,
     box,
     escape,
     humanize_list,
@@ -2304,6 +2303,7 @@ class Adventure(BaseCog):
         """
         if item_name.isnumeric():
             return await smart_embed(ctx, _("Item names cannot be numbers."))
+        item_name = re.sub(r"[^\w]", "", item_name)
         if user is None:
             user = ctx.author
         new_item = {item_name: stats}
@@ -4404,7 +4404,9 @@ class Adventure(BaseCog):
             elif (
                 session.miniboss
             ):  # rewards 50:50 rare:normal chest for killing something like the basilisk
-                treasure = random.choice([[1, 1, 1, 0, 0], [0, 0, 1, 1, 0], [0, 0, 2, 2, 0], [0, 1, 0, 2, 0]])
+                treasure = random.choice(
+                    [[1, 1, 1, 0, 0], [0, 0, 1, 1, 0], [0, 0, 2, 2, 0], [0, 1, 0, 2, 0]]
+                )
             elif monster_amount >= 700:  # super hard stuff
                 if roll <= 7:
                     treasure = random.choice([[0, 0, 1, 0, 0], [0, 1, 0, 0, 0], [0, 0, 0, 1, 0]])
