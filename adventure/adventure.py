@@ -2736,7 +2736,7 @@ class Adventure(BaseCog):
                 ),
             )
         treasure = c.treasure[redux.index(1)]
-        if treasure < 1:
+        if treasure < 1 or treasure < number:
             await smart_embed(
                 ctx,
                 _("**{author}**, you do not have enough {box} treasure chest to open.").format(
