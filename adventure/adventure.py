@@ -2050,9 +2050,9 @@ class Adventure(BaseCog):
                         del c.backpack[x.name]
                     await self.config.user(ctx.author).set(c.to_json())
                 # save so the items are eaten up already
-                for items in c.get_current_equipment():
+                for item in c.get_current_equipment():
                     if item.rarity == "forged":
-                        c = await c.unequip_item(items)
+                        c = await c.unequip_item(item)
                 lookup = list(i for n, i in c.backpack.items() if i.rarity == "forged")
                 if len(lookup) > 0:
                     forge_str = box(
