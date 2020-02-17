@@ -2685,7 +2685,7 @@ class Adventure(BaseCog):
 
         Use the box rarity type with the command: normal, rare, epic, legendary or set.
         """
-        if number > 100 or number < 1:
+        if number > 100:
             return await smart_embed(ctx, _("Nice try :smirk:."),)
         if self.in_adventure(ctx):
             return await smart_embed(
@@ -2744,6 +2744,11 @@ class Adventure(BaseCog):
                 ),
             )
         else:
+            async with self.get_lock(ctx.author):
+                # atomically save reduced loot count then lock again when saving inside
+                # open chests
+                c.treasure[redux.index(1)] -= number
+                await self.config.user(ctx.author).set(c.to_json())
             if number > 1:
                 items = await self._open_chests(ctx, ctx.author, box_type, number, character=c)
                 msg = _(
@@ -2777,15 +2782,15 @@ class Adventure(BaseCog):
                     msgs.append(box(page, lang="css"))
             else:
                 msgs = []
+                async with self.get_lock(ctx.author):
+                    # atomically save reduced loot count then lock again when saving inside
+                    # open chests
+                    c.treasure[redux.index(1)] -= number
+                    await self.config.user(ctx.author).set(c.to_json())
+
                 await self._open_chest(
                     ctx, ctx.author, box_type, character=c
                 )  # returns item and msg
-
-            async with self.get_lock(ctx.author):
-                # atomically save reduced loot count then lock again when saving inside
-                # open chests
-                c.treasure[redux.index(1)] -= number
-                await self.config.user(ctx.author).set(c.to_json())
             if msgs:
                 await menu(ctx, msgs, DEFAULT_CONTROLS)
 
