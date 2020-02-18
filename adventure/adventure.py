@@ -1359,7 +1359,7 @@ class Adventure(BaseCog):
             c.heroclass["cooldown"] = 0
             if "catch_cooldown" in c.heroclass:
                 c.heroclass["catch_cooldown"] = 0
-            await self.config.user(user).set(c.to_json())
+            await self.config.user(target).set(c.to_json())
         await ctx.tick()
 
     @loadout.command(name="delete", aliases=["del", "rem", "remove"])
@@ -1768,14 +1768,14 @@ class Adventure(BaseCog):
                 return
 
             if box_rarity.lower() == "rare" and c.rebirths < rebirth_rare:
-                await smart_embed(
+                return await smart_embed(
                     ctx,
                     (
                         "**{}**, You need to have {} or more rebirth to convert epic treasure chests."
                     ).format(self.escape(ctx.author.display_name), rebirth_rare),
                 )
             elif box_rarity.lower() == "epic" and c.rebirths < rebirth_epic:
-                await smart_embed(
+                return await smart_embed(
                     ctx,
                     (
                         "**{}**, You need to have {} or more rebirth to convert epic treasure chests."
@@ -2079,6 +2079,7 @@ class Adventure(BaseCog):
                     with contextlib.suppress(discord.HTTPException):
                         await forge_msg.delete()
                     if pred.result:  # user reacted with Yes.
+                        c.heroclass["cooldown"] = time.time() + cooldown_time
                         created_item = box(
                             _(
                                 "{author}, your new {newitem} consumed {lk} "
@@ -2096,6 +2097,8 @@ class Adventure(BaseCog):
                         c.backpack[newitem.name] = newitem
                         await self.config.user(ctx.author).set(c.to_json())
                     else:
+                        c.heroclass["cooldown"] = time.time() + cooldown_time
+                        await self.config.user(ctx.author).set(c.to_json())
                         mad_forge = box(
                             _(
                                 "{author}, {newitem} got mad at your rejection and blew itself up."
@@ -2104,6 +2107,7 @@ class Adventure(BaseCog):
                         )
                         return await ctx.send(mad_forge)
                 else:
+                    c.heroclass["cooldown"] = time.time() + cooldown_time
                     c.backpack[newitem.name] = newitem
                     await self.config.user(ctx.author).set(c.to_json())
                     forged_item = box(
@@ -2758,7 +2762,7 @@ class Adventure(BaseCog):
 
         Use the box rarity type with the command: normal, rare, epic, legendary or set.
         """
-        if number > 100:
+        if number > 100 or number < 1:
             return await smart_embed(ctx, _("Nice try :smirk:."),)
         if self.in_adventure(ctx):
             return await smart_embed(
@@ -2818,6 +2822,11 @@ class Adventure(BaseCog):
             )
         else:
             if number > 1:
+                async with self.get_lock(ctx.author):
+                    # atomically save reduced loot count then lock again when saving inside
+                    # open chests
+                    c.treasure[redux.index(1)] -= number
+                    await self.config.user(ctx.author).set(c.to_json())
                 items = await self._open_chests(ctx, ctx.author, box_type, number, character=c)
                 msg = _(
                     "{}, you've opened the following items:\n"
@@ -2850,15 +2859,15 @@ class Adventure(BaseCog):
                     msgs.append(box(page, lang="css"))
             else:
                 msgs = []
+                async with self.get_lock(ctx.author):
+                    # atomically save reduced loot count then lock again when saving inside
+                    # open chests
+                    c.treasure[redux.index(1)] -= number
+                    await self.config.user(ctx.author).set(c.to_json())
+
                 await self._open_chest(
                     ctx, ctx.author, box_type, character=c
                 )  # returns item and msg
-
-            async with self.get_lock(ctx.author):
-                # atomically save reduced loot count then lock again when saving inside
-                # open chests
-                c.treasure[redux.index(1)] -= number
-                await self.config.user(ctx.author).set(c.to_json())
             if msgs:
                 await menu(ctx, msgs, DEFAULT_CONTROLS)
 
