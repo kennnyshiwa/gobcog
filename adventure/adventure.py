@@ -1356,7 +1356,7 @@ class Adventure(BaseCog):
             c.heroclass["cooldown"] = 0
             if "catch_cooldown" in c.heroclass:
                 c.heroclass["catch_cooldown"] = 0
-            await self.config.user(user).set(c.to_json())
+            await self.config.user(target).set(c.to_json())
         await ctx.tick()
 
     @loadout.command(name="delete", aliases=["del", "rem", "remove"])
@@ -1953,6 +1953,7 @@ class Adventure(BaseCog):
                 if "cooldown" not in c.heroclass:
                     c.heroclass["cooldown"] = cooldown_time + 1
                 if not c.heroclass["cooldown"] + cooldown_time <= time.time():
+                    c.heroclass["cooldown"] = time.time()
                     cooldown_time = (c.heroclass["cooldown"]) + cooldown_time - time.time()
                     return await smart_embed(
                         ctx,
