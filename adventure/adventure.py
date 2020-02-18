@@ -1953,7 +1953,6 @@ class Adventure(BaseCog):
                 if "cooldown" not in c.heroclass:
                     c.heroclass["cooldown"] = cooldown_time + 1
                 if not c.heroclass["cooldown"] + cooldown_time <= time.time():
-                    c.heroclass["cooldown"] = time.time()
                     cooldown_time = (c.heroclass["cooldown"]) + cooldown_time - time.time()
                     return await smart_embed(
                         ctx,
@@ -1963,6 +1962,7 @@ class Adventure(BaseCog):
                             else _("1 second")
                         ),
                     )
+                c.heroclass["cooldown"] = time.time()
                 consumed = []
                 forgeables = len(
                     [i for n, i in c.backpack.items() if i.rarity not in ["forged", "set"]]
