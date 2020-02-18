@@ -2827,6 +2827,11 @@ class Adventure(BaseCog):
                 c.treasure[redux.index(1)] -= number
                 await self.config.user(ctx.author).set(c.to_json())
             if number > 1:
+                async with self.get_lock(ctx.author):
+                    # atomically save reduced loot count then lock again when saving inside
+                    # open chests
+                    c.treasure[redux.index(1)] -= number
+                    await self.config.user(ctx.author).set(c.to_json())
                 items = await self._open_chests(ctx, ctx.author, box_type, number, character=c)
                 msg = _(
                     "{}, you've opened the following items:\n"
