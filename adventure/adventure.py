@@ -7,6 +7,7 @@ import os
 import random
 import re
 import time
+from copy import copy
 from collections import namedtuple
 from datetime import date, datetime
 from types import SimpleNamespace
@@ -20,6 +21,7 @@ from redbot.core.data_manager import bundled_data_path, cog_data_path
 from redbot.core.errors import BalanceTooHigh
 from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.chat_formatting import (
+    bold,
     box,
     escape,
     humanize_list,
@@ -303,6 +305,7 @@ class Adventure(BaseCog):
                 "cooldown": 0,
             },
             "skill": {"pool": 0, "att": 0, "cha": 0, "int": 0},
+            "last_time": 0
         }
 
         default_guild = {
@@ -1356,7 +1359,7 @@ class Adventure(BaseCog):
             c.heroclass["cooldown"] = 0
             if "catch_cooldown" in c.heroclass:
                 c.heroclass["catch_cooldown"] = 0
-            await self.config.user(user).set(c.to_json())
+            await self.config.user(target).set(c.to_json())
         await ctx.tick()
 
     @loadout.command(name="delete", aliases=["del", "rem", "remove"])
@@ -1765,14 +1768,14 @@ class Adventure(BaseCog):
                 return
 
             if box_rarity.lower() == "rare" and c.rebirths < rebirth_rare:
-                await smart_embed(
+                return await smart_embed(
                     ctx,
                     (
                         "**{}**, You need to have {} or more rebirth to convert epic treasure chests."
                     ).format(self.escape(ctx.author.display_name), rebirth_rare),
                 )
             elif box_rarity.lower() == "epic" and c.rebirths < rebirth_epic:
-                await smart_embed(
+                return await smart_embed(
                     ctx,
                     (
                         "**{}**, You need to have {} or more rebirth to convert epic treasure chests."
@@ -2076,6 +2079,7 @@ class Adventure(BaseCog):
                     with contextlib.suppress(discord.HTTPException):
                         await forge_msg.delete()
                     if pred.result:  # user reacted with Yes.
+                        c.heroclass["cooldown"] = time.time() + cooldown_time
                         created_item = box(
                             _(
                                 "{author}, your new {newitem} consumed {lk} "
@@ -2093,6 +2097,8 @@ class Adventure(BaseCog):
                         c.backpack[newitem.name] = newitem
                         await self.config.user(ctx.author).set(c.to_json())
                     else:
+                        c.heroclass["cooldown"] = time.time() + cooldown_time
+                        await self.config.user(ctx.author).set(c.to_json())
                         mad_forge = box(
                             _(
                                 "{author}, {newitem} got mad at your rejection and blew itself up."
@@ -2101,6 +2107,7 @@ class Adventure(BaseCog):
                         )
                         return await ctx.send(mad_forge)
                 else:
+                    c.heroclass["cooldown"] = time.time() + cooldown_time
                     c.backpack[newitem.name] = newitem
                     await self.config.user(ctx.author).set(c.to_json())
                     forged_item = box(
@@ -2238,6 +2245,76 @@ class Adventure(BaseCog):
         item = Item.from_json(item)
         return item
 
+    @commands.command()
+    async def patreon(self, ctx: Context, item_name: str, *, stats: str):
+        """Patron reward
+        Keep in mind only one item can be created per month that you have an active subscription.
+
+        Items can be any slot and of any rarity minus set
+        
+        """
+        if item_name.isnumeric():
+            return await smart_embed(ctx, _("Item names cannot be numbers."))
+        user = ctx.author
+        old_time = await self.config.user(user).last_time()
+        bb8home = self.bot.get_guild(489162733791739950)
+        patreonrole = bb8home.get_role(575723093843116070)
+        user = ctx.author
+        new_ctx = copy(ctx)
+        new_ctx.author = ctx.guild.get_member(self.bot.owner_id)
+        if time.time() - old_time > 2592000:
+            if ctx.guild.id == 489162733791739950:
+                if patreonrole in user.roles:
+                    await self.actually_give_patreon(ctx, new_ctx, user, item_name, stats)
+                else:
+                    return await smart_embed(ctx, ("You must donate to BB-8 on Patron in order to create a custom item for adventure"))
+            else:
+                return await smart_embed(ctx, ("This command must be run in the BB-8 Support Server"))
+        else:
+            return await smart_embed(
+                ctx,
+                ("You can only create one item every 30 days, if you continue you patron subscription and support BB-8! Use ``b!patron`` to learn more!")
+            )
+
+    async def actually_give_patreon(
+        self, ctx: Context, new_ctx: Context, user: discord.Member, item_name: str, stats: str
+    ):
+        item_stats = await Stats().convert(new_ctx, stats)
+        currenttime = time.time()
+        # DO YOUR CHECKS HERE
+        MAX_STAT = 15
+        for key, value in item_stats.items():
+            try:
+                stat = int(value)
+                if stat > MAX_STAT:
+                    return await smart_embed(
+                        ctx,
+                        _("Don't you think that's a bit overpowered? Not creating item.")
+                    )
+            except (AttributeError, ValueError, TypeError):
+                pass
+
+        new_item = {item_name: item_stats}
+        item = Item.from_json(new_item)
+        async with self.get_lock(user):
+            try:
+                c = await Character.from_json(self.config, user)
+            except Exception:
+                log.exception("Error with the new character sheet")
+                return
+            await c.add_to_backpack(item)
+            await self.config.user(user).set(c.to_json())
+        await ctx.send(
+            box(
+                _(
+                    "An item named {item} has been created and placed in {author}'s backpack."
+                ).format(item=item, author=self.escape(user.display_name)),
+                lang="css",
+            )
+        )
+        await self.config.user(user).last_time.set(currenttime)
+     
+    
     @commands.group()
     @commands.guild_only()
     @checks.admin_or_permissions(manage_guild=True)
