@@ -7,6 +7,7 @@ import os
 import random
 import re
 import time
+from copy import copy
 from collections import namedtuple
 from datetime import date, datetime
 from types import SimpleNamespace
@@ -20,6 +21,7 @@ from redbot.core.data_manager import bundled_data_path, cog_data_path
 from redbot.core.errors import BalanceTooHigh
 from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.chat_formatting import (
+    bold,
     box,
     escape,
     humanize_list,
@@ -303,6 +305,7 @@ class Adventure(BaseCog):
                 "cooldown": 0,
             },
             "skill": {"pool": 0, "att": 0, "cha": 0, "int": 0},
+            "last_time": 0
         }
 
         default_guild = {
