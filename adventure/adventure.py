@@ -758,7 +758,7 @@ class Adventure(BaseCog):
                     ctx, _("You need to be an active Patreon to equip this item")
                 )
 
-            if not can_equip(c, equip_item):
+            elif not can_equip(c, equip_item):
                 return await smart_embed(
                     ctx,
                     _("You need to be level `{level}` to equip this item").format(

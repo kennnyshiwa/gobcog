@@ -155,10 +155,6 @@ class PatreonStats(Converter):
             result["slot"] = slot
         except AttributeError:
             raise BadArgument(_("No slot position was provided."))
-        try:
-            result["rarity"] = RARITY_PATREON.search(argument).group(0)
-        except AttributeError:
-            raise BadArgument(_("No rarity was provided."))
         for (key, value) in possible_stats.items():
             with contextlib.suppress(AttributeError, ValueError):
                 stat = int(value.group(1))
@@ -206,7 +202,7 @@ class Item:
             name = self.name.replace("'", "’")
             return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
             # Thanks Sinbad!
-        elif self.rarity == "set":
+        elif self.rarity == "patreon":
             name = self.name.replace("'", "’")
             return f"{Patreon_OPEN}'{name}'{LEGENDARY_CLOSE}"
         return self.name
