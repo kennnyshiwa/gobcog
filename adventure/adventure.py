@@ -752,7 +752,6 @@ class Adventure(BaseCog):
                 equiplevel = 0
             if equip_item.rarity == "patreon":
                 patreon_status = await self.config.user(ctx.author).patron.has_patron()
-                await smart_embed(ctx, str(patreon_status))
                 if patreon_status is not True:
                     return await smart_embed(
                         ctx, _("You need to be an active Patreon to equip this item")
