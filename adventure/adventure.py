@@ -2388,7 +2388,7 @@ class Adventure(BaseCog):
             if patreon_role in member.roles:
                 data = await self.config.user(member).patron.all()
                 data["has_patron"] = True
-                data["first_patron"] = int(time.time())
+                data["first_patron"] = int(time_now)
                 await self.config.user(member).patron.set(data)
         await ctx.tick()
 
