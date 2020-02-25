@@ -750,13 +750,13 @@ class Adventure(BaseCog):
             equiplevel = equip_level(c, equip_item)
             if self.is_dev(ctx.author):  # FIXME:
                 equiplevel = 0
-            if (
-                equip_item.rarity == "patreon"
-                and not await self.config.user(ctx.author).patron.has_patron()
-            ):
-                return await smart_embed(
-                    ctx, _("You need to be an active Patreon to equip this item")
-                )
+            if equip_item.rarity == "patreon":
+                patreon_status = await self.config.user(ctx.author).patron.has_patron()
+                await smart_embed(ctx, str(patreon_status))
+                if patreon_status is not True:
+                    return await smart_embed(
+                        ctx, _("You need to be an active Patreon to equip this item")
+                    )
 
             elif not can_equip(c, equip_item):
                 return await smart_embed(
@@ -1595,7 +1595,6 @@ class Adventure(BaseCog):
         while ctx.guild.id in self._sessions:
             del self._sessions[ctx.guild.id]
         await ctx.tick()
-
 
     @adventureset.command()
     @checks.is_owner()
@@ -2459,7 +2458,9 @@ class Adventure(BaseCog):
                 log.exception("Error with the new character sheet")
                 return
             patreon_items = []
-            for current_item in c.get_current_equipment():  # User is only allowed to have 1 at a time
+            for (
+                current_item
+            ) in c.get_current_equipment():  # User is only allowed to have 1 at a time
                 if current_item.rarity == "patreon":
                     c = await c.unequip_item(current_item)
             for (name, back_packitem) in c.backpack.items():
