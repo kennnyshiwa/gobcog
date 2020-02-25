@@ -2391,6 +2391,7 @@ class Adventure(BaseCog):
                     if not patron_data["has_patron"]:
                         patron_data["has_patron"] = True
                         patron_data["first_patron"] = time_now
+        await ctx.tick()
 
     @commands.guild_only()
     @commands.command()
