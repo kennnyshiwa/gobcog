@@ -1283,8 +1283,8 @@ def get_true_name(rarity, name):
     if rarity == "legendary":
         return f"{LEGENDARY_OPEN}{name}{LEGENDARY_CLOSE}"
     if rarity == "set":
-        return f"{SET_OPEN}{name}{LEGENDARY_CLOSE}"
+        return f"{SET_OPEN}'{name}'{LEGENDARY_CLOSE}"
     if rarity == "forged":
         return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
     if rarity == "patreon":
-        return f"{Patreon_OPEN}{name}{LEGENDARY_CLOSE}"
+        return f"{Patreon_OPEN}'{name}'{LEGENDARY_CLOSE}"
