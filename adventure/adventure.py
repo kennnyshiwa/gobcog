@@ -2386,9 +2386,10 @@ class Adventure(BaseCog):
         for member in ctx.guild.members:
             await asyncio.sleep(0)
             if patreon_role in member.roles:
-                with self.config.user(member).patron.all() as patron_data:
-                    if not patron_data["has_patron"]:
-                        patron_data["has_patron"] = True
+                data = await self.config.user(member).patron.all()
+                data["has_patron"] = True
+                data["first_patron"] = int(time.time())
+                await self.config.user(member).patron.set(data)
                         patron_data["first_patron"] = time_now
         await ctx.tick()
 
