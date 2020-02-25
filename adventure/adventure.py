@@ -2390,7 +2390,6 @@ class Adventure(BaseCog):
                 data["has_patron"] = True
                 data["first_patron"] = int(time.time())
                 await self.config.user(member).patron.set(data)
-                        patron_data["first_patron"] = time_now
         await ctx.tick()
 
     @commands.guild_only()
