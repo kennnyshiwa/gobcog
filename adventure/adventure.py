@@ -2459,14 +2459,14 @@ class Adventure(BaseCog):
                 log.exception("Error with the new character sheet")
                 return
             patreon_items = []
-            for item in c.get_current_equipment():  # User is only allowed to have 1 at a time
-                if item.rarity == "patreon":
-                    c = await c.unequip_item(item)
-            for (name, item) in c.backpack.items():
-                if item.rarity == "patreon":
-                    patreon_items.append(item)
-            for item in patreon_items:
-                del c.backpack[item.name]
+            for current_item in c.get_current_equipment():  # User is only allowed to have 1 at a time
+                if current_item.rarity == "patreon":
+                    c = await c.unequip_item(current_item)
+            for (name, back_packitem) in c.backpack.items():
+                if back_packitem.rarity == "patreon":
+                    patreon_items.append(back_packitem)
+            for old_patreon_items in patreon_items:
+                del c.backpack[old_patreon_items.name]
             await c.add_to_backpack(item)
             await self.config.user(user).set(c.to_json())
         await ctx.send(
