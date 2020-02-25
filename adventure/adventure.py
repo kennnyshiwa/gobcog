@@ -2403,7 +2403,11 @@ class Adventure(BaseCog):
 
         Keep in mind only one item can be created per week that you have an active subscription.
 
-        Items can be any slot and of any rarity minus set
+        Items can be any slot and will be a new rarity called patreon that will never leave upoon rebirth and cannot be sold. 
+
+        Command syntax ``b!patreon <item name> <x> attack <x> charisma <x> dexterity <x> luck <slot>``
+
+        You can choose how many stats go into each slot and you only have to state the stats you want, and any ommitted stats will be zero, base available stats is 60 and will increase with length of patron subscription
         
         """
         if not ctx.guild or ctx.guild.id != 489162733791739950:
