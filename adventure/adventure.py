@@ -5397,71 +5397,74 @@ class Adventure(BaseCog):
             log.exception("Error with the new character sheet", exc_info=exc)
             lock.release()
             return
-        c.exp += exp
-        member = ctx.guild.get_member(user.id)
-        cp = max(cp, 0)
-        if cp > 0:
-            with contextlib.suppress(BalanceTooHigh):
-                await bank.deposit_credits(member, cp)
-        extra = ""
-        rebirthextra = ""
-        lvl_start = c.lvl
-        lvl_end = int(max(c.exp, 0) ** (1 / 3.5))
-        lvl_end = lvl_end if lvl_end < c.maxlevel else c.maxlevel
-        levelup_emoji = self.emojis.level_up
-        rebirth_emoji = self.emojis.rebirth
-        if lvl_end >= c.maxlevel:
-            rebirthextra = _("{} You can now Rebirth {}").format(rebirth_emoji, user.mention)
-        if lvl_start < lvl_end:
-            # recalculate free skillpoint pool based on new level and already spent points.
-            c.lvl = lvl_end
-            assigned_stats = c.skill["att"] + c.skill["cha"] + c.skill["int"]
-            starting_points = calculate_sp(lvl_start, c) + assigned_stats
-            ending_points = calculate_sp(lvl_end, c) + assigned_stats
+        else:
+            c.exp += exp
+            member = ctx.guild.get_member(user.id)
+            cp = max(cp, 0)
+            if cp > 0:
+                with contextlib.suppress(BalanceTooHigh):
+                    await bank.deposit_credits(member, cp)
+            extra = ""
+            rebirthextra = ""
+            lvl_start = c.lvl
+            lvl_end = int(max(c.exp, 0) ** (1 / 3.5))
+            lvl_end = lvl_end if lvl_end < c.maxlevel else c.maxlevel
+            levelup_emoji = self.emojis.level_up
+            rebirth_emoji = self.emojis.rebirth
+            if lvl_end >= c.maxlevel:
+                rebirthextra = _("{} You can now Rebirth {}").format(rebirth_emoji, user.mention)
+            if lvl_start < lvl_end:
+                # recalculate free skillpoint pool based on new level and already spent points.
+                c.lvl = lvl_end
+                assigned_stats = c.skill["att"] + c.skill["cha"] + c.skill["int"]
+                starting_points = calculate_sp(lvl_start, c) + assigned_stats
+                ending_points = calculate_sp(lvl_end, c) + assigned_stats
 
-            if c.skill["pool"] < 0:
-                c.skill["pool"] = 0
-            c.skill["pool"] += ending_points - starting_points
-            if c.skill["pool"] > 0:
-                extra = _(" You have **{}** skill points available.").format(c.skill["pool"])
-            await smart_embed(
-                ctx,
-                _("{} {} is now level **{}**!{}\n{}").format(
-                    levelup_emoji, user.mention, lvl_end, extra, rebirthextra
-                ),
-            )
-        if c.rebirths > 1:
-            roll = random.randint(1, 100)
-            if lvl_end == c.maxlevel:
-                roll += random.randint(50, 100)
-            if special is False:
-                special = [0, 0, 0, 0, 0]
-                if c.rebirths > 1 and roll < 50:
-                    special[0] += 1
-                if c.rebirths > 5 and roll < 30:
-                    special[1] += 1
-                if c.rebirths > 10 > roll:
-                    special[2] += 1
-                if c.rebirths > 15 and roll < 5:
-                    special[3] += 1
-                if special == [0, 0, 0, 0, 0]:
-                    special = False
-            else:
-                if c.rebirths > 1 and roll < 50:
-                    special[0] += 1
-                if c.rebirths > 5 and roll < 30:
-                    special[1] += 1
-                if c.rebirths > 10 > roll:
-                    special[2] += 1
-                if c.rebirths > 15 and roll < 5:
-                    special[3] += 1
-                if special == [0, 0, 0, 0, 0]:
-                    special = False
-        if special is not False:
-            c.treasure = [sum(x) for x in zip(c.treasure, special)]
-        await self.config.user(user).set(c.to_json())
-        with contextlib.suppress(Exception):
-            lock.release()
+                if c.skill["pool"] < 0:
+                    c.skill["pool"] = 0
+                c.skill["pool"] += ending_points - starting_points
+                if c.skill["pool"] > 0:
+                    extra = _(" You have **{}** skill points available.").format(c.skill["pool"])
+                await smart_embed(
+                    ctx,
+                    _("{} {} is now level **{}**!{}\n{}").format(
+                        levelup_emoji, user.mention, lvl_end, extra, rebirthextra
+                    ),
+                )
+            if c.rebirths > 1:
+                roll = random.randint(1, 100)
+                if lvl_end == c.maxlevel:
+                    roll += random.randint(50, 100)
+                if special is False:
+                    special = [0, 0, 0, 0, 0]
+                    if c.rebirths > 1 and roll < 50:
+                        special[0] += 1
+                    if c.rebirths > 5 and roll < 30:
+                        special[1] += 1
+                    if c.rebirths > 10 > roll:
+                        special[2] += 1
+                    if c.rebirths > 15 and roll < 5:
+                        special[3] += 1
+                    if special == [0, 0, 0, 0, 0]:
+                        special = False
+                else:
+                    if c.rebirths > 1 and roll < 50:
+                        special[0] += 1
+                    if c.rebirths > 5 and roll < 30:
+                        special[1] += 1
+                    if c.rebirths > 10 > roll:
+                        special[2] += 1
+                    if c.rebirths > 15 and roll < 5:
+                        special[3] += 1
+                    if special == [0, 0, 0, 0, 0]:
+                        special = False
+            if special is not False:
+                c.treasure = [sum(x) for x in zip(c.treasure, special)]
+            await self.config.user(user).set(c.to_json())
+        finally:
+            lock = self.get_lock(user)
+            with contextlib.suppress(Exception):
+                lock.release()
 
     async def _adv_countdown(self, ctx: Context, seconds, title) -> asyncio.Task:
         await self._data_check(ctx)
