@@ -2422,7 +2422,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx,
                 (
-                    "You can only create one item every 30 days, if you continue you patron subscription and support BB-8! Use ``b!patron`` to learn more!"
+                    "You can only create one item every 7 days, if you continue you patron subscription and support BB-8! Use ``b!patron`` to learn more!"
                 ),
             )
 
