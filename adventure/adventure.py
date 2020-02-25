@@ -2374,6 +2374,7 @@ class Adventure(BaseCog):
 
     @commands.guild_only()
     @checks.is_owner()
+    @commands.command()
     async def updatepatreon(self, ctx: Context):
         """Sync users with Patreon"""
         if not ctx.guild or ctx.guild.id != 489162733791739950:
