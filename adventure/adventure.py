@@ -750,6 +750,13 @@ class Adventure(BaseCog):
             equiplevel = equip_level(c, equip_item)
             if self.is_dev(ctx.author):  # FIXME:
                 equiplevel = 0
+            if (
+                equip_item.rarity == "patreon"
+                and not await self.config.user(ctx.author).patron.has_patron()
+            ):
+                return await smart_embed(
+                    ctx, _("You need to be an active Patreon to equip this item")
+                )
 
             if not can_equip(c, equip_item):
                 return await smart_embed(
@@ -2316,6 +2323,22 @@ class Adventure(BaseCog):
             data["has_patron"] = False
             data["first_patron"] = None
             await self.config.user(after).patron.set(data)
+            async with self.get_lock(after):
+                try:
+                    c = await Character.from_json(self.config, after)
+                except Exception:
+                    log.exception("Error with the new character sheet")
+                    return
+                patreon_items = []
+                for item in c.get_current_equipment():  # User is only allowed to have 1 at a time
+                    if item.rarity == "patreon":
+                        c = await c.unequip_item(item)
+                for (name, item) in c.backpack.items():
+                    if item.rarity == "patreon":
+                        patreon_items.append(item)
+                for item in patreon_items:
+                    del c.backpack[item.name]
+                await self.config.user(after).set(c.to_json())
         elif patreon_role in after.roles and patreon_role not in before.roles:
             data["has_patron"] = True
             data["first_patron"] = int(time.time())
