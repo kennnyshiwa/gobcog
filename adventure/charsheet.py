@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import contextlib
 import logging
 import re
 from copy import copy
@@ -50,7 +51,7 @@ TINKER_CLOSE = r"':.}"
 LEGENDARY_OPEN = r"{Legendary:'"
 LEGENDARY_CLOSE = r"'}"
 SET_OPEN = r"{Set:'"
-
+Patreon_OPEN = r"{Patreon:'"
 TIME_RE_STRING = r"\s?".join(
     [
         r"((?P<days>\d+?)\s?(d(ays?)?))?",
@@ -76,8 +77,9 @@ INT = re.compile(r"(-?\d*) (int(?:elligence)?)")
 LUCK = re.compile(r"(-?\d*) (luck)")
 DEX = re.compile(r"(-?\d*) (dex(?:terity)?)")
 SLOT = re.compile(r"(head|neck|chest|gloves|belt|legs|boots|left|right|ring|charm|twohanded)")
-RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged)")
-RARITIES = ("normal", "rare", "epic", "legendary", "set")
+RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged|patreon)")
+RARITIES = ("normal", "rare", "epic", "legendary", "set", "patreon")
+RARITY_PATREON = re.compile(r"(patreon)")
 
 
 class Stats(Converter):
@@ -125,12 +127,53 @@ class Stats(Converter):
         return result
 
 
+class PatreonStats(Converter):
+    """This will parse a string for specific keywords like attack and dexterity followed by a
+    number to create an item object to be added to a users inventory."""
+
+    async def convert(self, ctx: commands.Context, argument: str) -> Dict[str, int]:
+        result = {
+            "slot": ["left"],
+            "att": 0,
+            "cha": 0,
+            "int": 0,
+            "dex": 0,
+            "luck": 0,
+            "rarity": "patreon",
+        }
+        possible_stats = dict(
+            att=ATT.search(argument),
+            cha=CHA.search(argument),
+            int=INT.search(argument),
+            dex=DEX.search(argument),
+            luck=LUCK.search(argument),
+        )
+        try:
+            slot = [SLOT.search(argument).group(0)]
+            if slot == ["twohanded"]:
+                slot = ["left", "right"]
+            result["slot"] = slot
+        except AttributeError:
+            raise BadArgument(_("No slot position was provided."))
+        try:
+            result["rarity"] = RARITY_PATREON.search(argument).group(0)
+        except AttributeError:
+            raise BadArgument(_("No rarity was provided."))
+        for (key, value) in possible_stats.items():
+            with contextlib.suppress(AttributeError, ValueError):
+                stat = int(value.group(1))
+                result[key] = stat
+        return result
+
+
 class Item:
     """An object to represent an item in the game world."""
 
     def __init__(self, **kwargs):
         if kwargs.get("rarity") in ["set", "legendary"]:
             self.name: str = kwargs.pop("name").title()
+        elif kwargs.get("rarity") in ["patreon"]:
+            self.name = kwargs.pop("name")
         else:
             self.name: str = kwargs.pop("name").lower()
         self.slot: List[str] = kwargs.pop("slot")
@@ -163,6 +206,9 @@ class Item:
             name = self.name.replace("'", "’")
             return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
             # Thanks Sinbad!
+        elif self.rarity == "set":
+            name = self.name.replace("'", "’")
+            return f"{Patreon_OPEN}'{name}'{LEGENDARY_CLOSE}"
         return self.name
 
     @property
@@ -171,7 +217,7 @@ class Item:
 
     def get_equip_level(self):
         lvl = 1
-        if self.rarity not in ["forged"]:
+        if self.rarity not in ["forged", "patreon"]:
             # epic and legendary stats too similar so make level req's
             # the same
             rarity_multiplier = min(
@@ -200,6 +246,10 @@ class Item:
             item = item.replace("{Set:''", "").replace("''}", "")
         if item.startswith("{set:'"):
             item = item.replace("{set:''", "").replace("''}", "")
+        if item.startswith("{Patreon:'"):
+            item = item.replace("{Patreon:''", "").replace("''}", "")
+        if item.startswith("{patreon:'"):
+            item = item.replace("{patreon:''", "").replace("''}", "")
         if item.startswith("{.:'"):
             item = item.replace("{.:'", "").replace("':.}", "")
         return item
@@ -236,6 +286,12 @@ class Item:
         elif name.startswith("{set:'"):
             name = name.replace("{set:''", "").replace("''}", "")
             rarity = "set"
+        elif name.startswith("{Patreon:'"):
+            name = name.replace("{Patreon:''", "").replace("''}", "")
+            rarity = "patreon"
+        elif name.startswith("{patreon:'"):
+            name = name.replace("{patreon:''", "").replace("''}", "")
+            rarity = "patreon"
         elif name.startswith("{.:'"):
             name = name.replace("{.:'", "").replace("':.}", "")
             rarity = "forged"
@@ -1000,7 +1056,9 @@ class Character(Item):
         forged = 0
         for (k, v) in self.backpack.items():
             for (n, i) in v.to_json().items():
-                if i.get("rarity", False) in ["set", "forged"] or str(v) in [".mirror_shield"]:
+                if i.get("rarity", False) in ["set", "forged", "patreon"] or str(v) in [
+                    ".mirror_shield"
+                ]:
                     if i.get("rarity", False) in ["forged"]:
                         if forged > 0:
                             continue
@@ -1228,3 +1286,5 @@ def get_true_name(rarity, name):
         return f"{SET_OPEN}{name}{LEGENDARY_CLOSE}"
     if rarity == "forged":
         return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
+    if rarity == "patreon":
+        return f"{Patreon_OPEN}{name}{LEGENDARY_CLOSE}"

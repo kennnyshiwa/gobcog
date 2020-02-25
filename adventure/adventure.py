@@ -7,13 +7,13 @@ import os
 import random
 import re
 import time
-from copy import copy
 from collections import namedtuple
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from types import SimpleNamespace
 from typing import List, Optional, Union, MutableMapping
 
 import discord
+from dateutil import relativedelta
 from discord.ext.commands import CheckFailure
 from redbot.cogs.bank import check_global_setting_admin
 from redbot.core import Config, bank, checks, commands
@@ -23,7 +23,6 @@ from redbot.core.data_manager import bundled_data_path, cog_data_path
 from redbot.core.errors import BalanceTooHigh
 from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.chat_formatting import (
-    bold,
     box,
     escape,
     humanize_list,
@@ -43,6 +42,7 @@ from .charsheet import (
     ItemConverter,
     EquipmentConverter,
     Stats,
+    PatreonStats,
     calculate_sp,
     can_equip,
     equip_level,
@@ -305,7 +305,7 @@ class Adventure(BaseCog):
                 "cooldown": 0,
             },
             "skill": {"pool": 0, "att": 0, "cha": 0, "int": 0},
-            "last_time": 0
+            "patron": {"last_reward": 0, "has_patron": None, "first_patron": None},
         }
 
         default_guild = {
@@ -798,7 +798,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx, _("I've never heard of `{rarity}` rarity items before.").format(rarity=rarity)
             )
-        elif rarity and rarity.lower() in ["set", "forged"]:
+        elif rarity and rarity.lower() in ["set", "forged", "patreon"]:
             return await smart_embed(
                 ctx, _("You cannot sell `{rarity}` rarity items.").format(rarity=rarity)
             )
@@ -810,7 +810,9 @@ class Adventure(BaseCog):
                 log.exception("Error with the new character sheet", exc_info=exc)
                 return
             total_price = 0
-            items = [i for n, i in c.backpack.items() if i.rarity not in ["forged", "set"]]
+            items = [
+                i for n, i in c.backpack.items() if i.rarity not in ["forged", "set", "patreon"]
+            ]
             count = 0
             for item in items:
                 if not rarity or item.rarity == rarity:
@@ -872,6 +874,16 @@ class Adventure(BaseCog):
                 box(
                     _(
                         "\n{author}, you are not able to sell Set items as they are bound to your soul."
+                    ).format(author=self.escape(ctx.author.display_name)),
+                    lang="css",
+                )
+            )
+        elif item.rarity == "patreon":
+            ctx.command.reset_cooldown(ctx)
+            return await ctx.send(
+                box(
+                    _(
+                        "\n{author}, you are not able to sell Patreon items as they are bound to your wallet."
                     ).format(author=self.escape(ctx.author.display_name)),
                     lang="css",
                 )
@@ -1075,6 +1087,15 @@ class Adventure(BaseCog):
                 box(
                     _(
                         "\n{character}, you cannot trade set as they are bound to your soul."
+                    ).format(character=self.escape(ctx.author.display_name)),
+                    lang="css",
+                )
+            )
+        elif any([x for x in lookup if x.rarity == "patreon"]):
+            return await ctx.send(
+                box(
+                    _(
+                        "\n{character}, you cannot trade Patreon items as they are bound to your wallet."
                     ).format(character=self.escape(ctx.author.display_name)),
                     lang="css",
                 )
@@ -1999,7 +2020,11 @@ class Adventure(BaseCog):
                     )
                 consumed = []
                 forgeables = len(
-                    [i for n, i in c.backpack.items() if i.rarity not in ["forged", "set"]]
+                    [
+                        i
+                        for n, i in c.backpack.items()
+                        if i.rarity not in ["forged", "set", "patreon"]
+                    ]
                 )
                 if forgeables <= 1:
                     return await smart_embed(
@@ -2033,7 +2058,7 @@ class Adventure(BaseCog):
                     ).format(c=self.escape(ctx.author.display_name))
                     return await smart_embed(ctx, wrong_item)
 
-                if item.rarity in ["forged", "set"]:
+                if item.rarity in ["forged", "set", "patreon"]:
                     return await smart_embed(
                         ctx,
                         _("**{c}**, {item.rarity} items cannot be reforged.").format(
@@ -2062,7 +2087,7 @@ class Adventure(BaseCog):
                     return await smart_embed(ctx, timeout_msg)
                 new_ctx = await self.bot.get_context(reply)
                 item = await ItemConverter().convert(new_ctx, reply.content)
-                if item.rarity in ["forged", "set"]:
+                if item.rarity in ["forged", "set", "patreon"]:
                     return await smart_embed(
                         ctx,
                         _("**{c}**, {item.rarity} items cannot be reforged.").format(
@@ -2277,64 +2302,125 @@ class Adventure(BaseCog):
         }
         item = Item.from_json(item)
         return item
-    
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        guild = after.guild or before.guild
+        if after.guild is None or not guild or guild.id != 489162733791739950:
+            return
+        patreon_role = guild.get_role(575723093843116070)
+        if patreon_role is None:
+            return
+        data = await self.config.user(after).patron.all()
+        if patreon_role not in after.roles:
+            data["has_patron"] = False
+            data["first_patron"] = None
+            await self.config.user(after).patron.set(data)
+        elif patreon_role in after.roles and patreon_role not in before.roles:
+            data["has_patron"] = True
+            data["first_patron"] = int(time.time())
+            await self.config.user(after).patron.set(data)
+        elif (
+            patreon_role in after.roles
+            and patreon_role in before.roles
+            and data["has_patron"] is None
+        ):
+            data["has_patron"] = True
+            data["first_patron"] = int(time.time())
+            await self.config.user(after).patron.set(data)
+
+    @commands.guild_only()
+    @checks.is_owner()
+    async def updatepatreon(self, ctx: Context):
+        """Sync users with Patreon"""
+        if not ctx.guild or ctx.guild.id != 489162733791739950:
+            return await smart_embed(ctx, ("This command must be run in the BB-8 Support Server"))
+        patreon_role = ctx.guild.get_role(575723093843116070)
+        if patreon_role is None:
+            return await smart_embed(ctx, ("Patreon Role doesn't exist"))
+        time_now = time.time()
+        for member in ctx.guild.members:
+            await asyncio.sleep(0)
+            if patreon_role in member.roles:
+                with self.config.user(member).patron.all() as patron_data:
+                    if not patron_data["has_patron"]:
+                        patron_data["has_patron"] = True
+                        patron_data["first_patron"] = time_now
+
+    @commands.guild_only()
     @commands.command()
     async def patreon(self, ctx: Context, item_name: str, *, stats: str):
         """Patron reward
-        Keep in mind only one item can be created per month that you have an active subscription.
+
+        Keep in mind only one item can be created per week that you have an active subscription.
 
         Items can be any slot and of any rarity minus set
         
         """
+        if not ctx.guild or ctx.guild.id != 489162733791739950:
+            return await smart_embed(ctx, ("This command must be run in the BB-8 Support Server"))
+        patron_stats = await self.config.user(ctx.author).patron.all()
+        if not patron_stats["has_patron"]:
+            return await smart_embed(
+                ctx,
+                (
+                    "You must donate to BB-8 on Patron in order to create a custom item for adventure"
+                ),
+            )
         if item_name.isnumeric():
             return await smart_embed(ctx, _("Item names cannot be numbers."))
-        user = ctx.author
-        old_time = await self.config.user(user).last_time()
-        bb8home = self.bot.get_guild(489162733791739950)
-        patreonrole = bb8home.get_role(575723093843116070)
-        user = ctx.author
-        new_ctx = copy(ctx)
-        new_ctx.author = ctx.guild.get_member(self.bot.owner_id)
-        if time.time() - old_time > 2592000:
-            if ctx.guild.id == 489162733791739950:
-                if patreonrole in user.roles:
-                    await self.actually_give_patreon(ctx, new_ctx, user, item_name, stats)
-                else:
-                    return await smart_embed(ctx, ("You must donate to BB-8 on Patron in order to create a custom item for adventure"))
-            else:
-                return await smart_embed(ctx, ("This command must be run in the BB-8 Support Server"))
+        last_reward = patron_stats["last_reward"]
+        reward_allowed_in = datetime.fromtimestamp(last_reward) + timedelta(days=7)
+        if datetime.now() > reward_allowed_in:
+            await self.actually_give_patreon(ctx, ctx.author, item_name, stats, patron_stats)
         else:
             return await smart_embed(
                 ctx,
-                ("You can only create one item every 30 days, if you continue you patron subscription and support BB-8! Use ``b!patron`` to learn more!")
+                (
+                    "You can only create one item every 30 days, if you continue you patron subscription and support BB-8! Use ``b!patron`` to learn more!"
+                ),
             )
 
     async def actually_give_patreon(
-        self, ctx: Context, new_ctx: Context, user: discord.Member, item_name: str, stats: str
+        self,
+        ctx: Context,
+        user: discord.Member,
+        item_name: str,
+        stats: str,
+        patron_stats: MutableMapping,
     ):
-        item_stats = await Stats().convert(new_ctx, stats)
-        currenttime = time.time()
+        item_stats = await PatreonStats().convert(ctx, stats)
         # DO YOUR CHECKS HERE
-        MAX_STAT = 15
-        for key, value in item_stats.items():
-            try:
-                stat = int(value)
-                if stat > MAX_STAT:
-                    return await smart_embed(
-                        ctx,
-                        _("Don't you think that's a bit overpowered? Not creating item.")
-                    )
-            except (AttributeError, ValueError, TypeError):
-                pass
+        current_time = datetime.now()
+        active_patreon_on = datetime.fromtimestamp(patron_stats["last_reward"])
 
+        length_of_patreon = relativedelta.relativedelta(current_time, active_patreon_on).months
+        MAX_STAT = 60 + int((60 // 2) * length_of_patreon)
+        item_name = re.sub(r"[^\w ]", "", item_name)
         new_item = {item_name: item_stats}
         item = Item.from_json(new_item)
+        if item.total_stats > MAX_STAT:
+            return await smart_embed(
+                ctx,
+                _(
+                    "Don't you think that's a bit overpowered? Not creating item (You are allowed up to {MAX_STAT} from your current Patreon)."
+                ).format(MAX_STAT=MAX_STAT),
+            )
         async with self.get_lock(user):
             try:
                 c = await Character.from_json(self.config, user)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
+            patreon_items = []
+            for item in c.get_current_equipment():  # User is only allowed to have 1 at a time
+                if item.rarity == "patreon":
+                    c = await c.unequip_item(item)
+            for (name, item) in c.backpack.items():
+                if item.rarity == "patreon":
+                    patreon_items.append(item)
+            for item in patreon_items:
+                del c.backpack[item.name]
             await c.add_to_backpack(item)
             await self.config.user(user).set(c.to_json())
         await ctx.send(
@@ -2345,8 +2431,8 @@ class Adventure(BaseCog):
                 lang="css",
             )
         )
-        await self.config.user(user).last_time.set(currenttime)
-    
+        await self.config.user(ctx.author).patron.last_reward.set(int(time.time()))
+
     @commands.group()
     @commands.guild_only()
     @checks.admin_or_permissions(manage_guild=True)
@@ -2959,9 +3045,9 @@ class Adventure(BaseCog):
                 with contextlib.suppress(discord.HTTPException):
                     ctx.command.reset_cooldown(ctx)
                     await nv_msg.edit(
-                        content=_("**{}** decides against visiting the negaverse... for now.").format(
-                            self.escape(ctx.author.display_name)
-                        )
+                        content=_(
+                            "**{}** decides against visiting the negaverse... for now."
+                        ).format(self.escape(ctx.author.display_name))
                     )
                     lock.release()
                     return await self._clear_react(nv_msg)
