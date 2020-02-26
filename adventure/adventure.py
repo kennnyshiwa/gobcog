@@ -109,7 +109,7 @@ class AdventureResults:
         self._num_raids = num_raids
         self._last_raids: MutableMapping[int, List] = {}
 
-    def add_result(self, ctx, main_action, amount, num_ppl, success):
+    def add_result(self, ctx: Context, main_action, amount, num_ppl, success):
         """Add result to this object.
         :main_action: Main damage action taken by the adventurers
             (highest amount dealt). Should be either "attack" or
@@ -118,6 +118,9 @@ class AdventureResults:
         :num_ppl: Number of people in adventure.
         :success: Whether adventure was successful or not.
         """
+        if ctx.guild.id not in self._last_raids:
+            self._last_raids[ctx.guild.id] = []
+
         if len(self._last_raids.get(ctx.guild.id, [])) >= self._num_raids:
             if ctx.guild.id in self._last_raids:
                 self._last_raids[ctx.guild.id].pop(0)
@@ -126,7 +129,7 @@ class AdventureResults:
             raid_dict[var] = locals()[var]
         self._last_raids[ctx.guild.id].append(raid_dict)
 
-    def get_stat_range(self, ctx):
+    def get_stat_range(self, ctx: Context):
         """Return reasonable stat range for monster pool to have based
         on last few raids' damage.
 
@@ -135,6 +138,8 @@ class AdventureResults:
         # how much % to increase damage for solo raiders so that they
         # can't just solo every monster based on their own average
         # damage
+        if ctx.guild.id not in self._last_raids:
+            self._last_raids[ctx.guild.id] = []
         SOLO_RAID_SCALE = 0.25
         if len(self._last_raids.get(ctx.guild.id, [])) == 0:
             return {"stat_type": "hp", "min_stat": 0, "max_stat": 0}
@@ -182,7 +187,7 @@ class AdventureResults:
             max_stat = avg_amount * 1.25
 
         stats_dict = {}
-        for var in ("stat_type", "min_stat", "max_stat"):
+        for var in ("stat_type", "min_stat", "max_stat", "win_percent"):
             stats_dict[var] = locals()[var]
         return stats_dict
 
@@ -3939,15 +3944,64 @@ class Adventure(BaseCog):
             choice = random.choice(possible_monsters)
         return choice
 
-    def _dynamic_monster_stats(self, choice: MutableMapping):
-        monster_hp_min = int(choice["hp"] * 0.8)
-        monster_hp_max = int(choice["hp"] * 1.5)
-        monster_diplo_min = int(choice["dipl"] * 0.8)
-        monster_diplo_max = int(choice["dipl"] * 1.5)
-        percent_pdef = random.randrange(2, 15) / 100
-        monster_pdef = choice["pdef"] * percent_pdef * (1 if bool(random.getrandbits(1)) else -1)
-        percent_mdef = random.randrange(1, 15) / 100
-        monster_mdef = choice["mdef"] * percent_mdef * (1 if bool(random.getrandbits(1)) else -1)
+    def _dynamic_monster_stats(self, ctx: Context, choice: MutableMapping):
+        stat_range = self._adv_results.get_stat_range(ctx)
+        win_percentage = stat_range.get("win_percent", 0.5)
+        if win_percentage >= 90:
+            monster_hp_min = int(choice["hp"] * 1.45)
+            monster_hp_max = int(choice["hp"] * 1.5)
+            monster_diplo_min = int(choice["dipl"] * 1.45)
+            monster_diplo_max = int(choice["dipl"] * 1.5)
+            percent_pdef = random.randrange(25, 30) / 100
+            monster_pdef = choice["pdef"] * percent_pdef
+            percent_mdef = random.randrange(25, 30) / 100
+            monster_mdef = choice["mdef"] * percent_mdef
+        elif win_percentage >= 75:
+            monster_hp_min = int(choice["hp"] * 1.25)
+            monster_hp_max = int(choice["hp"] * 1.45)
+            monster_diplo_min = int(choice["dipl"] * 1.25)
+            monster_diplo_max = int(choice["dipl"] * 1.45)
+            percent_pdef = random.randrange(15, 25) / 100
+            monster_pdef = choice["pdef"] * percent_pdef
+            percent_mdef = random.randrange(15, 25) / 100
+            monster_mdef = choice["mdef"] * percent_mdef
+        elif win_percentage >= 50:
+            monster_hp_min = int(choice["hp"])
+            monster_hp_max = int(choice["hp"] * 1.25)
+            monster_diplo_min = int(choice["dipl"])
+            monster_diplo_max = int(choice["dipl"] * 1.25)
+            percent_pdef = random.randrange(1, 15) / 100
+            monster_pdef = choice["pdef"] * percent_pdef
+            percent_mdef = random.randrange(1, 15) / 100
+            monster_mdef = choice["mdef"] * percent_mdef
+        elif win_percentage >= 35:
+            monster_hp_min = int(choice["hp"] * 0.9)
+            monster_hp_max = int(choice["hp"])
+            monster_diplo_min = int(choice["dipl"] * 0.9)
+            monster_diplo_max = int(choice["dipl"])
+            percent_pdef = random.randrange(1, 15) / 100
+            monster_pdef = choice["pdef"] * percent_pdef * -1
+            percent_mdef = random.randrange(1, 15) / 100
+            monster_mdef = choice["mdef"] * percent_mdef * -1
+        elif win_percentage >= 15:
+            monster_hp_min = int(choice["hp"] * 0.8)
+            monster_hp_max = int(choice["hp"] * 0.9)
+            monster_diplo_min = int(choice["dipl"] * 0.8)
+            monster_diplo_max = int(choice["dipl"] * 0.9)
+            percent_pdef = random.randrange(15, 25) / 100
+            monster_pdef = choice["pdef"] * percent_pdef * -1
+            percent_mdef = random.randrange(15, 25) / 100
+            monster_mdef = choice["mdef"] * percent_mdef * -1
+        else:
+            monster_hp_min = int(choice["hp"] * 0.6)
+            monster_hp_max = int(choice["hp"] * 0.8)
+            monster_diplo_min = int(choice["dipl"] * 0.6)
+            monster_diplo_max = int(choice["dipl"] * 0.8)
+            percent_pdef = random.randrange(25, 30) / 100
+            monster_pdef = choice["pdef"] * percent_pdef * -1
+            percent_mdef = random.randrange(25, 30) / 100
+            monster_mdef = choice["mdef"] * percent_mdef * -1
+
         new_hp = random.randrange(monster_hp_min, monster_hp_max)
         new_diplo = random.randrange(monster_diplo_min, monster_diplo_max)
         new_pdef = choice["pdef"] + monster_pdef
