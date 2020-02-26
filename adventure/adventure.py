@@ -1827,7 +1827,7 @@ class Adventure(BaseCog):
                 return await smart_embed(
                     ctx,
                     (
-                        "**{}**, You need to have {} or more rebirth to convert epic treasure chests."
+                        "**{}**, You need to have {} or more rebirth to convert rare treasure chests."
                     ).format(self.escape(ctx.author.display_name), rebirth_rare),
                 )
             elif box_rarity.lower() == "epic" and c.rebirths < rebirth_epic:
