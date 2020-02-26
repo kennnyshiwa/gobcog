@@ -204,7 +204,7 @@ class Adventure(BaseCog):
     def __init__(self, bot: Red):
         self.bot = bot
         self._last_trade = {}
-        self._adv_results = AdventureResults(25)
+        self._adv_results = AdventureResults(20)
         self.emojis = SimpleNamespace()
         self.emojis.fumble = "\N{EXCLAMATION QUESTION MARK}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
