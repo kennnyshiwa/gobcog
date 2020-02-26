@@ -4062,7 +4062,7 @@ class Adventure(BaseCog):
             monsters=monster_roaster,
             monster_stats=monster_stats,
             message=ctx.message,
-            monster_modified_stats=self._dynamic_monster_stats(monster_roaster[challenge]),
+            monster_modified_stats=self._dynamic_monster_stats(ctx, monster_roaster[challenge]),
         )
         adventure_msg = (
             f"{adventure_msg}{text}\n{random.choice(self.LOCATIONS)}\n"
