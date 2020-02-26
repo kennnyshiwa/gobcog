@@ -150,7 +150,9 @@ class AdventureResults:
         num_talk = 0
         talk_amount = 0
         num_wins = 0
-        for raid in self._last_raids.get(ctx.guild.id, []):
+        raids = self._last_raids.get(ctx.guild.id, [])
+        raid_count = len(raids)
+        for raid in raids:
             if raid["main_action"] == "attack":
                 num_attack += 1
                 dmg_amount += raid["amount"]
@@ -168,7 +170,7 @@ class AdventureResults:
         # calculate relevant stats
         if num_wins == 0:
             num_wins = self._num_raids // 2
-        win_percent = num_wins / self._num_raids
+        win_percent = num_wins / raid_count if raid_count else self._num_raids
         stat_type = "hp"
         avg_amount = 0
         if num_attack > 0:
@@ -204,7 +206,7 @@ class Adventure(BaseCog):
     def __init__(self, bot: Red):
         self.bot = bot
         self._last_trade = {}
-        self._adv_results = AdventureResults(20)
+        self._adv_results = AdventureResults(100)
         self.emojis = SimpleNamespace()
         self.emojis.fumble = "\N{EXCLAMATION QUESTION MARK}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
@@ -1794,9 +1796,9 @@ class Adventure(BaseCog):
     async def convert(self, ctx: Context, box_rarity: str, amount: int = 1):
         """Convert normal, rare or epic chests.
 
-        Trade 21 normal chests for 1 rare chest.
-        Trade 21 rare chests for 1 epic chest.
-        Trade 21 epic chests for 1 legendary chest
+        Trade 25 normal chests for 1 rare chest.
+        Trade 25 rare chests for 1 epic chest.
+        Trade 25 epic chests for 1 legendary chest
         """
 
         # Thanks to flare#0001 for the idea and writing the first instance of this
@@ -1804,9 +1806,9 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx, _("You tried to converting some chests but the magician is back in town.")
             )
-        normalcost = 21
-        rarecost = 21
-        epiccost = 21
+        normalcost = 25
+        rarecost = 25
+        epiccost = 25
         rebirth_normal = 2
         rebirth_rare = 8
         rebirth_epic = 10
@@ -5670,7 +5672,7 @@ class Adventure(BaseCog):
             elif roll <= INITIAL_MAX_ROLL * 0.95:  # 90% to roll rare
                 pass
             else:
-                rarity = "normal"  # 0.05% to roll normal
+                rarity = "normal"  # 5% to roll normal
         elif chest_type == "epic":
             if roll <= INITIAL_MAX_ROLL * 0.05:  # 5% to roll legendary
                 rarity = "legendary"
