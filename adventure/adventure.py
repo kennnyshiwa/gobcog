@@ -1794,9 +1794,9 @@ class Adventure(BaseCog):
     async def convert(self, ctx: Context, box_rarity: str, amount: int = 1):
         """Convert normal, rare or epic chests.
 
-        Trade 20 normal chests for 1 rare chest.
-        Trade 20 rare chests for 1 epic chest.
-        Trade 50 epic chests for 1 legendary chest
+        Trade 21 normal chests for 1 rare chest.
+        Trade 21 rare chests for 1 epic chest.
+        Trade 21 epic chests for 1 legendary chest
         """
 
         # Thanks to flare#0001 for the idea and writing the first instance of this
@@ -1804,9 +1804,9 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx, _("You tried to converting some chests but the magician is back in town.")
             )
-        normalcost = 20
-        rarecost = 20
-        epiccost = 50
+        normalcost = 21
+        rarecost = 21
+        epiccost = 21
         rebirth_normal = 2
         rebirth_rare = 8
         rebirth_epic = 10
