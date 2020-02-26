@@ -107,9 +107,9 @@ class AdventureResults:
     def __init__(self, num_raids):
         """TODO: to be defined1. """
         self._num_raids = num_raids
-        self._last_raids = []
+        self._last_raids: MutableMapping[int, List] = {}
 
-    def add_result(self, main_action, amount, num_ppl, success):
+    def add_result(self, ctx, main_action, amount, num_ppl, success):
         """Add result to this object.
         :main_action: Main damage action taken by the adventurers
             (highest amount dealt). Should be either "attack" or
@@ -118,14 +118,15 @@ class AdventureResults:
         :num_ppl: Number of people in adventure.
         :success: Whether adventure was successful or not.
         """
-        if len(self._last_raids) >= self._num_raids:
-            self._last_raids.pop(0)
+        if len(self._last_raids.get(ctx.guild.id, [])) >= self._num_raids:
+            if ctx.guild.id in self._last_raids:
+                self._last_raids[ctx.guild.id].pop(0)
         raid_dict = {}
         for var in ("main_action", "amount", "num_ppl", "success"):
             raid_dict[var] = locals()[var]
-        self._last_raids.append(raid_dict)
+        self._last_raids[ctx.guild.id].append(raid_dict)
 
-    def get_stat_range(self):
+    def get_stat_range(self, ctx):
         """Return reasonable stat range for monster pool to have based
         on last few raids' damage.
 
@@ -135,7 +136,7 @@ class AdventureResults:
         # can't just solo every monster based on their own average
         # damage
         SOLO_RAID_SCALE = 0.25
-        if len(self._last_raids) == 0:
+        if len(self._last_raids.get(ctx.guild.id, [])) == 0:
             return {"stat_type": "hp", "min_stat": 0, "max_stat": 0}
 
         # tally up stats for raids
@@ -144,7 +145,7 @@ class AdventureResults:
         num_talk = 0
         talk_amount = 0
         num_wins = 0
-        for raid in self._last_raids:
+        for raid in self._last_raids.get(ctx.guild.id, []):
             if raid["main_action"] == "attack":
                 num_attack += 1
                 dmg_amount += raid["amount"]
@@ -3913,7 +3914,7 @@ class Adventure(BaseCog):
             log.exception("Error with the new character sheet", exc_info=exc)
             return
         possible_monsters = []
-        stat_range = self._adv_results.get_stat_range()
+        stat_range = self._adv_results.get_stat_range(ctx)
         for (e, (m, stats)) in enumerate(monsters.items(), 1):
             appropriate_range = max(stats["hp"], stats["dipl"]) <= (max(c.att, c.int, c.cha) * 3)
             if stat_range["max_stat"] > 0:
@@ -3939,41 +3940,22 @@ class Adventure(BaseCog):
         return choice
 
     def _dynamic_monster_stats(self, choice: MutableMapping):
-        # stat_range = self._adv_results.get_stat_range()
-        # stat_type = stat_range["stat_type"]
-        # monster_hp = choice["hp"]
-        # monster_diplo = choice["dipl"]
-        #
-        # monster_pdef = choice["pdef"]
-        # monster_mdef = choice["mdef"]
-        #
-        # if stat_type == "hp":
-        #     min_stat, max_stat = (
-        #         stat_range["min_stat"] or monster_hp,
-        #         stat_range["max_stat"] or monster_hp,
-        #     )
-        #     min_stat_percent = min(abs(min_stat / monster_hp), monster_hp)
-        #     max_stat_percent = max(abs(max_stat / monster_hp), monster_hp)
-        #     hp_range = [min_stat_percent * monster_hp, max_stat_percent * monster_hp]
-        #     diplo_range = [monster_diplo, monster_diplo]
-        # else:
-        #     min_stat, max_stat = (
-        #         stat_range["min_stat"] or monster_diplo,
-        #         stat_range["max_stat"] or monster_diplo,
-        #     )
-        #     min_stat_percent = min(abs(min_stat / monster_diplo), monster_diplo)
-        #     max_stat_percent = max(abs(max_stat / monster_diplo), monster_diplo)
-        #     diplo_range = [min_stat_percent * monster_diplo, max_stat_percent * monster_diplo]
-        #     hp_range = [monster_hp, monster_hp]
-        #
-        # new_hp = random.choice(hp_range)
-        # new_diplo = random.choice(diplo_range)
-        # new_pdef = monster_pdef + (monster_pdef * random.random())
-        # new_mdef = monster_mdef + (monster_mdef * random.random())
-        # choice["hp"] = new_hp
-        # choice["dipl"] = new_diplo
-        # choice["pdef"] = new_pdef
-        # choice["mdef"] = new_mdef
+        monster_hp_min = int(choice["hp"] * 0.8)
+        monster_hp_max = int(choice["hp"] * 1.5)
+        monster_diplo_min = int(choice["dipl"] * 0.8)
+        monster_diplo_max = int(choice["dipl"] * 1.5)
+        percent_pdef = random.randrange(2, 15) / 100
+        monster_pdef = choice["pdef"] * percent_pdef * (1 if bool(random.getrandbits(1)) else -1)
+        percent_mdef = random.randrange(1, 15) / 100
+        monster_mdef = choice["mdef"] * percent_mdef * (1 if bool(random.getrandbits(1)) else -1)
+        new_hp = random.randrange(monster_hp_min, monster_hp_max)
+        new_diplo = random.randrange(monster_diplo_min, monster_diplo_max)
+        new_pdef = choice["pdef"] + monster_pdef
+        new_mdef = choice["mdef"] + monster_mdef
+        choice["hp"] = new_hp
+        choice["dipl"] = new_diplo
+        choice["pdef"] = new_pdef
+        choice["mdef"] = new_mdef
         return choice
 
     async def update_monster_roster(self, user):
@@ -4447,10 +4429,9 @@ class Adventure(BaseCog):
                 int_dipl=humanize_number(int(dipl)),
             )
         if dmg_dealt >= diplomacy:
-            self._adv_results.add_result("attack", dmg_dealt, people, slain)
+            self._adv_results.add_result(ctx, "attack", dmg_dealt, people, slain)
         else:
-            self._adv_results.add_result("talk", diplomacy, people, persuaded)
-        #  log.debug(self._adv_results)
+            self._adv_results.add_result(ctx, "talk", diplomacy, people, persuaded)
         result_msg = result_msg + "\n" + damage_str + diplo_str
 
         fight_name_list = []
@@ -5069,7 +5050,7 @@ class Adventure(BaseCog):
                 if pet_crit == 100:
                     roll = max_roll
                 elif roll <= 25 and pet_crit >= 95:
-                    roll = random.randint(max_roll-5, max_roll)
+                    roll = random.randint(max_roll - 5, max_roll)
                 elif roll > 25 and pet_crit >= 95:
                     roll = random.randint(roll, max_roll)
 
@@ -5135,7 +5116,7 @@ class Adventure(BaseCog):
                 if pet_crit == 100:
                     roll = max_roll
                 elif roll <= 25 and pet_crit >= 95:
-                    roll = random.randint(max_roll-5, max_roll)
+                    roll = random.randint(max_roll - 5, max_roll)
                 elif roll > 25 and pet_crit >= 95:
                     roll = random.randint(roll, max_roll)
             int_value = c.total_int
@@ -5409,19 +5390,20 @@ class Adventure(BaseCog):
         talk_list = list(set(session.talk))
         pray_list = list(set(session.pray))
         magic_list = list(set(session.magic))
+        participants = list(set(fight_list + talk_list + pray_list + magic_list))
         if session.miniboss:
             failed = True
             req_item, slot = session.miniboss["requirements"]
-            if req_item == "members" and isinstance(slot, int):
-                if (len(fight_list) + len(magic_list) + len(talk_list) + len(pray_list)) > int(
-                    slot
-                ):
+            if req_item == "members":
+                if len(participants) > int(slot):
                     failed = False
             elif req_item == "emoji" and session.reacted:
                 failed = False
             else:
-                for user in (
-                    fight_list + magic_list + talk_list + pray_list
+                for (
+                    user
+                ) in (
+                    participants
                 ):  # check if any fighter has an equipped mirror shield to give them a chance.
                     try:
                         c = await Character.from_json(self.config, user)
