@@ -6129,10 +6129,10 @@ class Adventure(BaseCog):
                 _(
                     "\n[{i}] Lvl req {lvl} | {item_name} ("
                     "Attack: {str_att}, "
+                    "Charisma: {str_cha}, "
                     "Intelligence: {str_int}, "
-                    "Charisma: {str_cha} "
+                    "Dexterity: {str_dex}, "
                     "Luck: {str_luck} "
-                    "Dexterity: {str_dex} "
                     "[{hand}]) for {item_price} {currency_name}."
                 ).format(
                     i=str(index + 1),
