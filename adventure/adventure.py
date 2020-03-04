@@ -796,7 +796,10 @@ class Adventure(BaseCog):
         """Sell all items in your backpack."""
         if self.in_adventure(ctx):
             return await smart_embed(
-                ctx, _("You tried to go sell your items but the monster ahead is not allowing you to leave.")
+                ctx,
+                _(
+                    "You tried to go sell your items but the monster ahead is not allowing you to leave."
+                ),
             )
         if rarity and rarity.lower() not in RARITIES:
             return await smart_embed(
@@ -857,7 +860,10 @@ class Adventure(BaseCog):
 
         if self.in_adventure(ctx):
             return await smart_embed(
-                ctx, _("You tried to go sell your items but the monster ahead is not allowing you to leave.")
+                ctx,
+                _(
+                    "You tried to go sell your items but the monster ahead is not allowing you to leave."
+                ),
             )
         if item.rarity == "forged":
             ctx.command.reset_cooldown(ctx)
@@ -1557,7 +1563,9 @@ class Adventure(BaseCog):
             )
 
         await self.config.guild(ctx.guild).cartroom.set(room.id)
-        await smart_embed(ctx, _("Done, carts will only appear in {room.mention}.").format(room=room))
+        await smart_embed(
+            ctx, _("Done, carts will only appear in {room.mention}.").format(room=room)
+        )
 
     @adventureset.group(name="locks")
     @checks.admin_or_permissions(administrator=True)
@@ -1603,7 +1611,8 @@ class Adventure(BaseCog):
 
         await self.config.guild(ctx.guild).cooldown_timer_manual.set(time_in_seconds)
         await smart_embed(
-            ctx, _("Adventure cooldown set to {cooldown} seconds.").format(cooldown=time_in_seconds)
+            ctx,
+            _("Adventure cooldown set to {cooldown} seconds.").format(cooldown=time_in_seconds),
         )
 
     @adventureset.command()
@@ -1810,7 +1819,10 @@ class Adventure(BaseCog):
         # Thanks to flare#0001 for the idea and writing the first instance of this
         if self.in_adventure(ctx):
             return await smart_embed(
-                ctx, _("You tried to magically combine some of your loot chests but the monster ahead is commanding your attention.")
+                ctx,
+                _(
+                    "You tried to magically combine some of your loot chests but the monster ahead is commanding your attention."
+                ),
             )
         normalcost = 25
         rarecost = 25
@@ -1977,9 +1989,7 @@ class Adventure(BaseCog):
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx,
-                _(
-                    "You tried to equip your item but the monster ahead nearly decapitated you."
-                ),
+                _("You tried to equip your item but the monster ahead nearly decapitated you."),
             )
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
@@ -1994,8 +2004,7 @@ class Adventure(BaseCog):
         """
         if self.in_adventure(ctx):
             return await smart_embed(
-                ctx,
-                _("You tried to forge an item but there were no forges nearby."),
+                ctx, _("You tried to forge an item but there were no forges nearby."),
             )
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
@@ -2458,7 +2467,9 @@ class Adventure(BaseCog):
         """
         if self.in_adventure(ctx):
             ctx.command.reset_cooldown(ctx)
-            return await smart_embed(ctx, _("The monster ahead growls menacingly, and will not let you leave."))
+            return await smart_embed(
+                ctx, _("The monster ahead growls menacingly, and will not let you leave.")
+            )
         if not await self.allow_in_dm(ctx):
             ctx.command.reset_cooldown(ctx)
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
@@ -2802,9 +2813,9 @@ class Adventure(BaseCog):
             if treasure < 1 or treasure < number:
                 await smart_embed(
                     ctx,
-                    _("**{author}**, you do not have enough {box} treasure chests to open.").format(
-                        author=self.escape(ctx.author.display_name), box=box_type
-                    ),
+                    _(
+                        "**{author}**, you do not have enough {box} treasure chests to open."
+                    ).format(author=self.escape(ctx.author.display_name), box=box_type),
                 )
             else:
                 if number > 1:
@@ -3404,9 +3415,7 @@ class Adventure(BaseCog):
                     await self.config.user(ctx.author).set(c.to_json())
                     await smart_embed(
                         ctx,
-                        _(
-                            "{skill} **{c}** is starting to froth at the mouth... {skill}"
-                        ).format(
+                        _("{skill} **{c}** is starting to froth at the mouth... {skill}").format(
                             c=self.escape(ctx.author.display_name),
                             skill=self.emojis.skills.berserker,
                         ),
@@ -3541,7 +3550,12 @@ class Adventure(BaseCog):
         `[p]skill reset` Will allow you to reset your skill points for a cost.
         """
         if self.in_adventure(ctx):
-            return await smart_embed(ctx, _("The skill cleric is back in town and the monster ahead of you is demanding your attention."))
+            return await smart_embed(
+                ctx,
+                _(
+                    "The skill cleric is back in town and the monster ahead of you is demanding your attention."
+                ),
+            )
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         if amount < 1:
@@ -4539,9 +4553,9 @@ class Adventure(BaseCog):
                     [0, 2, 2, 0, 0],
                     [0, 3, 2, 0, 0],
                 ]
-                if roll == 10:
+                if roll == 10 and "Ascended" in session.challenge:
                     avaliable_loot.append([0, 0, 1, 3, 1])
-                if roll > 8:
+                if "Ascended" in session.challenge:
                     avaliable_loot.append([0, 0, 0, 0, 1])
                 if roll > 5:
                     avaliable_loot.extend([[0, 0, 3, 1, 0], [0, 0, 1, 2, 0], [0, 0, 0, 3, 0]])
