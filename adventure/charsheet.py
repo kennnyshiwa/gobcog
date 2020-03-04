@@ -779,7 +779,7 @@ class Character(Item):
                 continue
             if current and current.name != name_unformatted:
                 await self.unequip_item(current)
-            if name_unformatted not in self.backpack:
+            if name not in self.backpack:
                 setattr(self, slot, None)
             else:
                 equiplevel = max((item.get("lvl", 1) - min(max(self.rebirths // 2 - 1, 0), 50)), 1)

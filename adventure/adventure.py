@@ -1436,21 +1436,19 @@ class Adventure(BaseCog):
             log.exception("Error with the new character sheet", exc_info=exc)
             return
         if not c.loadouts:
-            await smart_embed(
+            return await smart_embed(
                 ctx,
                 _("**{author}**, you don't have any loadouts saved.").format(
                     author=self.escape(ctx.author.display_name)
                 ),
             )
-            return
         if name is not None and name.lower() not in c.loadouts:
-            await smart_embed(
+            return await smart_embed(
                 ctx,
                 _("**{author}**, you don't have a loadout named {name}.").format(
                     author=self.escape(ctx.author.display_name), name=name
                 ),
             )
-            return
         else:
             msg_list = []
             index = 0
@@ -1488,13 +1486,12 @@ class Adventure(BaseCog):
                 return
             if name not in c.loadouts:
                 ctx.command.reset_cooldown(ctx)
-                await smart_embed(
+                return await smart_embed(
                     ctx,
                     _("**{author}**, you don't have a loadout named {name}.").format(
                         author=self.escape(ctx.author.display_name), name=name
                     ),
                 )
-                return
             else:
                 c = await c.equip_loadout(name)
                 current_stats = box(
@@ -1507,20 +1504,19 @@ class Adventure(BaseCog):
                         "Luck: {stat_luck}."
                     ).format(
                         author=self.escape(ctx.author.display_name),
-                        stat_att=c.get_stat_value("att"),
+                        stat_att=c.get_stat_value("att")[0],
                         skill_att=c.skill["att"],
-                        stat_int=c.get_stat_value("int"),
+                        stat_int=c.get_stat_value("int")[0],
                         skill_int=c.skill["int"],
-                        stat_cha=c.get_stat_value("cha"),
+                        stat_cha=c.get_stat_value("cha")[0],
                         skill_cha=c.skill["cha"],
-                        stat_dex=c.get_stat_value("dex"),
-                        stat_luck=c.get_stat_value("luck"),
+                        stat_dex=c.get_stat_value("dex")[0],
+                        stat_luck=c.get_stat_value("luck")[0],
                     ),
                     lang="css",
                 )
                 await ctx.send(current_stats)
                 await self.config.user(ctx.author).set(c.to_json())
-        return
 
     @commands.group()
     @commands.guild_only()
