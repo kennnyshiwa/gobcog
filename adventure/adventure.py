@@ -8,6 +8,7 @@ import random
 import re
 import time
 from collections import namedtuple
+from copy import copy
 from datetime import date, datetime
 from types import SimpleNamespace
 from typing import List, Optional, Union, MutableMapping
@@ -4359,20 +4360,9 @@ class Adventure(BaseCog):
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
                     return
-                if "chest" in items["itemname"]:
-                    if items["itemname"] == ".rare_chest":
-                        c.treasure[1] += pred.result
-                    elif items["itemname"] == "[epic chest]":
-                        c.treasure[2] += pred.result
-                    else:
-                        c.treasure[0] += pred.result
-                else:
-                    item = items["item"]
-                    item.owned = pred.result
-                    if item.name in c.backpack:
-                        c.backpack[item.name].owned += pred.result
-                    else:
-                        c.backpack[item.name] = item
+                item = items["item"]
+                item.owned = pred.result
+                c.add_to_backpack(item, number=pred.result)
                 await self.config.user(user).set(c.to_json())
                 with contextlib.suppress(discord.HTTPException):
                     await to_delete.delete()
