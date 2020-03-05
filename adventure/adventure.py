@@ -4015,7 +4015,12 @@ class Adventure(BaseCog):
             new_hp = random.randrange(monster_hp_max, monster_hp_min)
         else:
             new_hp = max(monster_hp_max, monster_hp_min)
-        new_diplo = random.randrange(monster_diplo_min, monster_diplo_max)
+        if monster_diplo_min < monster_diplo_max:
+            new_diplo = random.randrange(monster_diplo_min, monster_diplo_max)
+        elif monster_diplo_max < monster_diplo_min:
+            new_diplo = random.randrange(monster_diplo_max, monster_diplo_min)
+        else:
+            new_diplo = max(monster_diplo_max, monster_diplo_min)
         new_pdef = choice["pdef"] + monster_pdef
         new_mdef = choice["mdef"] + monster_mdef
         choice["hp"] = new_hp
@@ -4534,16 +4539,8 @@ class Adventure(BaseCog):
             if session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
                 avaliable_loot = [[0, 0, 3, 1, 0], [0, 0, 1, 2, 0], [0, 0, 0, 3, 0]]
                 if "Ascended" in session.challenge:
-                    if roll == 10:
-                        avaliable_loot.pop(0)
-                        avaliable_loot.append([0, 0, 1, 5, 1])
-                    if roll > 8:
-                        avaliable_loot.pop(0)
-                        avaliable_loot.append([0, 0, 1, 3, 1])
-                    if roll > 5:
-                        avaliable_loot.pop(0)
-                        avaliable_loot.append([0, 0, 1, 1, 1])
-                    avaliable_loot.append([0, 0, 0, 0, 1])
+                    avaliable_loot = [[0, 0, 1, 5, 1], [0, 0, 1, 3, 1], [0, 0, 1, 1, 1],
+                                      [0, 0, 0, 0, 1]]
                 treasure = random.choice(avaliable_loot)
             elif (
                 session.miniboss
