@@ -1552,9 +1552,9 @@ class Adventure(BaseCog):
         """Setup various adventure settings."""
 
     @adventureset.command()
-    @check_global_setting_admin()
+    @commands.is_owner()
     async def rebirthcost(self, ctx: Context, percentage: float):
-        """[Admin] Set what percentage of the user balance to charge for rebirths.
+        """[Owner] Set what percentage of the user balance to charge for rebirths.
 
         Unless the user's balance is under 1k, users that rebirth will be left with the base of 1k credits plus the remaining credit percentage after the rebirth charge.
         """
@@ -1621,10 +1621,10 @@ class Adventure(BaseCog):
         )
 
     @adventureset.command(name="advcooldown", hidden=True)
-    @checks.admin_or_permissions(administrator=True)
+    @commands.is_owner()
     @commands.guild_only()
     async def advcooldown(self, ctx: Context, *, time_in_seconds: int):
-        """[Admin] Changes the cooldown/gather time after an adventure.
+        """[Owner] Changes the cooldown/gather time after an adventure.
 
         Default is 120 seconds.
         """
@@ -1666,7 +1666,7 @@ class Adventure(BaseCog):
     @adventureset.command(aliases=["chests"])
     @checks.is_owner()
     async def cartchests(self, ctx: Context):
-        """[Admin] Set whether or not to sell chests in the cart."""
+        """[Owner] Set whether or not to sell chests in the cart."""
         toggle = await self.config.enable_chests()
         await self.config.enable_chests.set(not toggle)
         await smart_embed(ctx, _("Carts can sell chests: {}").format(not toggle))
@@ -2501,14 +2501,14 @@ class Adventure(BaseCog):
 
     @commands.group()
     @commands.guild_only()
-    @checks.admin_or_permissions(manage_guild=True)
+    @commands.is_owner()
     async def give(self, ctx: Context):
-        """[Admin] Commands to add things to players' inventories."""
+        """[Owner] Commands to add things to players' inventories."""
 
     @give.command(name="funds")
-    @check_global_setting_admin()
+    @commands.is_owner()
     async def _give_funds(self, ctx: Context, amount: int = 1, *, to: discord.Member = None):
-        """[Admin] Adds currency to a specified member's balance."""
+        """[Owner] Adds currency to a specified member's balance."""
         if to is None:
             return await smart_embed(
                 ctx,
@@ -2548,10 +2548,11 @@ class Adventure(BaseCog):
         )
 
     @give.command(name="item")
+    @commands.is_owner()
     async def _give_item(
         self, ctx: Context, user: discord.Member, item_name: str, *, stats: Stats
     ):
-        """[Admin] Adds a custom item to a specified member.
+        """[Owner] Adds a custom item to a specified member.
 
         Item names containing spaces must be enclosed in double quotes. `[p]give item @locastan
         "fine dagger" 1 att 1 charisma rare twohanded` will give a two handed .fine_dagger with 1
@@ -2584,10 +2585,11 @@ class Adventure(BaseCog):
         )
 
     @give.command(name="loot")
+    @commands.is_owner()
     async def _give_loot(
         self, ctx: Context, loot_type: str, user: discord.Member = None, number: int = 1
     ):
-        """[Admin] Give treasure chest(s) to a specified member."""
+        """[Owner] Give treasure chest(s) to a specified member."""
 
         if user is None:
             user = ctx.author
