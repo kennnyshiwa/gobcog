@@ -207,7 +207,7 @@ class Adventure(BaseCog):
     def __init__(self, bot: Red):
         self.bot = bot
         self._last_trade = {}
-        self._adv_results = AdventureResults(100)
+        self._adv_results = AdventureResults(10)
         self.emojis = SimpleNamespace()
         self.emojis.fumble = "\N{EXCLAMATION QUESTION MARK}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
@@ -4009,7 +4009,12 @@ class Adventure(BaseCog):
             percent_mdef = random.randrange(25, 30) / 100
             monster_mdef = choice["mdef"] * percent_mdef * -1
 
-        new_hp = random.randrange(monster_hp_min, monster_hp_max)
+        if monster_hp_min < monster_hp_max:
+            new_hp = random.randrange(monster_hp_min, monster_hp_max)
+        elif monster_hp_max < monster_hp_min:
+            new_hp = random.randrange(monster_hp_max, monster_hp_min)
+        else:
+            new_hp = max(monster_hp_max, monster_hp_min)
         new_diplo = random.randrange(monster_diplo_min, monster_diplo_max)
         new_pdef = choice["pdef"] + monster_pdef
         new_mdef = choice["mdef"] + monster_mdef
@@ -4527,29 +4532,18 @@ class Adventure(BaseCog):
             roll = random.randint(1, 10)
             monster_amount = hp + dipl if slain and persuaded else hp if slain else dipl
             if session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
-
-                avaliable_loot = [
-                    [0, 1, 1, 0, 0],
-                    [0, 1, 1, 0, 0],
-                    [0, 2, 1, 0, 0],
-                    [0, 2, 1, 0, 0],
-                    [0, 3, 1, 0, 0],
-                    [0, 3, 1, 0, 0],
-                    [0, 1, 2, 0, 0],
-                    [0, 2, 2, 0, 0],
-                    [0, 3, 2, 0, 0],
-                ]
-                if roll > 5 and "Ascended" in session.challenge:
-                    avaliable_loot.pop(0)
-                    avaliable_loot.append([0, 0, 1, 3, 1])
+                avaliable_loot = [[0, 0, 3, 1, 0], [0, 0, 1, 2, 0], [0, 0, 0, 3, 0]]
                 if "Ascended" in session.challenge:
-                    avaliable_loot.pop(0)
+                    if roll == 10:
+                        avaliable_loot.pop(0)
+                        avaliable_loot.append([0, 0, 1, 5, 1])
+                    if roll > 8:
+                        avaliable_loot.pop(0)
+                        avaliable_loot.append([0, 0, 1, 3, 1])
+                    if roll > 5:
+                        avaliable_loot.pop(0)
+                        avaliable_loot.append([0, 0, 1, 1, 1])
                     avaliable_loot.append([0, 0, 0, 0, 1])
-                if roll <= 5:
-                    avaliable_loot.pop(0)
-                    avaliable_loot.pop(0)
-                    avaliable_loot.pop(0)
-                    avaliable_loot.extend([[0, 0, 3, 1, 0], [0, 0, 1, 2, 0], [0, 0, 0, 3, 0]])
                 treasure = random.choice(avaliable_loot)
             elif (
                 session.miniboss
