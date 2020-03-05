@@ -4539,11 +4539,16 @@ class Adventure(BaseCog):
                     [0, 2, 2, 0, 0],
                     [0, 3, 2, 0, 0],
                 ]
-                if roll == 10 and "Ascended" in session.challenge:
+                if roll > 5 and "Ascended" in session.challenge:
+                    avaliable_loot.pop(0)
                     avaliable_loot.append([0, 0, 1, 3, 1])
                 if "Ascended" in session.challenge:
+                    avaliable_loot.pop(0)
                     avaliable_loot.append([0, 0, 0, 0, 1])
-                if roll > 5:
+                if roll <= 5:
+                    avaliable_loot.pop(0)
+                    avaliable_loot.pop(0)
+                    avaliable_loot.pop(0)
                     avaliable_loot.extend([[0, 0, 3, 1, 0], [0, 0, 1, 2, 0], [0, 0, 0, 3, 0]])
                 treasure = random.choice(avaliable_loot)
             elif (
