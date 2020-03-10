@@ -5119,16 +5119,16 @@ class Adventure(BaseCog):
             elif roll == max_roll or c.heroclass["name"] == "Berserker":
                 crit_str = ""
                 crit_bonus = 0
-                base_bonus = random.randint(5, 10) + c.rebirths // 3 + rebirths
+                base_bonus = random.randint(5, 10) + rebirths
                 if roll == max_roll:
                     msg += _("**{}** landed a critical hit.\n").format(
                         self.escape(user.display_name)
                     )
                     critlist.append(user)
-                    crit_bonus = random.randint(5, 20) + 2 * c.rebirths // 5
+                    crit_bonus = random.randint(5, 20) + 2 * rebirths
                     crit_str = f"{self.emojis.crit} {humanize_number(crit_bonus)}"
                 if c.heroclass["ability"]:
-                    base_bonus = random.randint(15, 50) + 5 * c.rebirths // 10
+                    base_bonus = random.randint(15, 50) + 5 * rebirths
                 base_str = f"{self.emojis.crit}️ {humanize_number(base_bonus)}"
                 attack += int((roll + base_bonus + crit_bonus + att_value) / pdef)
                 bonus = base_str + crit_str
@@ -5137,7 +5137,7 @@ class Adventure(BaseCog):
                     f"{self.emojis.dice}({roll}) + {self.emojis.berserk}{bonus} + {self.emojis.attack}{str(humanize_number(att_value))}\n"
                 )
             else:
-                attack += int((roll + att_value) / pdef) + c.rebirths // 5
+                attack += int((roll + att_value) / pdef) + rebirths
                 report += f"**{self.escape(user.display_name)}**: {self.emojis.dice}({roll}) + {self.emojis.attack}{str(humanize_number(att_value))}\n"
         for user in magic_list:
             try:
@@ -5185,17 +5185,17 @@ class Adventure(BaseCog):
             elif roll == max_roll or (c.heroclass["name"] == "Wizard"):
                 crit_str = ""
                 crit_bonus = 0
-                base_bonus = random.randint(5, 10) + c.rebirths // 3 + rebirths
+                base_bonus = random.randint(5, 10) + rebirths
                 base_str = f"{self.emojis.magic_crit}️ {humanize_number(base_bonus)}"
                 if roll == max_roll:
                     msg += _("**{}** had a surge of energy.\n").format(
                         self.escape(user.display_name)
                     )
                     critlist.append(user)
-                    crit_bonus = random.randint(5, 20) + 2 * c.rebirths // 5
+                    crit_bonus = random.randint(5, 20) + 2 * rebirths
                     crit_str = f"{self.emojis.crit} {humanize_number(crit_bonus)}"
                 if c.heroclass["ability"]:
-                    base_bonus = random.randint(15, 50) + 5 * c.rebirths // 10
+                    base_bonus = random.randint(15, 50) + 5 * rebirths
                     base_str = f"{self.emojis.magic_crit}️ {humanize_number(base_bonus)}"
                 magic += int((roll + base_bonus + crit_bonus + int_value) / mdef)
                 bonus = base_str + crit_str
@@ -5401,17 +5401,17 @@ class Adventure(BaseCog):
             elif roll == max_roll or c.heroclass["name"] == "Bard":
                 crit_str = ""
                 crit_bonus = 0
-                base_bonus = random.randint(5, 10) + c.rebirths // 3 + rebirths
+                base_bonus = random.randint(5, 10) + rebirths
                 if roll == max_roll:
                     msg += _("**{}** made a compelling argument.\n").format(
                         self.escape(user.display_name)
                     )
                     critlist.append(user)
-                    crit_bonus = random.randint(5, 20) + 2 * c.rebirths // 5
+                    crit_bonus = random.randint(5, 20) + 2 * rebirths
                     crit_str = f"{self.emojis.crit} {crit_bonus}"
 
                 if c.heroclass["ability"]:
-                    base_bonus = random.randint(15, 50) + 5 * c.rebirths // 10
+                    base_bonus = random.randint(15, 50) + 5 * rebirths
                 base_str = f"🎵 {humanize_number(base_bonus)}"
                 diplomacy += roll + base_bonus + crit_bonus + dipl_value
                 bonus = base_str + crit_str
