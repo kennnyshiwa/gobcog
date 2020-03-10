@@ -5187,7 +5187,7 @@ class Adventure(BaseCog):
                 crit_bonus = 0
                 base_bonus = random.randint(5, 10) + c.rebirths // 3 + rebirths
                 base_str = f"{self.emojis.magic_crit}️ {humanize_number(base_bonus)}"
-                if roll == 20:
+                if roll == max_roll:
                     msg += _("**{}** had a surge of energy.\n").format(
                         self.escape(user.display_name)
                     )
@@ -5402,7 +5402,7 @@ class Adventure(BaseCog):
                 crit_str = ""
                 crit_bonus = 0
                 base_bonus = random.randint(5, 10) + c.rebirths // 3 + rebirths
-                if roll == 20:
+                if roll == max_roll:
                     msg += _("**{}** made a compelling argument.\n").format(
                         self.escape(user.display_name)
                     )
