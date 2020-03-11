@@ -5223,8 +5223,9 @@ class Adventure(BaseCog):
         fight_list = list(set(session.fight))
         magic_list = list(set(session.magic))
         god = await self.config.god_name()
-        if await self.config.guild(self.bot.get_guild(guild_id)).god_name():
-            god = await self.config.guild(self.bot.get_guild(guild_id)).god_name()
+        guild_god_name = await self.config.guild(self.bot.get_guild(guild_id)).god_name()
+        if guild_god_name:
+            god = guild_god_name
         msg = ""
         failed_emoji = self.emojis.fumble
         for user in pray_list:
@@ -5295,12 +5296,12 @@ class Adventure(BaseCog):
                             * max(c.rebirths * 0.01, 1.5)
                         )
                     )
-                    diplomacy -= pray_diplo_bonus
+                    diplomacy += pray_diplo_bonus
                     pray_magic_bonus = int(
                         (mod * len(magic_list))
                         + ((mod * len(magic_list)) * max(c.rebirths * 0.01, 1.5))
                     )
-                    magic -= pray_magic_bonus
+                    magic += pray_magic_bonus
 
                     if roll == 50:
                         roll_msg = _(
