@@ -2019,7 +2019,7 @@ class Adventure(BaseCog):
                     ),
                 )
             else:
-                cooldown_time = max(900, (3600 - (c.luck - c.total_int) * 2))
+                cooldown_time = max(900, (3600 - (c.luck + c.total_int) * 2))
                 if "cooldown" not in c.heroclass:
                     c.heroclass["cooldown"] = cooldown_time + 1
                 if not c.heroclass["cooldown"] + cooldown_time <= time.time():
@@ -2718,7 +2718,7 @@ class Adventure(BaseCog):
                             )
                         elif c.heroclass["name"] == "Tinkerer":
                             c.heroclass["cooldown"] = (
-                                max(900, (3600 - (c.luck - c.total_int) * 2)) + time.time()
+                                max(900, (3600 - (c.luck + c.total_int) * 2)) + time.time()
                             )
                         await self.config.user(ctx.author).set(c.to_json())
                         await self._clear_react(class_msg)
