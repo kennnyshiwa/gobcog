@@ -5271,17 +5271,17 @@ class Adventure(BaseCog):
                         pray_att_bonus = (5 * len(fight_list)) - (
                             (5 * len(fight_list)) * max(c.rebirths * 0.01, 1.5)
                         )
-                        attack -= pray_att_bonus
                     if talk_list:
                         pray_diplo_bonus = (5 * len(talk_list)) - (
                             (5 * len(talk_list)) * max(c.rebirths * 0.01, 1.5)
                         )
-                        diplomacy -= pray_diplo_bonus
                     if magic_list:
                         pray_magic_bonus = (5 * len(magic_list)) - (
                             (5 * len(magic_list)) * max(c.rebirths * 0.01, 1.5)
                         )
-                        magic -= pray_magic_bonus
+                    attack -= pray_att_bonus
+                    diplomacy -= pray_diplo_bonus
+                    magic -= pray_magic_bonus
                     fumblelist.append(user)
                     msg += _(
                         "**{user}'s** sermon offended the mighty {god}. {failed_emoji}"
@@ -5309,23 +5309,19 @@ class Adventure(BaseCog):
                             (mod * len(fight_list))
                             + ((mod * len(fight_list)) * max(c.rebirths * 0.01, 1.5))
                         )
-                        attack += pray_att_bonus
                     if talk_list:
                         pray_diplo_bonus = int(
-                            (mod * (len(talk_list) + c.rebirths // 5))
-                            + (
-                                (mod * (len(talk_list) + c.rebirths // 5))
-                                * max(c.rebirths * 0.01, 1.5)
-                            )
+                            (mod * len(talk_list))
+                            + ((mod * len(talk_list)) * max(c.rebirths * 0.01, 1.5))
                         )
-                        diplomacy += pray_diplo_bonus
                     if magic_list:
                         pray_magic_bonus = int(
                             (mod * len(magic_list))
                             + ((mod * len(magic_list)) * max(c.rebirths * 0.01, 1.5))
                         )
-                        magic += pray_magic_bonus
-
+                    attack += pray_att_bonus
+                    magic += pray_magic_bonus
+                    diplomacy += pray_diplo_bonus
                     if roll == 50:
                         roll_msg = _(
                             "{user} turned into an avatar of mighty {god}. "
