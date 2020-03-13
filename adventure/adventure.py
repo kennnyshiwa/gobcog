@@ -5454,18 +5454,24 @@ class Adventure(BaseCog):
                     ).format(self.escape(user.display_name))
 
                 if roll == 1:
-                    pray_att_bonus = (5 * len(fight_list)) - (
-                        (5 * len(fight_list)) * max(c.rebirths * 0.01, 1.5)
-                    )
-                    attack -= pray_att_bonus
-                    pray_diplo_bonus = (5 * len(talk_list)) - (
-                        (5 * len(talk_list)) * max(c.rebirths * 0.01, 1.5)
-                    )
-                    diplomacy -= pray_diplo_bonus
-                    pray_magic_bonus = (5 * len(magic_list)) - (
-                        (5 * len(magic_list)) * max(c.rebirths * 0.01, 1.5)
-                    )
-                    magic -= pray_magic_bonus
+                    pray_att_bonus = 0
+                    pray_diplo_bonus = 0
+                    pray_magic_bonus = 0
+                    if fight_list:
+                        pray_att_bonus = (5 * len(fight_list)) - (
+                            (5 * len(fight_list)) * max(c.rebirths * 0.01, 1.5)
+                        )
+                        attack -= pray_att_bonus
+                    if talk_list:
+                        pray_diplo_bonus = (5 * len(talk_list)) - (
+                            (5 * len(talk_list)) * max(c.rebirths * 0.01, 1.5)
+                        )
+                        diplomacy -= pray_diplo_bonus
+                    if magic_list:
+                        pray_magic_bonus = (5 * len(magic_list)) - (
+                            (5 * len(magic_list)) * max(c.rebirths * 0.01, 1.5)
+                        )
+                        magic -= pray_magic_bonus
                     fumblelist.append(user)
                     msg += _(
                         "**{user}'s** sermon offended the mighty {god}. {failed_emoji}"
@@ -5484,24 +5490,31 @@ class Adventure(BaseCog):
 
                 else:
                     mod = roll // 3 if not c.heroclass["ability"] else roll
-                    pray_att_bonus = int(
-                        (mod * len(fight_list))
-                        + ((mod * len(fight_list)) * max(c.rebirths * 0.01, 1.5))
-                    )
-                    attack += pray_att_bonus
-                    pray_diplo_bonus = int(
-                        (mod * (len(talk_list) + c.rebirths // 5))
-                        + (
-                            (mod * (len(talk_list) + c.rebirths // 5))
-                            * max(c.rebirths * 0.01, 1.5)
+                    pray_att_bonus = 0
+                    pray_diplo_bonus = 0
+                    pray_magic_bonus = 0
+
+                    if fight_list:
+                        pray_att_bonus = int(
+                            (mod * len(fight_list))
+                            + ((mod * len(fight_list)) * max(c.rebirths * 0.01, 1.5))
                         )
-                    )
-                    diplomacy += pray_diplo_bonus
-                    pray_magic_bonus = int(
-                        (mod * len(magic_list))
-                        + ((mod * len(magic_list)) * max(c.rebirths * 0.01, 1.5))
-                    )
-                    magic += pray_magic_bonus
+                        attack += pray_att_bonus
+                    if talk_list:
+                        pray_diplo_bonus = int(
+                            (mod * (len(talk_list) + c.rebirths // 5))
+                            + (
+                                (mod * (len(talk_list) + c.rebirths // 5))
+                                * max(c.rebirths * 0.01, 1.5)
+                            )
+                        )
+                        diplomacy += pray_diplo_bonus
+                    if magic_list:
+                        pray_magic_bonus = int(
+                            (mod * len(magic_list))
+                            + ((mod * len(magic_list)) * max(c.rebirths * 0.01, 1.5))
+                        )
+                        magic += pray_magic_bonus
 
                     if roll == 50:
                         roll_msg = _(
@@ -5531,9 +5544,19 @@ class Adventure(BaseCog):
                     )
 
                 elif roll == 5:
-                    attack += 10 * (len(fight_list) + c.rebirths // 15)
-                    diplomacy += 10 * (len(talk_list) + c.rebirths // 15)
-                    magic += 10 * (len(magic_list) + c.rebirths // 15)
+                    attack_buff = 0
+                    talk_buff = 0
+                    magic_buff = 0
+                    if fight_list:
+                        attack_buff = 10 * (len(fight_list) + c.rebirths // 15)
+                    if talk_list:
+                        talk_buff = 10 * (len(talk_list) + c.rebirths // 15)
+                    if magic_list:
+                        magic_buff = 10 * (len(magic_list) + c.rebirths // 15)
+
+                    attack += attack_buff
+                    magic += magic_buff
+                    diplomacy += talk_buff
                     msg += _(
                         "**{user}'s** prayer called upon the mighty {god} to help you. "
                         "(+{len_f_list}{attack}/+{len_t_list}{talk}/+{len_m_list}{magic})\n"
@@ -5543,9 +5566,9 @@ class Adventure(BaseCog):
                         attack=self.emojis.attack,
                         talk=self.emojis.talk,
                         magic=self.emojis.magic,
-                        len_f_list=humanize_number(10 * len(fight_list)),
-                        len_t_list=humanize_number(10 * len(talk_list)),
-                        len_m_list=humanize_number(10 * len(magic_list)),
+                        len_f_list=humanize_number(attack_buff),
+                        len_t_list=humanize_number(talk_buff),
+                        len_m_list=humanize_number(magic_buff),
                     )
                 else:
                     fumblelist.append(user)
