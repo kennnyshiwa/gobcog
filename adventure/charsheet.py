@@ -728,7 +728,7 @@ class Character(Item):
             slot_name = slot_name_org[0] if len(slot_name_org) < 2 else _("two handed")
             form_string += f"\n\n {slot_name.title()} slot\n"
             for item in slot_group:
-                if forging and (item[1].rarity == "forged" or item[1] in consumed_list):
+                if forging and (item[1].rarity in ["forged", "set"] or item[1] in consumed_list):
                     continue
                 settext = ""
                 att_space = " " if len(str(item[1].att)) == 1 else ""
