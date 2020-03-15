@@ -29,8 +29,8 @@ You can use earned credits to enter the negaverse and fight a nega version of so
 
 ```css
 {Set:''Set items look like this''}
-{Legendary:'Set items look like this'}
 {.:'Forged items look like this':.}
+{Legendary:'Set items look like this'}
 [epic items look like this]
 .rare_items_look_like_this
 normal items look like this
