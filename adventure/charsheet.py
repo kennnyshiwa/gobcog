@@ -723,14 +723,14 @@ class Character(Item):
         rjust = max([len(str(i[1])) + 3 for slot_group in bkpk for i in slot_group] or [1, 3])
         for slot_group in bkpk:
             slot_name_org = slot_group[0][1].slot
-            slot_name = slot_name_org[0] if len(slot_name_org) < 2 else _("two handed")
+            slot_name = slot_name_org[0] if len(slot_name_org) < 2 else "two handed"
             form_string += f"\n\n {slot_name.title()} slot\n"
             for item in slot_group:
                 if forging and (item[1].rarity in ["forged", "set"] or item[1] in consumed_list):
                     continue
                 if rarity is not None and rarity != item[1].rarity:
                     continue
-                if slot is not None and slot not in slot_name:
+                if slot is not None and slot != slot_name:
                     continue
 
                 settext = ""

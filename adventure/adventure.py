@@ -725,10 +725,11 @@ class Adventure(BaseCog):
 
         Give it a rarity and/or slot to filter what backpack items to show.
 
-        Selling:  `[p]backpack sell item_name`
-        Trading:  `[p]backpack trade @user price item_name`
-        Equip:    `[p]backpack equip item_name`
-        Sell All: `[p]backpack sellall item_rarity`
+        Selling:     `[p]backpack sell item_name`
+        Trading:     `[p]backpack trade @user price item_name`
+        Equip:       `[p]backpack equip item_name`
+        Sell All:    `[p]backpack sellall item_rarity`
+        Disassemble: `[p]backpack equip item_name`
         or respond with the item name to the backpack command output.
         """
         assert isinstance(rarity, str) or rarity is None
@@ -772,6 +773,7 @@ class Adventure(BaseCog):
     @_backpack.command(name="equip")
     async def backpack_equip(self, ctx: Context, *, equip_item: ItemConverter):
         """Equip an item from your backpack."""
+        assert isinstance(equip_item, Item)
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx,
@@ -824,6 +826,60 @@ class Adventure(BaseCog):
                 await ctx.send(equip_msg)
                 c = await c.equip_item(equip, True, self.is_dev(ctx.author))  # FIXME:
                 await self.config.user(ctx.author).set(c.to_json())
+
+    @_backpack.command(name="disassemble")
+    async def backpack_dismantle(self, ctx: Context, *, equip_item: ItemConverter):
+        """Disassemble a set item from your backpack."""
+        assert isinstance(equip_item, Item)
+        if self.in_adventure(ctx):
+            return await smart_embed(
+                ctx,
+                _(
+                    "You tried to disassemble an item but the monster ahead of you commands your attention."
+                ),
+            )
+        async with self.get_lock(ctx.author):
+            try:
+                character = await Character.from_json(self.config, ctx.author)
+            except Exception as exc:
+                log.exception("Error with the new character sheet", exc_info=exc)
+                return
+
+            try:
+                item = character.backpack[equip_item.name]
+            except KeyError:
+                return
+
+            if item.rarity != "set":
+                return await smart_embed(ctx, _("You can only disassemble set items."))
+            if character.heroclass["name"] != "Tinkerer":
+                roll = random.randint(0, 1)
+            else:
+                roll = random.randint(0, 5)
+
+            if roll == 0:
+                item.owned -= 1
+                if item.owned <= 0:
+                    del character.backpack[item.name]
+                await self.config.user(ctx.author).set(character.to_json())
+                return await smart_embed(
+                    ctx,
+                    _("Your attempt at disassembling {} failed and it has been destroyed.").format(
+                        item.name
+                    ),
+                )
+            else:
+                item.owned -= 1
+                if item.owned <= 0:
+                    del character.backpack[item.name]
+                character.treasure[3] += roll
+                await self.config.user(ctx.author).set(character.to_json())
+                return await smart_embed(
+                    ctx,
+                    _(
+                        "Your attempt at disassembling {} was successful and you received {} legendary chests."
+                    ).format(item.name, roll),
+                )
 
     @_backpack.command(name="sellall")
     async def backpack_sellall(
