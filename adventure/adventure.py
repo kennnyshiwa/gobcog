@@ -835,7 +835,8 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx,
                 _(
-                    "You tried to disassemble an item but the monster ahead of you commands your attention."
+                    "You tried to disassemble an item but the "
+                    "monster ahead of you commands your attention."
                 ),
             )
         async with self.get_lock(ctx.author):
@@ -877,8 +878,9 @@ class Adventure(BaseCog):
                 return await smart_embed(
                     ctx,
                     _(
-                        "Your attempt at disassembling {} was successful and you received {} legendary chests."
-                    ).format(item.name, roll),
+                        "Your attempt at disassembling {} was successful "
+                        "and you have received {} legendary {}."
+                    ).format(item.name, roll, _("chests") if roll > 1 else _("chest")),
                 )
 
     @_backpack.command(name="sellall")
