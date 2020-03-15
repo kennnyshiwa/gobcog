@@ -856,7 +856,7 @@ class Adventure(BaseCog):
             if character.heroclass["name"] != "Tinkerer":
                 roll = random.randint(0, 1)
             else:
-                roll = random.randint(0, 5)
+                roll = random.randint(0, 3)
 
             if roll == 0:
                 item.owned -= 1
