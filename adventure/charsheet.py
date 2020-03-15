@@ -13,7 +13,7 @@ from discord.ext.commands.errors import BadArgument
 
 from redbot.core import Config, bank, commands
 from redbot.core.i18n import Translator
-from redbot.core.utils.chat_formatting import box
+from redbot.core.utils.chat_formatting import box, humanize_list
 from redbot.core.utils.menus import start_adding_reactions
 from redbot.core.utils.predicates import ReactionPredicate
 
@@ -315,8 +315,6 @@ class Item:
             data[self.name].pop("cha", None)
             data[self.name].pop("dex", None)
             data[self.name].pop("luck", None)
-
-
 
         return data
 
@@ -714,7 +712,7 @@ class Character(Item):
         )
         return final
 
-    def get_backpack(self, forging: bool = False, consumed=None):
+    def get_backpack(self, forging: bool = False, consumed=None, rarity=None, slot=None):
         if consumed is None:
             consumed = []
         bkpk = self.get_sorted_backpack(self.backpack)
@@ -730,6 +728,11 @@ class Character(Item):
             for item in slot_group:
                 if forging and (item[1].rarity in ["forged", "set"] or item[1] in consumed_list):
                     continue
+                if rarity is not None and rarity != item[1].rarity:
+                    continue
+                if slot is not None and slot not in slot_name:
+                    continue
+
                 settext = ""
                 att_space = " " if len(str(item[1].att)) == 1 else ""
                 cha_space = " " if len(str(item[1].cha)) == 1 else ""
@@ -1158,6 +1161,33 @@ class EquipmentConverter(Converter):
             except asyncio.TimeoutError:
                 raise BadArgument(_("Alright then."))
             return lookup[pred.result]
+
+
+class SlotConverter(Converter):
+    async def convert(self, ctx, argument) -> str:
+        if argument:
+            slot = argument.lower()
+            if slot not in ORDER:
+                raise BadArgument(
+                    _("{} is not a valid slot, select one of {}").format(
+                        slot, humanize_list(ORDER)
+                    )
+                )
+        return argument
+
+
+class RarityConverter:
+    async def convert(self, ctx, argument) -> str:
+        if argument:
+            rarity = argument.lower()
+            if rarity not in RARITIES:
+                raise BadArgument(
+                    _("{} is not a valid rarity, select one of {}").format(
+                        rarity, humanize_list(RARITIES)
+                    )
+                )
+
+        return argument
 
 
 def equip_level(char, item):
