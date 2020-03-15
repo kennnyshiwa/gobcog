@@ -1164,29 +1164,20 @@ class EquipmentConverter(Converter):
 
 
 class SlotConverter(Converter):
-    async def convert(self, ctx, argument) -> str:
+    async def convert(self, ctx, argument) -> Optional[str]:
         if argument:
             slot = argument.lower()
             if slot not in ORDER:
-                raise BadArgument(
-                    _("{} is not a valid slot, select one of {}").format(
-                        slot, humanize_list(ORDER)
-                    )
-                )
+                raise BadArgument
         return argument
 
 
-class RarityConverter:
-    async def convert(self, ctx, argument) -> str:
+class RarityConverter(Converter):
+    async def convert(self, ctx, argument) -> Optional[str]:
         if argument:
             rarity = argument.lower()
             if rarity not in RARITIES:
-                raise BadArgument(
-                    _("{} is not a valid rarity, select one of {}").format(
-                        rarity, humanize_list(RARITIES)
-                    )
-                )
-
+                raise BadArgument
         return argument
 
 
