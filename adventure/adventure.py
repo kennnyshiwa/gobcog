@@ -728,9 +728,8 @@ class Adventure(BaseCog):
         Selling:     `[p]backpack sell item_name`
         Trading:     `[p]backpack trade @user price item_name`
         Equip:       `[p]backpack equip item_name`
-        Sell All:    `[p]backpack sellall item_rarity`
-        Disassemble: `[p]backpack equip item_name`
-        or respond with the item name to the backpack command output.
+        Sell All:    `[p]backpack sellall rarity slot`
+        Disassemble: `[p]backpack disassemble item_name`
         """
         assert isinstance(rarity, str) or rarity is None
         assert isinstance(slot, str) or slot is None
