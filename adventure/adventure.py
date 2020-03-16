@@ -906,9 +906,11 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx,
                 _(
-                    "You tried to go sell your items but the monster ahead is not allowing you to leave."
+                    "You tried to sell your items but the "
+                    "monster ahead of you commands your attention."
                 ),
             )
+           
         if rarity:
             rarity = rarity.lower()
             if rarity not in RARITIES:
@@ -1663,9 +1665,9 @@ class Adventure(BaseCog):
         """Setup various adventure settings."""
 
     @adventureset.command()
-    @check_global_setting_admin()
+    @commands.is_owner()
     async def rebirthcost(self, ctx: Context, percentage: float):
-        """[Admin] Set what percentage of the user balance to charge for rebirths.
+        """[Owner] Set what percentage of the user balance to charge for rebirths.
 
         Unless the user's balance is under 1k, users that rebirth will be left with the base of 1k credits plus the remaining credit percentage after the rebirth charge.
         """
@@ -1734,10 +1736,10 @@ class Adventure(BaseCog):
         )
 
     @adventureset.command(name="advcooldown", hidden=True)
-    @checks.admin_or_permissions(administrator=True)
+    @commands.is_owner()
     @commands.guild_only()
     async def advcooldown(self, ctx: Context, *, time_in_seconds: int):
-        """[Admin] Changes the cooldown/gather time after an adventure.
+        """[Owner] Changes the cooldown/gather time after an adventure.
 
         Default is 120 seconds.
         """
@@ -1780,7 +1782,7 @@ class Adventure(BaseCog):
     @adventureset.command(aliases=["chests"])
     @checks.is_owner()
     async def cartchests(self, ctx: Context):
-        """[Admin] Set whether or not to sell chests in the cart."""
+        """[Owner] Set whether or not to sell chests in the cart."""
         toggle = await self.config.enable_chests()
         await self.config.enable_chests.set(not toggle)
         await smart_embed(ctx, _("Carts can sell chests: {}").format(not toggle))
