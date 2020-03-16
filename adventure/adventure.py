@@ -910,7 +910,6 @@ class Adventure(BaseCog):
                     "monster ahead of you commands your attention."
                 ),
             )
-           
         if rarity:
             rarity = rarity.lower()
             if rarity not in RARITIES:
