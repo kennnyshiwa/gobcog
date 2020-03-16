@@ -890,7 +890,7 @@ class Adventure(BaseCog):
         *,
         slot: Optional[SlotConverter] = None,
     ):
-        """Sell all items in your backpack."""
+        """Sell all items in your backpack. Optionally specify rarity or slot."""
         assert isinstance(rarity, str) or rarity is None
         assert isinstance(slot, str) or slot is None
         if self.in_adventure(ctx):
