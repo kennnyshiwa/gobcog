@@ -827,9 +827,9 @@ class Adventure(BaseCog):
                 await self.config.user(ctx.author).set(c.to_json())
 
     @_backpack.command(name="disassemble")
-    async def backpack_dismantle(self, ctx: Context, *, equip_item: ItemConverter):
+    async def backpack_disassemble(self, ctx: Context, *, backpack_item: ItemConverter):
         """Disassemble a set item from your backpack."""
-        assert isinstance(equip_item, Item)
+        assert isinstance(backpack_item, Item)
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx,
@@ -846,7 +846,7 @@ class Adventure(BaseCog):
                 return
 
             try:
-                item = character.backpack[equip_item.name]
+                item = character.backpack[backpack_item.name]
             except KeyError:
                 return
 
