@@ -2182,14 +2182,11 @@ class Adventure(BaseCog):
                         ),
                     )
                 consumed = []
-                forgeables = len(
-                    [
-                        i
-                        for n, i in c.backpack.items()
-                        if i.rarity not in ["forged", "set", "patreon"]
-                    ]
-                )
-                if forgeables <= 1:
+                forgeables_items = [
+                    str(i) for n, i in c.backpack.items() if i.rarity not in ["forged", "set", "patreon"]
+                ]
+
+                if len(forgeables_items) <= 1:
                     return await smart_embed(
                         ctx,
                         _(
@@ -2218,7 +2215,10 @@ class Adventure(BaseCog):
                         )
                         new_ctx = await self.bot.get_context(reply)
                         with contextlib.suppress(BadArgument):
+                            item = None
                             item = await ItemConverter().convert(new_ctx, reply.content)
+                            if str(item) not in forgeables_items:
+                                item = None
                         if not item:
                             wrong_item = _(
                                 "**{c}**, I could not find that item - check your spelling."
@@ -2256,7 +2256,10 @@ class Adventure(BaseCog):
                         )
                         new_ctx = await self.bot.get_context(reply)
                         with contextlib.suppress(BadArgument):
+                            item = None
                             item = await ItemConverter().convert(new_ctx, reply.content)
+                            if str(item) not in forgeables_items:
+                                item = None
                         if item and consumed[0].owned <= 1 and str(consumed[0]) == str(item):
                             wrong_item = _(
                                 "**{c}**, You only own 1 copy of this item and "
@@ -2289,6 +2292,7 @@ class Adventure(BaseCog):
                     )
                 newitem = await self._to_forge(ctx, consumed, c)
                 for x in consumed:
+                    print(x)
                     c.backpack[x.name].owned -= 1
                     if c.backpack[x.name].owned <= 0:
                         del c.backpack[x.name]
