@@ -598,6 +598,7 @@ class Adventure(BaseCog):
         return escape(filter_various_mentions(t), mass_mentions=True, formatting=True)
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
     async def makecart(self, ctx: Context):
         """[Owner] Force a cart to appear."""
@@ -705,6 +706,7 @@ class Adventure(BaseCog):
         await ctx.invoke(self._backpack)
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
     async def copyuser(self, ctx: Context, user_id: int):
         """[Owner] Copy another members data to yourself.
@@ -718,6 +720,7 @@ class Adventure(BaseCog):
         await ctx.tick()
 
     @commands.group(name="backpack", autohelp=False)
+    @commands.bot_has_permissions(add_reactions=True)
     async def _backpack(
         self,
         ctx: Context,
@@ -1338,8 +1341,9 @@ class Adventure(BaseCog):
                     with contextlib.suppress(discord.HTTPException):
                         await trade_msg.delete()
 
-    @commands.guild_only()
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
+    @commands.guild_only()
     async def rebirth(self, ctx: Context):
         """Resets your character level and increases your rebirths by 1."""
         if self.in_adventure(ctx):
@@ -1437,8 +1441,9 @@ class Adventure(BaseCog):
                 )
                 await self.config.user(ctx.author).set(await c.rebirth())
 
-    @commands.is_owner()
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
+    @commands.is_owner()
     async def devrebirth(
         self,
         ctx: Context,
@@ -1478,8 +1483,9 @@ class Adventure(BaseCog):
             await self.config.user(target).set(character_data)
         await ctx.tick()
 
-    @commands.is_owner()
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
+    @commands.is_owner()
     async def devreset(self, ctx: commands.Context, user: discord.Member = None):
         """[Owner] Reset the skill cooldown for this user."""
         target = user or ctx.author
@@ -1567,6 +1573,7 @@ class Adventure(BaseCog):
                 )
 
     @loadout.command(name="show")
+    @commands.bot_has_permissions(add_reactions=True)
     async def show_loadout(self, ctx: Context, name: str = None):
         """Show saved loadouts."""
         if not await self.allow_in_dm(ctx):
@@ -1705,6 +1712,7 @@ class Adventure(BaseCog):
         )
 
     @adventureset.group(name="locks")
+    @commands.bot_has_permissions(add_reactions=True)
     @checks.admin_or_permissions(administrator=True)
     async def adventureset_locks(self, ctx: Context):
         """[Admin] Reset Adventure locks."""
@@ -2134,7 +2142,7 @@ class Adventure(BaseCog):
         await ctx.invoke(self.backpack_equip, equip_item=item)
 
     @commands.command()
-    @commands.bot_has_permissions(embed_links=True, add_reactions=True)
+    @commands.bot_has_permissions(add_reactions=True)
     async def forge(self, ctx):
         """[Tinkerer Class Only]
 
@@ -2188,21 +2196,25 @@ class Adventure(BaseCog):
                             "**{}**, you need at least two forgeable items in your backpack to forge."
                         ).format(self.escape(ctx.author.display_name)),
                     )
-                forgeables = _(
-                    "[{author}'s forgeables]\n{bc}\n"
-                ).format(author=self.escape(ctx.author.display_name), bc=c.get_backpack(True))
+                forgeables = _("[{author}'s forgeables]\n{bc}\n").format(
+                    author=self.escape(ctx.author.display_name), bc=c.get_backpack(True)
+                )
                 pages = pagify(forgeables, delims=["\n"], shorten_by=20, page_length=1900)
                 pages = [box(page, lang="css") for page in pages]
                 task = asyncio.create_task(menu(ctx, pages, DEFAULT_CONTROLS, timeout=180))
                 await smart_embed(
                     ctx,
-                    _("Reply with the full or partial name of item 1 to select for forging. Try to be specific.")
+                    _(
+                        "Reply with the full or partial name of item 1 to select for forging. Try to be specific."
+                    ),
                 )
                 try:
                     item = None
                     while not item:
                         reply = await ctx.bot.wait_for(
-                            "message", check=MessagePredicate.same_context(user=ctx.author), timeout=30
+                            "message",
+                            check=MessagePredicate.same_context(user=ctx.author),
+                            timeout=30,
                         )
                         new_ctx = await self.bot.get_context(reply)
                         with contextlib.suppress(BadArgument):
@@ -2238,8 +2250,9 @@ class Adventure(BaseCog):
                     item = None
                     while not item:
                         reply = await ctx.bot.wait_for(
-                            "message", check=MessagePredicate.same_context(user=ctx.author),
-                            timeout=30
+                            "message",
+                            check=MessagePredicate.same_context(user=ctx.author),
+                            timeout=30,
                         )
                         new_ctx = await self.bot.get_context(reply)
                         with contextlib.suppress(BadArgument):
@@ -2773,6 +2786,7 @@ class Adventure(BaseCog):
             )
 
     @commands.command(cooldown_after_parsing=True)
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.cooldown(rate=1, per=7200, type=commands.BucketType.user)
     async def heroclass(self, ctx: Context, clz: str = None, action: str = None):
         """Allows you to select a class if you are level 10 or above.
@@ -3065,6 +3079,7 @@ class Adventure(BaseCog):
         return True
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.user)
     async def loot(self, ctx: Context, box_type: str = None, number: int = 1):
         """This opens one of your precious treasure chests.
@@ -3558,6 +3573,7 @@ class Adventure(BaseCog):
                         await user_msg.edit(content=f"{pet_msg}\n{pet_msg2}\n{pet_msg3}{pet_msg4}")
 
     @pet.command(name="forage")
+    @commands.bot_has_permissions(add_reactions=True)
     async def _forage(self, ctx: Context):
         """Use your pet to forage for items!"""
         if self.in_adventure(ctx):
@@ -3987,6 +4003,7 @@ class Adventure(BaseCog):
                 )
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     async def stats(self, ctx: Context, *, user: discord.Member = None):
         """This draws up a character sheet of you or an optionally specified member."""
         if not await self.allow_in_dm(ctx):
@@ -4127,6 +4144,7 @@ class Adventure(BaseCog):
                 )
 
     @commands.command(name="adventurestats")
+    @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.is_owner()
     async def _adventurestats(self, ctx: Context):
         """[Owner] Show all current adventures."""
@@ -4147,6 +4165,7 @@ class Adventure(BaseCog):
             await ctx.send(embed=embed_list[0])
 
     @commands.command(name="devcooldown")
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
     async def _devcooldown(self, ctx: Context):
         """[Owner] Resets the after-adventure cooldown in this server."""
@@ -4154,6 +4173,7 @@ class Adventure(BaseCog):
         await ctx.tick()
 
     @commands.command(name="adventure", aliases=["a"])
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
     async def _adventure(self, ctx: Context, *, challenge=None):
         """This will send you on an adventure!
@@ -6627,6 +6647,7 @@ class Adventure(BaseCog):
             return sorted_acc[:positions]
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
     async def aleaderboard(self, ctx: Context, show_global: bool = False):
         """Print the leaderboard."""
@@ -6704,6 +6725,7 @@ class Adventure(BaseCog):
             return sorted_acc[:positions]
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
     async def scoreboard(
         self, ctx: Context, stats: Optional[str] = None, show_global: bool = False
@@ -6734,6 +6756,7 @@ class Adventure(BaseCog):
             await smart_embed(ctx, _("There are no adventurers in the server."))
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
     async def wscoreboard(self, ctx: Context, show_global: bool = False):
         """Print the weekly scoreboard.

@@ -572,7 +572,7 @@ class Character(Item):
                         if value > 1:
                             base[key] += value
                         elif value >= 0:
-                            base[key] -= (1 - value)
+                            base[key] -= 1 - value
 
         self.gear_set_bonus = base
 
