@@ -2261,7 +2261,6 @@ class Adventure(BaseCog):
                     )
                 newitem = await self._to_forge(ctx, consumed, c)
                 for x in consumed:
-                    print(x)
                     c.backpack[x.name].owned -= 1
                     if c.backpack[x.name].owned <= 0:
                         del c.backpack[x.name]
