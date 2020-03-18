@@ -15,6 +15,7 @@ from typing import List, Optional, Union, MutableMapping
 import discord
 from dateutil import relativedelta
 from discord.ext.commands import CheckFailure
+from discord.ext.commands.errors import BadArgument
 from redbot.cogs.bank import check_global_setting_admin
 from redbot.core import Config, bank, checks, commands
 from redbot.core.bot import Red
@@ -185,12 +186,12 @@ class AdventureResults:
 
         # return main stat and range
         min_stat = avg_amount * 0.75
-        max_stat = avg_amount * 1.5
+        max_stat = avg_amount * 2
         # want win % to be at least 50%, even when solo
         # if win % is below 50%, scale back min/max for easier mons
         if win_percent < 0.5:
             min_stat = avg_amount * win_percent
-            max_stat = avg_amount * 1.25
+            max_stat = avg_amount * 1.5
 
         stats_dict = {}
         for var in ("stat_type", "min_stat", "max_stat", "win_percent"):
@@ -597,6 +598,7 @@ class Adventure(BaseCog):
         return escape(filter_various_mentions(t), mass_mentions=True, formatting=True)
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
     async def makecart(self, ctx: Context):
         """[Owner] Force a cart to appear."""
@@ -704,6 +706,7 @@ class Adventure(BaseCog):
         await ctx.invoke(self._backpack)
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
     async def copyuser(self, ctx: Context, user_id: int):
         """[Owner] Copy another members data to yourself.
@@ -717,6 +720,7 @@ class Adventure(BaseCog):
         await ctx.tick()
 
     @commands.group(name="backpack", autohelp=False)
+    @commands.bot_has_permissions(add_reactions=True)
     async def _backpack(
         self,
         ctx: Context,
@@ -1337,8 +1341,9 @@ class Adventure(BaseCog):
                     with contextlib.suppress(discord.HTTPException):
                         await trade_msg.delete()
 
-    @commands.guild_only()
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
+    @commands.guild_only()
     async def rebirth(self, ctx: Context):
         """Resets your character level and increases your rebirths by 1."""
         if self.in_adventure(ctx):
@@ -1436,8 +1441,9 @@ class Adventure(BaseCog):
                 )
                 await self.config.user(ctx.author).set(await c.rebirth())
 
-    @commands.is_owner()
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
+    @commands.is_owner()
     async def devrebirth(
         self,
         ctx: Context,
@@ -1477,8 +1483,9 @@ class Adventure(BaseCog):
             await self.config.user(target).set(character_data)
         await ctx.tick()
 
-    @commands.is_owner()
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
+    @commands.is_owner()
     async def devreset(self, ctx: commands.Context, user: discord.Member = None):
         """[Owner] Reset the skill cooldown for this user."""
         target = user or ctx.author
@@ -1566,6 +1573,7 @@ class Adventure(BaseCog):
                 )
 
     @loadout.command(name="show")
+    @commands.bot_has_permissions(add_reactions=True)
     async def show_loadout(self, ctx: Context, name: str = None):
         """Show saved loadouts."""
         if not await self.allow_in_dm(ctx):
@@ -1704,6 +1712,7 @@ class Adventure(BaseCog):
         )
 
     @adventureset.group(name="locks")
+    @commands.bot_has_permissions(add_reactions=True)
     @checks.admin_or_permissions(administrator=True)
     async def adventureset_locks(self, ctx: Context):
         """[Admin] Reset Adventure locks."""
@@ -2133,6 +2142,7 @@ class Adventure(BaseCog):
         await ctx.invoke(self.backpack_equip, equip_item=item)
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     async def forge(self, ctx):
         """[Tinkerer Class Only]
 
@@ -2172,74 +2182,63 @@ class Adventure(BaseCog):
                         ),
                     )
                 consumed = []
-                forgeables = len(
-                    [
-                        i
-                        for n, i in c.backpack.items()
-                        if i.rarity not in ["forged", "set", "patreon"]
-                    ]
-                )
-                if forgeables <= 1:
+                forgeables_items = [
+                    str(i) for n, i in c.backpack.items() if i.rarity not in ["forged", "set", "patreon"]
+                ]
+
+                if len(forgeables_items) <= 1:
                     return await smart_embed(
                         ctx,
                         _(
                             "**{}**, you need at least two forgeable items in your backpack to forge."
                         ).format(self.escape(ctx.author.display_name)),
                     )
-                forgeables = _(
-                    "[{author}'s forgeables]\n{bc}\n"
-                    "(Reply with the full or partial name "
-                    "of item 1 to select for forging. Try to be specific.)"
-                ).format(author=self.escape(ctx.author.display_name), bc=c.get_backpack(True))
-                for page in pagify(forgeables, delims=["\n"], shorten_by=20, page_length=1900):
-                    await ctx.send(box(page, lang="css"))
-
-                try:
-                    reply = await ctx.bot.wait_for(
-                        "message", check=MessagePredicate.same_context(user=ctx.author), timeout=30
-                    )
-                except asyncio.TimeoutError:
-                    timeout_msg = _("I don't have all day you know, **{}**.").format(
-                        self.escape(ctx.author.display_name)
-                    )
-                    return await ctx.send(timeout_msg)
-                new_ctx = await self.bot.get_context(reply)
-                item = await ItemConverter().convert(new_ctx, reply.content)
-                if not item:
-                    wrong_item = _(
-                        "**{c}**, I could not find that item - check your spelling."
-                    ).format(c=self.escape(ctx.author.display_name))
-                    return await smart_embed(ctx, wrong_item)
-
-                if item.rarity in ["forged", "set", "patreon"]:
-                    return await smart_embed(
-                        ctx,
-                        _("**{c}**, {item.rarity} items cannot be reforged.").format(
-                            c=self.escape(ctx.author.display_name), item=item
-                        ),
-                    )
-                consumed.append(item)
-                if not consumed:
-                    wrong_item = _(
-                        "**{}**, I could not find that item - check your spelling."
-                    ).format(self.escape(ctx.author.display_name))
-                    return await smart_embed(ctx, wrong_item)
-                forgeables = _(
-                    "(Reply with the full or partial name "
-                    "of item 2 to select for forging. Try to be specific.)"
+                forgeables = _("[{author}'s forgeables]\n{bc}\n").format(
+                    author=self.escape(ctx.author.display_name), bc=c.get_backpack(True)
                 )
-                await ctx.send(box(forgeables, lang="css"))
+                pages = pagify(forgeables, delims=["\n"], shorten_by=20, page_length=1900)
+                pages = [box(page, lang="css") for page in pages]
+                task = asyncio.create_task(menu(ctx, pages, DEFAULT_CONTROLS, timeout=180))
+                await smart_embed(
+                    ctx,
+                    _(
+                        "Reply with the full or partial name of item 1 to select for forging. Try to be specific. (Say `cancel` to exit)"
+                    ),
+                )
                 try:
-                    reply = await ctx.bot.wait_for(
-                        "message", check=MessagePredicate.same_context(user=ctx.author), timeout=30
-                    )
+                    item = None
+                    while not item:
+                        reply = await ctx.bot.wait_for(
+                            "message",
+                            check=MessagePredicate.same_context(user=ctx.author),
+                            timeout=30,
+                        )
+                        new_ctx = await self.bot.get_context(reply)
+                        if reply.content.lower() in ["cancel", "exit"]:
+                            task.cancel()
+                            return await smart_embed(ctx, _("Forging process has been cancelled"))
+                        with contextlib.suppress(BadArgument):
+                            item = None
+                            item = await ItemConverter().convert(new_ctx, reply.content)
+                            if str(item) not in forgeables_items:
+                                item = None
+                        if not item:
+                            wrong_item = _(
+                                "**{c}**, I could not find that item - check your spelling."
+                            ).format(c=self.escape(ctx.author.display_name))
+                            await smart_embed(ctx, wrong_item)
+                        else:
+                            break
+                    consumed.append(item)
                 except asyncio.TimeoutError:
                     timeout_msg = _("I don't have all day you know, **{}**.").format(
                         self.escape(ctx.author.display_name)
                     )
-                    return await smart_embed(ctx, timeout_msg)
-                new_ctx = await self.bot.get_context(reply)
-                item = await ItemConverter().convert(new_ctx, reply.content)
+                    task.cancel()
+                    return await smart_embed(
+                        ctx,
+                        timeout_msg,
+                    )
                 if item.rarity in ["forged", "set", "patreon"]:
                     return await smart_embed(
                         ctx,
@@ -2247,15 +2246,61 @@ class Adventure(BaseCog):
                             c=self.escape(ctx.author.display_name), item=item
                         ),
                     )
-                consumed.append(item)
-                if len(consumed) < 2:
+                await smart_embed(
+                    ctx,
+                    _(
+                        "Reply with the full or partial name of item 2 to select for forging. Try to be specific. (Say `cancel` to exit)"
+                    ),
+                )
+                try:
+                    item = None
+                    while not item:
+                        reply = await ctx.bot.wait_for(
+                            "message",
+                            check=MessagePredicate.same_context(user=ctx.author),
+                            timeout=30,
+                        )
+                        if reply.content.lower() in ["cancel", "exit"]:
+                            return await smart_embed(ctx, _("Forging process has been cancelled"))
+                        new_ctx = await self.bot.get_context(reply)
+                        with contextlib.suppress(BadArgument):
+                            item = None
+                            item = await ItemConverter().convert(new_ctx, reply.content)
+                            if str(item) not in forgeables_items:
+                                item = None
+                        if item and consumed[0].owned <= 1 and str(consumed[0]) == str(item):
+                            wrong_item = _(
+                                "**{c}**, You only own 1 copy of this item and "
+                                "you already selected it."
+                            ).format(c=self.escape(ctx.author.display_name))
+                            await smart_embed(ctx, wrong_item)
+                            item = None
+                            continue
+                        if not item:
+                            wrong_item = _(
+                                "**{c}**, I could not find that item - check your spelling."
+                            ).format(c=self.escape(ctx.author.display_name))
+                            await smart_embed(ctx, wrong_item)
+                        else:
+                            break
+                    consumed.append(item)
+                except asyncio.TimeoutError:
+                    timeout_msg = _("I don't have all day you know, **{}**.").format(
+                        self.escape(ctx.author.display_name)
+                    )
                     return await smart_embed(
                         ctx,
-                        _("**{}**, I could not find that item - check your spelling.").format(
-                            self.escape(ctx.author.display_name)
+                        timeout_msg,
+                    )
+                finally:
+                    task.cancel()
+                if item.rarity in ["forged", "set"]:
+                    return await smart_embed(
+                        ctx,
+                        _("**{c}**, {item.rarity} items cannot be reforged.").format(
+                            c=self.escape(ctx.author.display_name), item=item
                         ),
                     )
-
                 newitem = await self._to_forge(ctx, consumed, c)
                 for x in consumed:
                     c.backpack[x.name].owned -= 1
@@ -2755,6 +2800,7 @@ class Adventure(BaseCog):
             )
 
     @commands.command(cooldown_after_parsing=True)
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.cooldown(rate=1, per=7200, type=commands.BucketType.user)
     async def heroclass(self, ctx: Context, clz: str = None, action: str = None):
         """Allows you to select a class if you are level 10 or above.
@@ -3047,6 +3093,7 @@ class Adventure(BaseCog):
         return True
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.user)
     async def loot(self, ctx: Context, box_type: str = None, number: int = 1):
         """This opens one of your precious treasure chests.
@@ -3540,6 +3587,7 @@ class Adventure(BaseCog):
                         await user_msg.edit(content=f"{pet_msg}\n{pet_msg2}\n{pet_msg3}{pet_msg4}")
 
     @pet.command(name="forage")
+    @commands.bot_has_permissions(add_reactions=True)
     async def _forage(self, ctx: Context):
         """Use your pet to forage for items!"""
         if self.in_adventure(ctx):
@@ -3969,6 +4017,7 @@ class Adventure(BaseCog):
                 )
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     async def stats(self, ctx: Context, *, user: discord.Member = None):
         """This draws up a character sheet of you or an optionally specified member."""
         if not await self.allow_in_dm(ctx):
@@ -4109,6 +4158,7 @@ class Adventure(BaseCog):
                 )
 
     @commands.command(name="adventurestats")
+    @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.is_owner()
     async def _adventurestats(self, ctx: Context):
         """[Owner] Show all current adventures."""
@@ -4129,6 +4179,7 @@ class Adventure(BaseCog):
             await ctx.send(embed=embed_list[0])
 
     @commands.command(name="devcooldown")
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
     async def _devcooldown(self, ctx: Context):
         """[Owner] Resets the after-adventure cooldown in this server."""
@@ -4136,6 +4187,7 @@ class Adventure(BaseCog):
         await ctx.tick()
 
     @commands.command(name="adventure", aliases=["a"])
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
     async def _adventure(self, ctx: Context, *, challenge=None):
         """This will send you on an adventure!
@@ -4253,7 +4305,7 @@ class Adventure(BaseCog):
             appropriate_range = max(stats["hp"], stats["dipl"]) <= (max(c.att, c.int, c.cha) * 3)
             if stat_range["max_stat"] > 0:
                 main_stat = stats["hp"] if (stat_range["stat_type"] == "attack") else stats["dipl"]
-                appropriate_range = stat_range["min_stat"] <= main_stat <= stat_range["max_stat"]
+                appropriate_range = main_stat <= stat_range["max_stat"]
             if not appropriate_range:
                 continue
             if not stats["boss"] and not stats["miniboss"]:
@@ -6609,6 +6661,7 @@ class Adventure(BaseCog):
             return sorted_acc[:positions]
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
     async def aleaderboard(self, ctx: Context, show_global: bool = False):
         """Print the leaderboard."""
@@ -6686,6 +6739,7 @@ class Adventure(BaseCog):
             return sorted_acc[:positions]
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
     async def scoreboard(
         self, ctx: Context, stats: Optional[str] = None, show_global: bool = False
@@ -6716,6 +6770,7 @@ class Adventure(BaseCog):
             await smart_embed(ctx, _("There are no adventurers in the server."))
 
     @commands.command()
+    @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
     async def wscoreboard(self, ctx: Context, show_global: bool = False):
         """Print the weekly scoreboard.
