@@ -2202,7 +2202,7 @@ class Adventure(BaseCog):
                 await smart_embed(
                     ctx,
                     _(
-                        "Reply with the full or partial name of item 1 to select for forging. Try to be specific."
+                        "Reply with the full or partial name of item 1 to select for forging. Try to be specific. (Say `cancel` to exit)"
                     ),
                 )
                 try:
@@ -2214,6 +2214,9 @@ class Adventure(BaseCog):
                             timeout=30,
                         )
                         new_ctx = await self.bot.get_context(reply)
+                        if reply.content.lower() in ["cancel", "exit"]:
+                            task.cancel()
+                            return await smart_embed(ctx, _("Forging process has been cancelled"))
                         with contextlib.suppress(BadArgument):
                             item = None
                             item = await ItemConverter().convert(new_ctx, reply.content)
@@ -2232,8 +2235,10 @@ class Adventure(BaseCog):
                         self.escape(ctx.author.display_name)
                     )
                     task.cancel()
-                    return await ctx.send(timeout_msg)
-
+                    return await smart_embed(
+                        ctx,
+                        timeout_msg,
+                    )
                 if item.rarity in ["forged", "set", "patreon"]:
                     return await smart_embed(
                         ctx,
@@ -2241,11 +2246,12 @@ class Adventure(BaseCog):
                             c=self.escape(ctx.author.display_name), item=item
                         ),
                     )
-                forgeables = _(
-                    "(Reply with the full or partial name "
-                    "of item 2 to select for forging. Try to be specific.)"
+                await smart_embed(
+                    ctx,
+                    _(
+                        "Reply with the full or partial name of item 2 to select for forging. Try to be specific. (Say `cancel` to exit)"
+                    ),
                 )
-                await ctx.send(box(forgeables, lang="css"))
                 try:
                     item = None
                     while not item:
@@ -2254,6 +2260,8 @@ class Adventure(BaseCog):
                             check=MessagePredicate.same_context(user=ctx.author),
                             timeout=30,
                         )
+                        if reply.content.lower() in ["cancel", "exit"]:
+                            return await smart_embed(ctx, _("Forging process has been cancelled"))
                         new_ctx = await self.bot.get_context(reply)
                         with contextlib.suppress(BadArgument):
                             item = None
@@ -2280,7 +2288,10 @@ class Adventure(BaseCog):
                     timeout_msg = _("I don't have all day you know, **{}**.").format(
                         self.escape(ctx.author.display_name)
                     )
-                    return await ctx.send(timeout_msg)
+                    return await smart_embed(
+                        ctx,
+                        timeout_msg,
+                    )
                 finally:
                     task.cancel()
                 if item.rarity in ["forged", "set"]:
@@ -2292,7 +2303,6 @@ class Adventure(BaseCog):
                     )
                 newitem = await self._to_forge(ctx, consumed, c)
                 for x in consumed:
-                    print(x)
                     c.backpack[x.name].owned -= 1
                     if c.backpack[x.name].owned <= 0:
                         del c.backpack[x.name]
