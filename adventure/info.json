@@ -17,5 +17,8 @@
 		"rpg",
 		"adventure"
 	],
-	"type": "COG"
+	"type": "COG",
+	"requirements": [
+		"python-dateutil"
+	]
 }
