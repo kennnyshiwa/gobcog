@@ -2134,6 +2134,7 @@ class Adventure(BaseCog):
         await ctx.invoke(self.backpack_equip, equip_item=item)
 
     @commands.command()
+    @commands.bot_has_permissions(embed_links=True, add_reactions=True)
     async def forge(self, ctx):
         """[Tinkerer Class Only]
 
