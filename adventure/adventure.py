@@ -14,6 +14,7 @@ from typing import List, Optional, Union, MutableMapping
 
 import discord
 from discord.ext.commands import CheckFailure
+from discord.ext.commands.errors import BadArgument
 from redbot.cogs.bank import check_global_setting_admin
 from redbot.core import Config, bank, checks, commands
 from redbot.core.bot import Red
@@ -2153,28 +2154,37 @@ class Adventure(BaseCog):
                     )
                 forgeables = _(
                     "[{author}'s forgeables]\n{bc}\n"
-                    "(Reply with the full or partial name "
-                    "of item 1 to select for forging. Try to be specific.)"
                 ).format(author=self.escape(ctx.author.display_name), bc=c.get_backpack(True))
-                for page in pagify(forgeables, delims=["\n"], shorten_by=20, page_length=1900):
-                    await ctx.send(box(page, lang="css"))
-
+                pages = pagify(forgeables, delims=["\n"], shorten_by=20, page_length=1900)
+                pages = [box(page, lang="css") for page in pages]
+                task = asyncio.create_task(menu(ctx, pages, DEFAULT_CONTROLS, timeout=180))
+                await smart_embed(
+                    ctx,
+                    _("Reply with the full or partial name of item 1 to select for forging. Try to be specific.")
+                )
                 try:
-                    reply = await ctx.bot.wait_for(
-                        "message", check=MessagePredicate.same_context(user=ctx.author), timeout=30
-                    )
+                    item = None
+                    while not item:
+                        reply = await ctx.bot.wait_for(
+                            "message", check=MessagePredicate.same_context(user=ctx.author), timeout=30
+                        )
+                        new_ctx = await self.bot.get_context(reply)
+                        with contextlib.suppress(BadArgument):
+                            item = await ItemConverter().convert(new_ctx, reply.content)
+                        if not item:
+                            wrong_item = _(
+                                "**{c}**, I could not find that item - check your spelling."
+                            ).format(c=self.escape(ctx.author.display_name))
+                            await smart_embed(ctx, wrong_item)
+                        else:
+                            break
+                    consumed.append(item)
                 except asyncio.TimeoutError:
                     timeout_msg = _("I don't have all day you know, **{}**.").format(
                         self.escape(ctx.author.display_name)
                     )
+                    task.cancel()
                     return await ctx.send(timeout_msg)
-                new_ctx = await self.bot.get_context(reply)
-                item = await ItemConverter().convert(new_ctx, reply.content)
-                if not item:
-                    wrong_item = _(
-                        "**{c}**, I could not find that item - check your spelling."
-                    ).format(c=self.escape(ctx.author.display_name))
-                    return await smart_embed(ctx, wrong_item)
 
                 if item.rarity in ["forged", "set"]:
                     return await smart_embed(
@@ -2183,28 +2193,44 @@ class Adventure(BaseCog):
                             c=self.escape(ctx.author.display_name), item=item
                         ),
                     )
-                consumed.append(item)
-                if not consumed:
-                    wrong_item = _(
-                        "**{}**, I could not find that item - check your spelling."
-                    ).format(self.escape(ctx.author.display_name))
-                    return await smart_embed(ctx, wrong_item)
                 forgeables = _(
                     "(Reply with the full or partial name "
                     "of item 2 to select for forging. Try to be specific.)"
                 )
                 await ctx.send(box(forgeables, lang="css"))
                 try:
-                    reply = await ctx.bot.wait_for(
-                        "message", check=MessagePredicate.same_context(user=ctx.author), timeout=30
-                    )
+                    item = None
+                    while not item:
+                        reply = await ctx.bot.wait_for(
+                            "message", check=MessagePredicate.same_context(user=ctx.author),
+                            timeout=30
+                        )
+                        new_ctx = await self.bot.get_context(reply)
+                        with contextlib.suppress(BadArgument):
+                            item = await ItemConverter().convert(new_ctx, reply.content)
+                        if item and consumed[0].owned <= 1 and str(consumed[0]) == str(item):
+                            wrong_item = _(
+                                "**{c}**, You only own 1 copy of this item and "
+                                "you already selected it."
+                            ).format(c=self.escape(ctx.author.display_name))
+                            await smart_embed(ctx, wrong_item)
+                            item = None
+                            continue
+                        if not item:
+                            wrong_item = _(
+                                "**{c}**, I could not find that item - check your spelling."
+                            ).format(c=self.escape(ctx.author.display_name))
+                            await smart_embed(ctx, wrong_item)
+                        else:
+                            break
+                    consumed.append(item)
                 except asyncio.TimeoutError:
                     timeout_msg = _("I don't have all day you know, **{}**.").format(
                         self.escape(ctx.author.display_name)
                     )
-                    return await smart_embed(ctx, timeout_msg)
-                new_ctx = await self.bot.get_context(reply)
-                item = await ItemConverter().convert(new_ctx, reply.content)
+                    return await ctx.send(timeout_msg)
+                finally:
+                    task.cancel()
                 if item.rarity in ["forged", "set"]:
                     return await smart_embed(
                         ctx,
@@ -2212,15 +2238,6 @@ class Adventure(BaseCog):
                             c=self.escape(ctx.author.display_name), item=item
                         ),
                     )
-                consumed.append(item)
-                if len(consumed) < 2:
-                    return await smart_embed(
-                        ctx,
-                        _("**{}**, I could not find that item - check your spelling.").format(
-                            self.escape(ctx.author.display_name)
-                        ),
-                    )
-
                 newitem = await self._to_forge(ctx, consumed, c)
                 for x in consumed:
                     c.backpack[x.name].owned -= 1
