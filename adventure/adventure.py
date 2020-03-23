@@ -2741,7 +2741,7 @@ class Adventure(BaseCog):
                         patreon_items.append(item)
                 for item in patreon_items:
                     del c.backpack[item.name]
-                await self.config.user(after).set(c.to_json())
+                await self.config.user(after).set(await c.to_json(self.config))
         elif patreon_role in after.roles and patreon_role not in before.roles:
             data["has_patron"] = True
             data["first_patron"] = int(time.time())
@@ -2864,7 +2864,7 @@ class Adventure(BaseCog):
             for old_patreon_items in patreon_items:
                 del c.backpack[old_patreon_items.name]
             await c.add_to_backpack(item)
-            await self.config.user(user).set(c.to_json())
+            await self.config.user(user).set(await c.to_json(self.config))
         await ctx.send(
             box(
                 _(
@@ -4644,7 +4644,7 @@ class Adventure(BaseCog):
         self.bot.dispatch("adventure", ctx)
         text = ""
         monster_roster, monster_stats = await self.update_monster_roster(ctx.author)
-        if challenge and challenge not in monster_roster:
+        if not challenge or challenge not in monster_roster:
             challenge = await self.get_challenge(ctx, monster_roster)
 
         if attribute and attribute.lower() in self.ATTRIBS:
