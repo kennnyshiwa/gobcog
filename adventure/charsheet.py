@@ -443,6 +443,7 @@ class Character(Item):
         self.user: discord.Member = kwargs.pop("user")
         self.sets = []
         self.rebirths = kwargs.pop("rebirths", 0)
+        self.patreon = kwargs.pop("patron", {})
         self.gear_set_bonus = {}
         self.get_set_bonus()
         self.maxlevel = self.get_max_level()
@@ -970,6 +971,7 @@ class Character(Item):
             "user": user,
             "rebirths": data.pop("rebirths", 0),
             "set_items": data.get("set_items", 0),
+            "patron": data.get("patron", {})
         }
         for (k, v) in equipment.items():
             hero_data[k] = v
@@ -1040,6 +1042,7 @@ class Character(Item):
             "rebirths": self.rebirths,
             "set_items": self.set_items,
             "last_skill_reset": self.last_skill_reset,
+            "patron": self.patreon
         }
 
     async def rebirth(self, dev_val: int = None) -> dict:
@@ -1121,6 +1124,7 @@ class Character(Item):
             "skill": {"pool": 0, "att": 0, "cha": 0, "int": 0},
             "rebirths": self.rebirths,
             "set_items": self.set_items,
+            "patron": self.patreon
         }
 
     def keep_equipped(self):
