@@ -2774,6 +2774,8 @@ class Adventure(BaseCog):
             await asyncio.sleep(0)
             if patreon_role in member.roles:
                 data = await self.config.user(member).patron.all()
+                if data["has_patron"]:
+                    continue
                 data["has_patron"] = True
                 data["first_patron"] = int(time_now)
                 await self.config.user(member).patron.set(data)
@@ -2797,8 +2799,9 @@ class Adventure(BaseCog):
             return await smart_embed(ctx, ("This command must be run in the BB-8 Support Server"))
         patron_stats = await self.config.user(ctx.author).patron.all()
         current_time = datetime.now()
-        active_patreon_on = datetime.fromtimestamp(patron_stats["last_reward"])
-        length_of_patreon = relativedelta.relativedelta(current_time, active_patreon_on).months
+        active_patreon_on = datetime.fromtimestamp(patron_stats["first_patron"])
+        length_of_patreon = relativedelta.relativedelta(current_time, active_patreon_on) 
+        length_of_patreon = length_of_patreon.months + length_of_patreon.years * 12
         MAX_STAT = 60 + int((60 // 2) * length_of_patreon)
 
         if any([i is None for i in [item_name, stats]]):
@@ -2836,9 +2839,10 @@ class Adventure(BaseCog):
         item_stats = await PatreonStats().convert(ctx, stats)
         # DO YOUR CHECKS HERE
         current_time = datetime.now()
-        active_patreon_on = datetime.fromtimestamp(patron_stats["last_reward"])
+        active_patreon_on = datetime.fromtimestamp(patron_stats["first_patron"])
 
-        length_of_patreon = relativedelta.relativedelta(current_time, active_patreon_on).months
+        length_of_patreon = relativedelta.relativedelta(current_time, active_patreon_on) 
+        length_of_patreon = length_of_patreon.months + length_of_patreon.years * 12
         MAX_STAT = 60 + int((60 // 2) * length_of_patreon)
         item_name = re.sub(r"[^\w ]", "", item_name)
         new_item = {item_name: item_stats}
