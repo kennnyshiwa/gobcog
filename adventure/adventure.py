@@ -2798,6 +2798,13 @@ class Adventure(BaseCog):
         if not ctx.guild or ctx.guild.id != 489162733791739950:
             return await smart_embed(ctx, ("This command must be run in the BB-8 Support Server"))
         patron_stats = await self.config.user(ctx.author).patron.all()
+        if not patron_stats["has_patron"]:
+            return await smart_embed(
+                ctx,
+                (
+                    "You must donate to BB-8 on Patron in order to create a custom item for adventure"
+                ),
+            )
         current_time = datetime.now()
         active_patreon_on = datetime.fromtimestamp(patron_stats["first_patron"])
         length_of_patreon = relativedelta.relativedelta(current_time, active_patreon_on) 
@@ -2807,13 +2814,7 @@ class Adventure(BaseCog):
         if any([i is None for i in [item_name, stats]]):
             return await smart_embed(ctx, (f"You can make item with up to `{MAX_STAT}` stat points."))
 
-        if not patron_stats["has_patron"]:
-            return await smart_embed(
-                ctx,
-                (
-                    "You must donate to BB-8 on Patron in order to create a custom item for adventure"
-                ),
-            )
+
         if item_name.isnumeric():
             return await smart_embed(ctx, _("Item names cannot be numbers."))
         last_reward = patron_stats["last_reward"]
