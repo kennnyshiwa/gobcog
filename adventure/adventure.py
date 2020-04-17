@@ -2774,6 +2774,8 @@ class Adventure(BaseCog):
             await asyncio.sleep(0)
             if patreon_role in member.roles:
                 data = await self.config.user(member).patron.all()
+                if data["has_patron"]:
+                    continue
                 data["has_patron"] = True
                 data["first_patron"] = int(time_now)
                 await self.config.user(member).patron.set(data)
