@@ -492,6 +492,9 @@ class Character(Item):
 
     def remove_restrictions(self):
         if self.heroclass["name"] == "Ranger" and self.heroclass["pet"]:
+            if self.heroclass["pet"]["cha"] > (self.total_cha + (self.total_int // 3) + (self.luck // 2)):
+                self.heroclass["pet"] = {}
+                return
             requirements = PETS.get(self.heroclass["pet"]["name"], {}).get("bonuses", {}).get("req", {})
             if requirements:
                 if (
@@ -499,8 +502,7 @@ class Character(Item):
                     and requirements.get("set") not in self.sets
                 ):
                     self.heroclass["pet"] = {}
-            if self.heroclass["pet"]["cha"] < self.total_cha:
-                self.heroclass["pet"] = {}
+
 
     def get_stat_value(self, stat: str):
         """Calculates the stats dynamically for each slot of equipment."""
@@ -596,9 +598,9 @@ class Character(Item):
             class_desc = self.heroclass["name"] + "\n\n" + self.heroclass["desc"]
             if self.heroclass["name"] == "Ranger":
                 if not self.heroclass["pet"]:
-                    class_desc += _("\n\n- Current pet: None")
+                    class_desc += _("\n\n- Current pet: [None]")
                 elif self.heroclass["pet"]:
-                    class_desc += _("\n\n- Current pet: {}").format(self.heroclass["pet"]["name"])
+                    class_desc += _("\n\n- Current pet: [{}]").format(self.heroclass["pet"]["name"])
         else:
             class_desc = _("Hero.")
         legend = _("( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | OWNED | SET (SET PIECES)")
@@ -739,16 +741,18 @@ class Character(Item):
     def get_item_rarity(item):
         item_obj = item[1]
         if item_obj.rarity == "normal":
-            return 5
+            return 6
         elif item_obj.rarity == "rare":
-            return 4
+            return 5
         elif item_obj.rarity == "epic":
-            return 3
+            return 4
         elif item_obj.rarity == "legendary":
-            return 2
+            return 3
         elif item_obj.rarity == "set":
-            return 1
+            return 2
         elif item_obj.rarity == "forged":
+            return 1
+        elif item_obj.rarity == "patreon":
             return 0
         else:
             return 6  # common / normal
@@ -1179,7 +1183,7 @@ class ItemConverter(Converter):
                 raise BadArgument(
                     _(
                         "You have too many items matching the name `{}`,"
-                        " please be more specific"
+                        " please be more specific."
                     ).format(argument)
                 )
             items = ""
