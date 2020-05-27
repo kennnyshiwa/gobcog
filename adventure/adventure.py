@@ -9,6 +9,7 @@ import re
 import time
 from collections import namedtuple
 from datetime import date, datetime, timedelta
+from operator import itemgetter
 from types import SimpleNamespace
 from typing import List, Optional, Union, MutableMapping
 
@@ -88,6 +89,33 @@ async def smart_embed(ctx, message, success=None):
         else:
             return await ctx.send(message)
     return await ctx.send(message)
+
+
+def check_global_setting_admin():
+    """
+    Command decorator. If the bank is not global, it checks if the author is
+     either a bot admin or has the manage_guild permission.
+    """
+
+    async def pred(ctx: commands.Context):
+        author = ctx.author
+        if not await bank.is_global():
+            if not isinstance(ctx.channel, discord.abc.GuildChannel):
+                return False
+            if await ctx.bot.is_owner(author):
+                return True
+            if author == ctx.guild.owner:
+                return True
+            if ctx.channel.permissions_for(author).manage_guild:
+                return True
+            admin_role_ids = await ctx.bot.get_admin_role_ids(ctx.guild.id)
+            for role in author.roles:
+                if role.id in admin_role_ids:
+                    return True
+        else:
+            return await ctx.bot.is_owner(author)
+
+    return commands.check(pred)
 
 
 class AdventureResults:
@@ -189,7 +217,7 @@ class AdventureResults:
 class Adventure(BaseCog):
     """Adventure, derived from the Goblins Adventure cog by locastan."""
 
-    __version__ = "3.2.4"
+    __version__ = "3.2.7"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -896,8 +924,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx,
                 _(
-                    "You tried to sell your items but the "
-                    "monster ahead of you commands your attention."
+                    "You tried to go sell your items but the monster ahead is not allowing you to leave."
                 ),
             )
         if rarity:
@@ -2452,7 +2479,7 @@ class Adventure(BaseCog):
                         new_ctx = await self.bot.get_context(reply)
                         if reply.content.lower() in ["cancel", "exit"]:
                             task.cancel()
-                            return await smart_embed(ctx, _("Forging process has been cancelled"))
+                            return await smart_embed(ctx, _("Forging process has been cancelled."))
                         with contextlib.suppress(BadArgument):
                             item = None
                             item = await ItemConverter().convert(new_ctx, reply.content)
@@ -2497,7 +2524,7 @@ class Adventure(BaseCog):
                             timeout=30,
                         )
                         if reply.content.lower() in ["cancel", "exit"]:
-                            return await smart_embed(ctx, _("Forging process has been cancelled"))
+                            return await smart_embed(ctx, _("Forging process has been cancelled."))
                         new_ctx = await self.bot.get_context(reply)
                         with contextlib.suppress(BadArgument):
                             item = None
@@ -3004,7 +3031,7 @@ class Adventure(BaseCog):
             return await smart_embed(
                 ctx,
                 (
-                    "Valid loot types: `normal`, `rare`, `epic` or `legendary`: "
+                    "Valid loot types: `normal`, `rare`, `epic`, `legendary`, or `set`: "
                     "ex. `{}give loot normal @locastan` "
                 ).format(ctx.prefix),
             )
@@ -3745,25 +3772,22 @@ class Adventure(BaseCog):
                                 else _("1 second")
                             ),
                         )
-                    extra_dipl = 0
                     theme = await self.config.theme()
                     extra_pets = await self.config.themes.all()
                     extra_pets = extra_pets.get(theme, {}).get("pets", {})
                     pet_list = {**self.PETS, **extra_pets}
                     pet_choices = list(pet_list.keys())
                     pet = random.choice(pet_choices)
-
                     roll = random.randint(1, 50)
-                    dipl_value = roll + c.total_cha + (c.total_int // 3) + (c.luck // 2)
-                    dipl_value += extra_dipl
+                    dipl_value = c.total_cha + (c.total_int // 3) + (c.luck // 2)
                     pet_reqs = pet_list[pet].get("bonuses", {}).get("req", {})
                     pet_msg4 = ""
-                    can_catch = False
+                    can_catch = True
                     if pet_reqs.get("set", False):
                         if pet_reqs.get("set", None) in c.sets:
                             can_catch = True
                         else:
-                            dipl_value = -100000000
+                            can_catch = False
                             pet_msg4 = _(
                                 "\nPerhaps you're missing some requirements to tame {pet}."
                             ).format(pet=pet)
@@ -3792,11 +3816,10 @@ class Adventure(BaseCog):
                     bonus = ""
                     if roll == 1:
                         bonus = _("But they stepped on a twig and scared it away.")
-                    elif roll == 50:
+                    elif roll in [50, 25]:
                         bonus = _("They happen to have its favorite food.")
-                        dipl_value += 10
                     if dipl_value > self.PETS[pet]["cha"] and roll > 1 and can_catch:
-                        roll = random.randint(0, 3 if roll == 50 else 5)
+                        roll = random.randint(0, 2 if roll in [50, 25] else 5)
                         if roll == 0:
                             pet_msg3 = box(
                                 _("{bonus}\nThey successfully tamed the {pet}.").format(
@@ -4263,6 +4286,88 @@ class Adventure(BaseCog):
                     ),
                 )
 
+    @commands.command(name="setinfo")
+    @commands.bot_has_permissions(add_reactions=True, embed_links=True)
+    async def set_show(self, ctx: Context, *, set_name: str):
+        """Show set bonuses for the specified set."""
+
+        sets = self.SET_BONUSES.get(set_name)
+        if sets is None:
+            return await smart_embed(
+                ctx,
+                _("`{input}` is not a valid set.\nPlease use one of the following: {sets}").format(
+                    input=set_name, sets=humanize_list([f"`{i}`" for i in self.SET_BONUSES.keys()])
+                ),
+            )
+        bonus_list = sorted(sets, key=itemgetter("parts"))
+        embed_list = []
+        for bonus in bonus_list:
+            parts = bonus.get("parts", 0)
+            attack = bonus.get("att", 0)
+            charisma = bonus.get("cha", 0)
+            intelligence = bonus.get("int", 0)
+            dexterity = bonus.get("dex", 0)
+            luck = bonus.get("luck", 0)
+
+            attack = f"+{attack}" if attack >= 0 else f"{attack}"
+            charisma = f"+{charisma}" if charisma >= 0 else f"{charisma}"
+            intelligence = f"+{intelligence}" if intelligence >= 0 else f"{intelligence}"
+            dexterity = f"+{dexterity}" if dexterity >= 0 else f"{dexterity}"
+            luck = f"+{luck}" if luck >= 0 else f"{luck}"
+            statmult = bonus.get("statmult", 0)
+            xpmult = bonus.get("xpmult", 0)
+            cpmult = bonus.get("cpmult", 0)
+            if statmult >= 1:
+                statmult -= 1
+            if xpmult >= 1:
+                xpmult -= 1
+            if cpmult >= 1:
+                cpmult -= 1
+            if statmult >= 0:
+                statmult = f"+{statmult*100:.2f}%"
+            else:
+                statmult = f"{statmult*100:.2f}%"
+            if xpmult >= 0:
+                xpmult = f"+{xpmult*100:.2f}%"
+            else:
+                xpmult = f"{xpmult*100:.2f}%"
+            if cpmult >= 0:
+                cpmult = f"+{cpmult*100:.2f}%"
+            else:
+                cpmult = f"{cpmult*100:.2f}%"
+
+            breakdown = _(
+                "Attack:           [{attack}]\n"
+                "Charisma:         [{charisma}]\n"
+                "Intelligence:     [{intelligence}]\n"
+                "Dexterity:        [{dexterity}]\n"
+                "Luck:             [{luck}]\n"
+                "Stat Bonus:       [{statmult}]\n"
+                "XP Bonus:         [{xpmult}]\n"
+                "Currency Bonus:   [{cpmult}]\n"
+            ).format(
+                attack=attack,
+                charisma=charisma,
+                intelligence=intelligence,
+                dexterity=dexterity,
+                luck=luck,
+                statmult=statmult,
+                xpmult=xpmult,
+                cpmult=cpmult,
+            )
+            embed = discord.Embed(
+                title=_("{set_name} {part_val} Part Bonus").format(
+                    set_name=set_name, part_val=parts
+                ),
+                description=box(breakdown, lang="ini"),
+                colour=await ctx.embed_colour(),
+            )
+            embed_list.append(embed)
+        if len(embed_list) > 1:
+            await menu(ctx, pages=embed_list, controls=DEFAULT_CONTROLS)
+        elif embed_list:
+            await ctx.send(embed=embed_list[0])
+
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     async def stats(self, ctx: Context, *, user: discord.Member = None):
@@ -4704,7 +4809,8 @@ class Adventure(BaseCog):
             timer = 60 * 2
         if transcended:
             new_challenge = challenge.replace("Ascended", "Transcended")
-            self.bot.dispatch("adventure_transcended", ctx)
+            if "Transcended" in new_challenge:
+                self.bot.dispatch("adventure_transcended", ctx)
         else:
             new_challenge = challenge
 
@@ -5096,21 +5202,21 @@ class Adventure(BaseCog):
 
         result_msg = run_msg + pray_msg + talk_msg + fight_msg
         challenge_attrib = session.attribute
-        hp = (
+        hp = int(
             session.monster_modified_stats["hp"]
             * self.ATTRIBS[challenge_attrib][0]
             * session.monster_stats
         )
-        dipl = (
+        dipl = int(
             session.monster_modified_stats["dipl"]
             * self.ATTRIBS[challenge_attrib][1]
             * session.monster_stats
         )
 
-        dmg_dealt = round(attack + magic)
-        diplomacy = round(diplomacy)
-        slain = dmg_dealt >= round(hp)
-        persuaded = diplomacy >= round(dipl)
+        dmg_dealt = int(attack + magic)
+        diplomacy = int(diplomacy)
+        slain = dmg_dealt >= int(hp)
+        persuaded = diplomacy >= int(dipl)
         damage_str = ""
         diplo_str = ""
         if dmg_dealt > 0:
@@ -5118,7 +5224,7 @@ class Adventure(BaseCog):
                 status=_("hit the") if failed or not slain else _("killed the"),
                 challenge=challenge,
                 result=humanize_number(dmg_dealt),
-                int_hp=humanize_number(int(hp)),
+                int_hp=humanize_number(hp),
             )
         if diplomacy > 0:
             diplo_str = _(
@@ -5128,7 +5234,7 @@ class Adventure(BaseCog):
                 challenge=challenge,
                 how=_("flattery") if failed or not persuaded else _("insults"),
                 diplomacy=humanize_number(diplomacy),
-                int_dipl=humanize_number(int(dipl)),
+                int_dipl=humanize_number(dipl),
             )
         if dmg_dealt >= diplomacy:
             self._adv_results.add_result(ctx, "attack", dmg_dealt, people, slain)
@@ -5186,7 +5292,7 @@ class Adventure(BaseCog):
                     [0, 0, 0, 0, 1],
                 ]
                 treasure = random.choice(avaliable_loot)
-            if session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
+            elif session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
                 avaliable_loot = [[0, 0, 3, 1, 0], [0, 0, 1, 2, 0], [0, 0, 0, 3, 0]]
                 treasure = random.choice(avaliable_loot)
             elif (
@@ -5234,7 +5340,7 @@ class Adventure(BaseCog):
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
                     continue
-                multiplier = 0.1
+                multiplier = 0.2
                 if c.dex != 0:
                     if c.dex < 0:
                         dex = min(1 / abs(c.dex), 1)
@@ -5286,7 +5392,7 @@ class Adventure(BaseCog):
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
                     continue
-                multiplier = 0.1
+                multiplier = 0.2
                 if c.dex != 0:
                     if c.dex < 0:
                         dex = min(1 / abs(c.dex), 1)
@@ -5361,7 +5467,7 @@ class Adventure(BaseCog):
                     except Exception as exc:
                         log.exception("Error with the new character sheet", exc_info=exc)
                         continue
-                    multiplier = 0.1
+                    multiplier = 0.2
                     if c.dex != 0:
                         if c.dex < 0:
                             dex = min(1 / abs(c.dex), 1)
@@ -5554,7 +5660,7 @@ class Adventure(BaseCog):
                     except Exception as exc:
                         log.exception("Error with the new character sheet", exc_info=exc)
                         continue
-                    multiplier = 0.1
+                    multiplier = 0.2
                     if c.dex != 0:
                         if c.dex < 0:
                             dex = min(1 / abs(c.dex), 1)
@@ -5581,7 +5687,7 @@ class Adventure(BaseCog):
                         except Exception as exc:
                             log.exception("Error with the new character sheet", exc_info=exc)
                             continue
-                        multiplier = 0.05
+                        multiplier = 0.2
                         if c.dex != 0:
                             if c.dex < 0:
                                 dex = min(1 / abs(c.dex), 1)
