@@ -93,8 +93,8 @@ async def smart_embed(ctx, message, success=None):
 
 def check_global_setting_admin():
     """
-    Command decorator. If the bank is not global, it checks if the author is
-     either a bot admin or has the manage_guild permission.
+    Command decorator. If the bank is not global, it checks if the author is 
+    either a bot admin or has the manage_guild permission.
     """
 
     async def pred(ctx: commands.Context):
@@ -217,7 +217,7 @@ class AdventureResults:
 class Adventure(BaseCog):
     """Adventure, derived from the Goblins Adventure cog by locastan."""
 
-    __version__ = "3.2.9"
+    __version__ = "3.2.12"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -855,7 +855,11 @@ class Adventure(BaseCog):
 
     @_backpack.command(name="disassemble")
     async def backpack_disassemble(self, ctx: Context, *, backpack_item: ItemConverter):
-        """Disassemble a set item from your backpack."""
+        """
+        Disassemble a set item from your backpack.
+        This will provide a chance for a chest,
+        or the item might break while you are handling it...
+        """
         assert isinstance(backpack_item, Item)
         if self.in_adventure(ctx):
             return await smart_embed(
@@ -1213,7 +1217,7 @@ class Adventure(BaseCog):
 
     @_backpack.command(name="trade")
     async def backpack_trade(
-        self, ctx: Context, buyer: discord.Member, asking: Optional[int] = 1000, *, item
+        self, ctx: Context, buyer: discord.Member, asking: Optional[int] = 1000, *, item: ItemConverter
     ):
         """Trade an item from your backpack to another user."""
         if self.in_adventure(ctx):
@@ -1235,14 +1239,14 @@ class Adventure(BaseCog):
         except Exception as exc:
             log.exception("Error with the new character sheet", exc_info=exc)
             return
-        if not any([x for x in c.backpack if item.lower() in x.lower()]):
+        if not any([x for x in c.backpack if item.name.lower() in x.lower()]):
             return await smart_embed(
                 ctx,
                 _("**{author}**, you have to specify an item from your backpack to trade.").format(
                     author=self.escape(ctx.author.display_name)
                 ),
             )
-        lookup = list(x for n, x in c.backpack.items() if item.lower() in x.name.lower())
+        lookup = list(x for n, x in c.backpack.items() if item.name.lower() in x.name.lower())
         if len(lookup) > 1:
             await smart_embed(
                 ctx,
@@ -1876,7 +1880,12 @@ class Adventure(BaseCog):
     @adventureset.command()
     @checks.admin_or_permissions(administrator=True)
     async def carttime(self, ctx: Context, *, time: str):
-        """[Admin] Set the cooldown of the cart."""
+        """
+        [Admin] Set the cooldown of the cart.
+        Time can be in seconds, minutes, hours, or days.
+        Examples: `1h 30m`, `2 days`, `300` 
+        The bot assumes seconds if no units are given.
+        """
         time_delta = parse_timedelta(time)
         if time_delta is None:
             return await smart_embed(
@@ -4550,6 +4559,7 @@ class Adventure(BaseCog):
         await self.config.guild(ctx.guild).cooldown.set(0)
         await ctx.tick()
 
+    @commands.cooldown(rate=1, per=5, type=commands.BucketType.guild)
     @commands.command(name="adventure", aliases=["a"])
     @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
