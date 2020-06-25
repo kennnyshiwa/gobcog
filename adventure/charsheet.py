@@ -54,6 +54,8 @@ LEGENDARY_OPEN = r"{Legendary:'"
 LEGENDARY_CLOSE = r"'}"
 SET_OPEN = r"{Set:'"
 Patreon_OPEN = r"{Patreon:'"
+EVENT_OPEN = r"{Event:'"
+
 TIME_RE_STRING = r"\s?".join(
     [
         r"((?P<days>\d+?)\s?(d(ays?)?))?",
@@ -79,9 +81,11 @@ INT = re.compile(r"(-?\d*) (int(?:elligence)?)")
 LUCK = re.compile(r"(-?\d*) (luck)")
 DEX = re.compile(r"(-?\d*) (dex(?:terity)?)")
 SLOT = re.compile(r"(head|neck|chest|gloves|belt|legs|boots|left|right|ring|charm|twohanded)")
-RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged|patreon)")
-RARITIES = ("normal", "rare", "epic", "legendary", "set", "patreon")
+RARITY = re.compile(r"(normal|rare|epic|legend(?:ary)?|set|forged|patreon|event)")
+RARITIES = ("normal", "rare", "epic", "legendary", "set", "patreon", "event")
 RARITY_PATREON = re.compile(r"(patreon)")
+DEG = re.compile(r"(-?\d*) degrade")
+LEVEL = re.compile(r"(-?\d*) (level|lvl)")
 
 
 class Stats(Converter):
@@ -174,12 +178,10 @@ class Item:
     """An object to represent an item in the game world."""
 
     def __init__(self, **kwargs):
-        if kwargs.get("rarity") in ["event"]:
+        if kwargs.get("rarity") in ["event", "patreon"]:
             self.name: str = kwargs.get("name")
         elif kwargs.get("rarity") in ["set", "legendary"]:
             self.name: str = kwargs.get("name").title()
-        elif kwargs.get("rarity") in ["patreon"]:
-            self.name = kwargs.get("name")
         else:
             self.name: str = kwargs.get("name").lower()
         self.slot: List[str] = kwargs.get("slot")
@@ -213,6 +215,8 @@ class Item:
         elif self.rarity == "forged":
             name = self.name.replace("'", "’")
             return f"{TINKER_OPEN}{name}{TINKER_CLOSE}"
+        elif self.rarity == "event":
+            return f"{EVENT_OPEN}'{self.name}'{LEGENDARY_CLOSE}"
             # Thanks Sinbad!
         elif self.rarity == "patreon":
             name = self.name.replace("'", "’")
@@ -783,22 +787,24 @@ class Character(Item):
     @staticmethod
     def get_item_rarity(item):
         item_obj = item[1]
-        if item_obj.rarity == "normal":
-            return 6
-        elif item_obj.rarity == "rare":
-            return 5
-        elif item_obj.rarity == "epic":
-            return 4
-        elif item_obj.rarity == "legendary":
-            return 3
-        elif item_obj.rarity == "set":
-            return 2
-        elif item_obj.rarity == "forged":
-            return 1
-        elif item_obj.rarity == "patreon":
+        if item_obj.rarity == "patreon":
             return 0
+        elif item_obj.rarity == "event":
+            return 1
+        elif item_obj.rarity == "forged":
+            return 2
+        elif item_obj.rarity == "set":
+            return 3
+        elif item_obj.rarity == "legendary":
+            return 4
+        elif item_obj.rarity == "epic":
+            return 5
+        elif item_obj.rarity == "rare":
+            return 6
+        elif item_obj.rarity == "normal":
+            return 7
         else:
-            return 6  # common / normal
+            return 7  # common / normal
 
     async def get_sorted_backpack(self, backpack: dict):
         tmp = {}
@@ -1151,9 +1157,9 @@ class Character(Item):
         forged = 0
         for (k, v) in self.backpack.items():
             for (n, i) in v.to_json().items():
-                if i.get("rarity", False) in ["set", "forged", "patreon"] or str(v) in [
-                    ".mirror_shield"
-                ]:
+                if i.get("degrade", 0) == -1 and i.get("rarity", "common") == "event":
+                    backpack[n] = i
+                elif i.get("rarity", False) in ["set", "forged", "patreon"] or str(v) in [".mirror_shield"]:
                     if i.get("rarity", False) in ["forged"]:
                         if forged > 0:
                             continue
