@@ -217,7 +217,7 @@ class AdventureResults:
 class Adventure(BaseCog):
     """Adventure, derived from the Goblins Adventure cog by locastan."""
 
-    __version__ = "3.2.12"
+    __version__ = "3.2.18"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -749,6 +749,8 @@ class Adventure(BaseCog):
         Equip:       `[p]backpack equip item_name`
         Sell All:    `[p]backpack sellall rarity slot`
         Disassemble: `[p]backpack disassemble item_name`
+
+        Note: An item **degrade** level is how many rebirths it will last, before it is broken down.
         """
         assert isinstance(rarity, str) or rarity is None
         assert isinstance(slot, str) or slot is None
@@ -788,7 +790,25 @@ class Adventure(BaseCog):
                 pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1900)
             ):
                 msgs.append(box(page, lang="css"))
-            return await menu(ctx, msgs, DEFAULT_CONTROLS)
+            controls = DEFAULT_CONTROLS.copy()
+
+            async def _backpack_info(
+                ctx: commands.Context,
+                pages: list,
+                controls: MutableMapping,
+                message: discord.Message,
+                page: int,
+                timeout: float,
+                emoji: str,
+            ):
+                if message:
+                    await ctx.send_help(self._backpack)
+                    with contextlib.suppress(discord.HTTPException):
+                        await message.delete()
+                    return None
+
+            controls["\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"] = _backpack_info
+            return await menu(ctx, msgs, controls)
 
     @_backpack.command(name="equip")
     async def backpack_equip(self, ctx: Context, *, equip_item: ItemConverter):
@@ -1217,9 +1237,21 @@ class Adventure(BaseCog):
 
     @_backpack.command(name="trade")
     async def backpack_trade(
-        self, ctx: Context, buyer: discord.Member, asking: Optional[int] = 1000, *, item: ItemConverter
+        self,
+        ctx: Context,
+        buyer: discord.Member,
+        asking: Optional[int] = 1000,
+        *,
+        item: ItemConverter,
     ):
         """Trade an item from your backpack to another user."""
+        if ctx.author == buyer:
+            return await smart_embed(
+                ctx,
+                _(
+                    "You take the item and pass it from one hand to the other. Congratulations, you traded yourself."
+                ),
+            )
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx,
@@ -3013,6 +3045,14 @@ class Adventure(BaseCog):
         attack and 1 charisma to locastan. if a stat is not specified it will default to 0, order
         does not matter. available stats are attack(att), charisma(diplo) or charisma(cha),
         intelligence(int), dexterity(dex), and luck.
+
+        Item rarity is one of normal, rare, epic, legendary, set, forged, event.
+
+        Event items can have their level requirement and degrade number set via:
+        N degrade - (Set to -1 to never degrade on rebirths)
+        N level
+
+        `[p]give item @locastan "fine dagger" 1 att 1 charisma -1 degrade 100 level rare twohanded`
         """
         if item_name.isnumeric():
             return await smart_embed(ctx, _("Item names cannot be numbers."))
@@ -3612,7 +3652,7 @@ class Adventure(BaseCog):
             xp_mod = random.randint(1, 10)
             weekend = datetime.today().weekday() in [5, 6]
             wedfriday = datetime.today().weekday() in [2, 4]
-            daymult = 2 if weekend else 1.5 if wedfriday else 1
+            daymult = 1 if weekend else 0.5 if wedfriday else 0
             xp_won = int((offering / xp_mod))
             try:
                 c = await Character.from_json(self.config, ctx.message.author)
@@ -4309,17 +4349,30 @@ class Adventure(BaseCog):
 
     @commands.command(name="setinfo")
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
-    async def set_show(self, ctx: Context, *, set_name: str):
+    async def set_show(self, ctx: Context, *, set_name: str = None):
         """Show set bonuses for the specified set."""
 
-        sets = self.SET_BONUSES.get(set_name)
+        set_list = humanize_list(
+            sorted([f"`{i}`" for i in self.SET_BONUSES.keys()], key=str.lower)
+        )
+        if set_name is None:
+            return await smart_embed(
+                ctx,
+                _("Use this command with one of the following set names: \n{sets}").format(
+                    sets=set_list
+                ),
+            )
+
+        title_cased_set_name = await self._title_case(set_name)
+        sets = self.SET_BONUSES.get(title_cased_set_name)
         if sets is None:
             return await smart_embed(
                 ctx,
-                _("`{input}` is not a valid set.\nPlease use one of the following: {sets}").format(
-                    input=set_name, sets=humanize_list([f"`{i}`" for i in self.SET_BONUSES.keys()])
-                ),
+                _(
+                    "`{input}` is not a valid set.\n\nPlease use one of the following full set names: \n{sets}"
+                ).format(input=title_cased_set_name, sets=set_list),
             )
+
         bonus_list = sorted(sets, key=itemgetter("parts"))
         embed_list = []
         for bonus in bonus_list:
@@ -4330,42 +4383,29 @@ class Adventure(BaseCog):
             dexterity = bonus.get("dex", 0)
             luck = bonus.get("luck", 0)
 
-            attack = f"+{attack}" if attack >= 0 else f"{attack}"
-            charisma = f"+{charisma}" if charisma >= 0 else f"{charisma}"
-            intelligence = f"+{intelligence}" if intelligence >= 0 else f"{intelligence}"
-            dexterity = f"+{dexterity}" if dexterity >= 0 else f"{dexterity}"
-            luck = f"+{luck}" if luck >= 0 else f"{luck}"
-            statmult = bonus.get("statmult", 0)
-            xpmult = bonus.get("xpmult", 0)
-            cpmult = bonus.get("cpmult", 0)
-            if statmult >= 1:
-                statmult -= 1
-            if xpmult >= 1:
-                xpmult -= 1
-            if cpmult >= 1:
-                cpmult -= 1
-            if statmult >= 0:
-                statmult = f"+{statmult*100:.2f}%"
-            else:
-                statmult = f"{statmult*100:.2f}%"
-            if xpmult >= 0:
-                xpmult = f"+{xpmult*100:.2f}%"
-            else:
-                xpmult = f"{xpmult*100:.2f}%"
-            if cpmult >= 0:
-                cpmult = f"+{cpmult*100:.2f}%"
-            else:
-                cpmult = f"{cpmult*100:.2f}%"
+            attack = f"+{attack}" if attack > 0 else f"{attack}"
+            charisma = f"+{charisma}" if charisma > 0 else f"{charisma}"
+            intelligence = f"+{intelligence}" if intelligence > 0 else f"{intelligence}"
+            dexterity = f"+{dexterity}" if dexterity > 0 else f"{dexterity}"
+            luck = f"+{luck}" if luck > 0 else f"{luck}"
+
+            statmult = round((bonus.get("statmult", 1) - 1) * 100)
+            xpmult = round((bonus.get("xpmult", 1) - 1) * 100)
+            cpmult = round((bonus.get("cpmult", 1) - 1) * 100)
+
+            statmult = f"+{statmult}%" if statmult > 0 else f"{statmult}%"
+            xpmult = f"+{xpmult}%" if xpmult > 0 else f"{xpmult}%"
+            cpmult = f"+{cpmult}%" if cpmult > 0 else f"{cpmult}%"
 
             breakdown = _(
-                "Attack:           [{attack}]\n"
-                "Charisma:         [{charisma}]\n"
-                "Intelligence:     [{intelligence}]\n"
-                "Dexterity:        [{dexterity}]\n"
-                "Luck:             [{luck}]\n"
-                "Stat Bonus:       [{statmult}]\n"
-                "XP Bonus:         [{xpmult}]\n"
-                "Currency Bonus:   [{cpmult}]\n"
+                "Attack:                [{attack}]\n"
+                "Charisma:              [{charisma}]\n"
+                "Intelligence:          [{intelligence}]\n"
+                "Dexterity:             [{dexterity}]\n"
+                "Luck:                  [{luck}]\n"
+                "Stat Mulitplier:       [{statmult}]\n"
+                "XP Multiplier:         [{xpmult}]\n"
+                "Currency Multiplier:   [{cpmult}]\n"
             ).format(
                 attack=attack,
                 charisma=charisma,
@@ -4377,17 +4417,63 @@ class Adventure(BaseCog):
                 cpmult=cpmult,
             )
             embed = discord.Embed(
-                title=_("{set_name} {part_val} Part Bonus").format(
-                    set_name=set_name, part_val=parts
+                title=_("{set_name}\n{part_val} Part Bonus").format(
+                    set_name=title_cased_set_name, part_val=parts
                 ),
                 description=box(breakdown, lang="ini"),
                 colour=await ctx.embed_colour(),
             )
+            footer_text = (
+                "Multiple complete set bonuses stack.\n"
+                "\n"
+                "Use the information button below to display set piece details."
+            )
+            embed.set_footer(text=footer_text)
             embed_list.append(embed)
-        if len(embed_list) > 1:
-            await menu(ctx, pages=embed_list, controls=DEFAULT_CONTROLS)
-        elif embed_list:
-            await ctx.send(embed=embed_list[0])
+
+        controls = {}
+
+        async def _set_info(
+            ctx: commands.Context,
+            pages: list,
+            controls: MutableMapping,
+            message: discord.Message,
+            page: int,
+            timeout: float,
+            emoji: str,
+        ):
+            if message:
+                await self._setinfo_details(ctx, title_cased_set_name)
+                return None
+
+        controls["\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"] = _set_info
+
+        await menu(ctx, pages=embed_list, controls=controls)
+
+    async def _setinfo_details(self, ctx: Context, title_cased_set_name: str):
+        """
+        Helper function for setinfo to display set pieces.
+        Reformats TR_GEAR_SET to be displayed using the loadout display.
+        """
+
+        set_items = {
+            key: value
+            for key, value in self.TR_GEAR_SET.items()
+            if value["set"] == title_cased_set_name
+        }
+
+        d = {}
+        for k, v in set_items.items():
+            if len(v["slot"]) > 1:
+                d.update({v["slot"][0]: {k: v}})
+                d.update({v["slot"][1]: {k: v}})
+            else:
+                d.update({v["slot"][0]: {k: v}})
+
+        stats = await self._build_loadout_display({"items": d}, loadout=False)
+        msg = _("{set_name} Set Pieces\n\n").format(set_name=title_cased_set_name)
+        msg += stats
+        await ctx.send(box(msg, lang="css"))
 
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
@@ -4404,21 +4490,34 @@ class Adventure(BaseCog):
         except Exception:
             log.exception("Error with the new character sheet")
             return
-        msg = await ctx.send(box(c, lang="css"))
-        try:
-            await msg.add_reaction("\N{CROSS MARK}")
-        except discord.errors.Forbidden:
-            return
-        pred = ReactionPredicate.same_context(msg, ctx.author)
-        try:
-            react, user = await self.bot.wait_for("reaction_add", check=pred, timeout=60)
-        except asyncio.TimeoutError:
-            return
-        if str(react.emoji) == "\N{CROSS MARK}":
-            await msg.delete()
 
-    async def _build_loadout_display(self, userdata):
-        form_string = _("( ATT  |  CHA  |  INT  |  DEX  |  LUCK)\nItems Equipped:")
+        controls = {}
+
+        async def _gear_info(
+            ctx: commands.Context,
+            pages: list,
+            controls: MutableMapping,
+            message: discord.Message,
+            page: int,
+            timeout: float,
+            emoji: str,
+        ):
+            if message:
+                legend = _(
+                    "( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | [DEGRADE#] | OWNED | SET (SET PIECES)"
+                )
+                msg = _("[{user}'s Character Sheet]\n\nItems Equipped:\n{legend}{equip}").format(
+                    legend=legend, equip=c.get_equipment(), user=c.user.display_name
+                )
+                await ctx.send(box(msg, lang="css"))
+                return None
+
+        controls["\N{REGIONAL INDICATOR SYMBOL LETTER G}"] = _gear_info
+        await menu(ctx, pages=[box(c, lang="css")], controls=controls)
+
+    async def _build_loadout_display(self, userdata, loadout=True):
+        form_string = _("( ATT  |  CHA  |  INT  |  DEX  |  LUCK)")
+        form_string += _("\n\nItems Equipped:") if loadout else ""
         last_slot = ""
         att = 0
         cha = 0
@@ -6415,6 +6514,16 @@ class Adventure(BaseCog):
         epoch += seconds
         return epoch
 
+    @staticmethod
+    async def _title_case(phrase: str):
+        exceptions = ["a", "and", "in", "of", "or", "the"]
+        lowercase_words = re.split(" ", phrase.lower())
+        final_words = [lowercase_words[0].capitalize()]
+        final_words += [
+            word if word in exceptions else word.capitalize() for word in lowercase_words[1:]
+        ]
+        return " ".join(final_words)
+
     @commands.Cog.listener()
     async def on_message_without_command(self, message):
         await self._ready_event.wait()
@@ -6749,7 +6858,7 @@ class Adventure(BaseCog):
             modif = 0.5
         weekend = datetime.today().weekday() in [5, 6]
         wedfriday = datetime.today().weekday() in [2, 4]
-        daymult = 3 if weekend else 2 if wedfriday else 1
+        daymult = 1 if weekend else 0.5 if wedfriday else 0
         xp = max(1, round(amount))
         cp = max(1, round(amount))
         newxp = 0
