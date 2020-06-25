@@ -217,7 +217,7 @@ class AdventureResults:
 class Adventure(BaseCog):
     """Adventure, derived from the Goblins Adventure cog by locastan."""
 
-    __version__ = "3.2.12"
+    __version__ = "3.2.15"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -749,6 +749,8 @@ class Adventure(BaseCog):
         Equip:       `[p]backpack equip item_name`
         Sell All:    `[p]backpack sellall rarity slot`
         Disassemble: `[p]backpack disassemble item_name`
+
+        Note: An item **degrade** level is how many rebirths it will last, before it is broken down.
         """
         assert isinstance(rarity, str) or rarity is None
         assert isinstance(slot, str) or slot is None
@@ -788,7 +790,25 @@ class Adventure(BaseCog):
                 pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1900)
             ):
                 msgs.append(box(page, lang="css"))
-            return await menu(ctx, msgs, DEFAULT_CONTROLS)
+            controls = DEFAULT_CONTROLS.copy()
+
+            async def _backpack_info(
+                ctx: commands.Context,
+                pages: list,
+                controls: MutableMapping,
+                message: discord.Message,
+                page: int,
+                timeout: float,
+                emoji: str,
+            ):
+                if message:
+                    await ctx.send_help(self._backpack)
+                    with contextlib.suppress(discord.HTTPException):
+                        await message.delete()
+                    return None
+
+            controls["\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"] = _backpack_info
+            return await menu(ctx, msgs, controls)
 
     @_backpack.command(name="equip")
     async def backpack_equip(self, ctx: Context, *, equip_item: ItemConverter):
@@ -1217,9 +1237,21 @@ class Adventure(BaseCog):
 
     @_backpack.command(name="trade")
     async def backpack_trade(
-        self, ctx: Context, buyer: discord.Member, asking: Optional[int] = 1000, *, item: ItemConverter
+        self,
+        ctx: Context,
+        buyer: discord.Member,
+        asking: Optional[int] = 1000,
+        *,
+        item: ItemConverter,
     ):
         """Trade an item from your backpack to another user."""
+        if ctx.author == buyer:
+            return await smart_embed(
+                ctx,
+                _(
+                    "You take the item and pass it from one hand to the other. Congratulations, you traded yourself."
+                ),
+            )
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx,
@@ -3013,6 +3045,14 @@ class Adventure(BaseCog):
         attack and 1 charisma to locastan. if a stat is not specified it will default to 0, order
         does not matter. available stats are attack(att), charisma(diplo) or charisma(cha),
         intelligence(int), dexterity(dex), and luck.
+
+        Item rarity is one of normal, rare, epic, legendary, set, forged, event.
+
+        Event items can have their level requirement and degrade number set via:
+        N degrade - (Set to -1 to never degrade on rebirths)
+        N level
+
+        `[p]give item @locastan "fine dagger" 1 att 1 charisma -1 degrade 100 level rare twohanded`
         """
         if item_name.isnumeric():
             return await smart_embed(ctx, _("Item names cannot be numbers."))
@@ -4309,17 +4349,30 @@ class Adventure(BaseCog):
 
     @commands.command(name="setinfo")
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
-    async def set_show(self, ctx: Context, *, set_name: str):
+    async def set_show(self, ctx: Context, *, set_name: str = None):
         """Show set bonuses for the specified set."""
 
-        sets = self.SET_BONUSES.get(set_name)
+        set_list = humanize_list(
+            sorted([f"`{i}`" for i in self.SET_BONUSES.keys()], key=str.lower)
+        )
+        if set_name is None:
+            return await smart_embed(
+                ctx,
+                _("Use this command with one of the following set names: \n{sets}").format(
+                    sets=set_list
+                ),
+            )
+
+        title_cased_set_name = await self._title_case(set_name)
+        sets = self.SET_BONUSES.get(title_cased_set_name)
         if sets is None:
             return await smart_embed(
                 ctx,
-                _("`{input}` is not a valid set.\nPlease use one of the following: {sets}").format(
-                    input=set_name, sets=humanize_list([f"`{i}`" for i in self.SET_BONUSES.keys()])
-                ),
+                _(
+                    "`{input}` is not a valid set.\n\nPlease use one of the following full set names: \n{sets}"
+                ).format(input=title_cased_set_name, sets=set_list),
             )
+
         bonus_list = sorted(sets, key=itemgetter("parts"))
         embed_list = []
         for bonus in bonus_list:
@@ -4338,34 +4391,28 @@ class Adventure(BaseCog):
             statmult = bonus.get("statmult", 0)
             xpmult = bonus.get("xpmult", 0)
             cpmult = bonus.get("cpmult", 0)
-            if statmult >= 1:
-                statmult -= 1
-            if xpmult >= 1:
-                xpmult -= 1
-            if cpmult >= 1:
-                cpmult -= 1
             if statmult >= 0:
-                statmult = f"+{statmult*100:.2f}%"
+                statmult = f"{round(statmult*100)}%"
             else:
-                statmult = f"{statmult*100:.2f}%"
+                statmult = f"{round(statmult*100)}%"
             if xpmult >= 0:
-                xpmult = f"+{xpmult*100:.2f}%"
+                xpmult = f"{round(xpmult*100)}%"
             else:
-                xpmult = f"{xpmult*100:.2f}%"
+                xpmult = f"{round(xpmult*100)}%"
             if cpmult >= 0:
-                cpmult = f"+{cpmult*100:.2f}%"
+                cpmult = f"{round(cpmult*100)}%"
             else:
-                cpmult = f"{cpmult*100:.2f}%"
+                cpmult = f"{round(cpmult*100)}%"
 
             breakdown = _(
-                "Attack:           [{attack}]\n"
-                "Charisma:         [{charisma}]\n"
-                "Intelligence:     [{intelligence}]\n"
-                "Dexterity:        [{dexterity}]\n"
-                "Luck:             [{luck}]\n"
-                "Stat Bonus:       [{statmult}]\n"
-                "XP Bonus:         [{xpmult}]\n"
-                "Currency Bonus:   [{cpmult}]\n"
+                "Attack:                [{attack}]\n"
+                "Charisma:              [{charisma}]\n"
+                "Intelligence:          [{intelligence}]\n"
+                "Dexterity:             [{dexterity}]\n"
+                "Luck:                  [{luck}]\n"
+                "Stat Mulitplier:       [{statmult}]\n"
+                "XP Multiplier:         [{xpmult}]\n"
+                "Currency Multiplier:   [{cpmult}]\n"
             ).format(
                 attack=attack,
                 charisma=charisma,
@@ -4377,17 +4424,66 @@ class Adventure(BaseCog):
                 cpmult=cpmult,
             )
             embed = discord.Embed(
-                title=_("{set_name} {part_val} Part Bonus").format(
-                    set_name=set_name, part_val=parts
+                title=_("{set_name}\n{part_val} Part Bonus").format(
+                    set_name=title_cased_set_name, part_val=parts
                 ),
                 description=box(breakdown, lang="ini"),
                 colour=await ctx.embed_colour(),
             )
+            footer_text = (
+                "Multiplier percentage is based on 100% being the full normal value.\n"
+                "0% would be nothing, 50% would be half the value.\n"
+                "A number like 150% means that it is 1.5x the value.\n"
+                "Multiple complete set bonuses stack.\n"
+                "\n"
+                "Use the information button below to display set piece details."
+            )
+            embed.set_footer(text=footer_text)
             embed_list.append(embed)
-        if len(embed_list) > 1:
-            await menu(ctx, pages=embed_list, controls=DEFAULT_CONTROLS)
-        elif embed_list:
-            await ctx.send(embed=embed_list[0])
+
+        controls = {}
+
+        async def _set_info(
+            ctx: commands.Context,
+            pages: list,
+            controls: MutableMapping,
+            message: discord.Message,
+            page: int,
+            timeout: float,
+            emoji: str,
+        ):
+            if message:
+                await self._setinfo_details(ctx, title_cased_set_name)
+                return None
+
+        controls["\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"] = _set_info
+
+        await menu(ctx, pages=embed_list, controls=controls)
+
+    async def _setinfo_details(self, ctx: Context, title_cased_set_name: str):
+        """
+        Helper function for setinfo to display set pieces.
+        Reformats TR_GEAR_SET to be displayed using the loadout display.
+        """
+
+        set_items = {
+            key: value
+            for key, value in self.TR_GEAR_SET.items()
+            if value["set"] == title_cased_set_name
+        }
+
+        d = {}
+        for k, v in set_items.items():
+            if len(v["slot"]) > 1:
+                d.update({v["slot"][0]: {k: v}})
+                d.update({v["slot"][1]: {k: v}})
+            else:
+                d.update({v["slot"][0]: {k: v}})
+
+        stats = await self._build_loadout_display({"items": d}, loadout=False)
+        msg = _("{set_name} Set Pieces\n\n").format(set_name=title_cased_set_name)
+        msg += stats
+        await ctx.send(box(msg, lang="css"))
 
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
@@ -4417,8 +4513,9 @@ class Adventure(BaseCog):
         if str(react.emoji) == "\N{CROSS MARK}":
             await msg.delete()
 
-    async def _build_loadout_display(self, userdata):
-        form_string = _("( ATT  |  CHA  |  INT  |  DEX  |  LUCK)\nItems Equipped:")
+    async def _build_loadout_display(self, userdata, loadout=True):
+        form_string = _("( ATT  |  CHA  |  INT  |  DEX  |  LUCK)")
+        form_string += _("\n\nItems Equipped:") if loadout else ""
         last_slot = ""
         att = 0
         cha = 0
@@ -6414,6 +6511,16 @@ class Adventure(BaseCog):
         epoch = time.time()
         epoch += seconds
         return epoch
+
+    @staticmethod
+    async def _title_case(phrase: str):
+        exceptions = ["a", "and", "in", "of", "or", "the"]
+        lowercase_words = re.split(" ", phrase.lower())
+        final_words = [lowercase_words[0].capitalize()]
+        final_words += [
+            word if word in exceptions else word.capitalize() for word in lowercase_words[1:]
+        ]
+        return " ".join(final_words)
 
     @commands.Cog.listener()
     async def on_message_without_command(self, message):
