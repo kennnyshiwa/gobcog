@@ -651,8 +651,7 @@ class Character(Item):
             "Experience: {xp}/{next_lvl} \n- "
             "Unspent skillpoints: {skill_points}\n\n"
             "Active bonus: {set_bonus}\n"
-            "{daily}\n\n"
-            "React to 'G' to see your equipped gear"
+            "{daily}"
         ).format(
             user=self.user.display_name,
             rebirths=self.rebirths,
