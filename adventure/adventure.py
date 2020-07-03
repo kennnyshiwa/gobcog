@@ -68,7 +68,7 @@ log = logging.getLogger("red.cogs.adventure")
 
 REBIRTH_LVL = 20
 REBIRTH_STEP = 10
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 _config: Config = None
 
 
@@ -216,7 +216,7 @@ class AdventureResults:
 class Adventure(BaseCog):
     """Adventure, derived from the Goblins Adventure cog by locastan."""
 
-    __version__ = "3.2.23"
+    __version__ = "3.2.25"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -543,7 +543,38 @@ class Adventure(BaseCog):
                         adventurers_data[user]["loadouts"] = new_loadout
                     except Exception:
                         adventurers_data[user]["loadouts"] = {}
-        await self.config.schema_version.set(to_version)
+            await self.config.schema_version.set(2)
+            from_version = 2
+        if from_version < 3 <= to_version:
+            group = self.config._get_base_group(self.config.USER)
+            accounts = await group.all()
+            tmp = accounts.copy()
+            async with group.all() as adventurers_data:
+                for user in tmp:
+                    new_loadout = {}
+                    if "loadouts" not in adventurers_data[user]:
+                        adventurers_data[user]["loadouts"] = {}
+                    try:
+                        for (loadout_name, loadout) in adventurers_data[user]["loadouts"].items():
+                            if loadout_name in {
+                                "head",
+                                "neck",
+                                "chest",
+                                "gloves",
+                                "belt",
+                                "legs",
+                                "boots",
+                                "left",
+                                "right",
+                                "ring",
+                                "charm",
+                            }:
+                                continue
+                            new_loadout[loadout_name] = loadout
+                        adventurers_data[user]["loadouts"] = new_loadout
+                    except Exception:
+                        adventurers_data[user]["loadouts"] = {}
+            await self.config.schema_version.set(3)
 
     def _convert_item_migration(self, item_name, item_dict):
         new_name = item_name
@@ -1272,14 +1303,14 @@ class Adventure(BaseCog):
         except Exception as exc:
             log.exception("Error with the new character sheet", exc_info=exc)
             return
-        if not any([x for x in c.backpack if item.name.lower() in x.lower()]):
+        if not any([x for x in c.backpack if item.name.lower() == x.lower()]):
             return await smart_embed(
                 ctx,
                 _("**{author}**, you have to specify an item from your backpack to trade.").format(
                     author=self.escape(ctx.author.display_name)
                 ),
             )
-        lookup = list(x for n, x in c.backpack.items() if item.name.lower() in x.name.lower())
+        lookup = list(x for n, x in c.backpack.items() if str(item) == str(x))
         if len(lookup) > 1:
             await smart_embed(
                 ctx,
@@ -1381,26 +1412,21 @@ class Adventure(BaseCog):
                                 await bank.withdraw_credits(buyer, asking)
                                 await bank.set_balance(ctx.author, e.max_balance)
                             c.backpack[item.name].owned -= 1
+                            newly_owned = c.backpack[item.name].owned
                             if c.backpack[item.name].owned <= 0:
                                 del c.backpack[item.name]
                             async with self.get_lock(buyer):
-                                try:
-                                    buy_user = await Character.from_json(self.config, buyer)
-                                except Exception as exc:
-                                    log.exception(
-                                        "Error with the new character sheet", exc_info=exc
-                                    )
-                                    return
                                 if item.name in buy_user.backpack:
                                     buy_user.backpack[item.name].owned += 1
                                 else:
                                     item.owned = 1
                                     buy_user.backpack[item.name] = item
-                                await self.config.user(ctx.author).set(
-                                    await c.to_json(self.config)
-                                )
                                 await self.config.user(buyer).set(
                                     await buy_user.to_json(self.config)
+                                )
+                                item.owned = newly_owned
+                                await self.config.user(ctx.author).set(
+                                    await c.to_json(self.config)
                                 )
 
                             await trade_msg.edit(
@@ -2280,6 +2306,7 @@ class Adventure(BaseCog):
             )
             await self.config.guild(ctx.guild).cart_channels.set(channel_list)
 
+    @commands.guild_only()
     @commands.command()
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.guild)
     async def adventuresettings(self, ctx: Context):
@@ -3794,7 +3821,9 @@ class Adventure(BaseCog):
                 )
                 with contextlib.suppress(Exception):
                     lock.release()
-                await self._add_rewards(ctx, ctx.message.author, xp_won, offering, False)
+                msg = await self._add_rewards(ctx, ctx.message.author, xp_won, offering, False)
+                if msg:
+                    await smart_embed(ctx, msg, success=True)
             elif roll > versus:
                 await nega_msg.edit(
                     content=_(
@@ -3813,7 +3842,9 @@ class Adventure(BaseCog):
                 )
                 with contextlib.suppress(Exception):
                     lock.release()
-                await self._add_rewards(ctx, ctx.message.author, xp_won, 0, False)
+                msg = await self._add_rewards(ctx, ctx.message.author, xp_won, 0, False)
+                if msg:
+                    await smart_embed(ctx, msg, success=True)
             elif roll == versus:
                 ctx.command.reset_cooldown(ctx)
                 await nega_msg.edit(
@@ -4802,16 +4833,22 @@ class Adventure(BaseCog):
                 del self._sessions[ctx.guild.id]
             return
         reward_copy = reward.copy()
+        send_message = ""
         for (userid, rewards) in reward_copy.items():
             if rewards:
                 user = ctx.guild.get_member(userid)  # bot.get_user breaks sometimes :ablobsweats:
                 if user is None:
                     # sorry no rewards if you leave the server
                     continue
-                await self._add_rewards(
+                msg = await self._add_rewards(
                     ctx, user, rewards["xp"], rewards["cp"], rewards["special"]
                 )
+                if msg:
+                    send_message += f"{msg}\n"
                 self._rewards[userid] = {}
+        if send_message:
+            for page in pagify(send_message):
+                await smart_embed(ctx, page, success=True)
         if participants:
             for user in participants:  # reset activated abilities
                 async with self.get_lock(user):
@@ -4991,7 +5028,15 @@ class Adventure(BaseCog):
             attribute = attribute.lower()
         else:
             attribute = random.choice(list(self.ATTRIBS.keys()))
-        if "Ascended" in challenge:
+
+        if transcended:
+            new_challenge = challenge.replace("Ascended", "Transcended")
+            if "Transcended" in new_challenge:
+                self.bot.dispatch("adventure_transcended", ctx)
+        else:
+            new_challenge = challenge
+
+        if "Ascended" in new_challenge:
             self.bot.dispatch("adventure_ascended", ctx)
         if attribute == "n immortal":
             self.bot.dispatch("adventure_immortal", ctx)
@@ -4999,19 +5044,13 @@ class Adventure(BaseCog):
             self.bot.dispatch("adventure_possessed", ctx)
         if monster_roster[challenge]["boss"]:
             timer = 60 * 5
-            text = box(_("\n [{} Alarm!]").format(challenge), lang="css")
+            text = box(_("\n [{} Alarm!]").format(new_challenge), lang="css")
             self.bot.dispatch("adventure_boss", ctx)  # dispatches an event on bosses
         elif monster_roster[challenge]["miniboss"]:
             timer = 60 * 3
             self.bot.dispatch("adventure_miniboss", ctx)
         else:
             timer = 60 * 2
-        if transcended:
-            new_challenge = challenge.replace("Ascended", "Transcended")
-            if "Transcended" in new_challenge:
-                self.bot.dispatch("adventure_transcended", ctx)
-        else:
-            new_challenge = challenge
 
         self._sessions[ctx.guild.id] = GameSession(
             challenge=new_challenge,
@@ -5484,12 +5523,18 @@ class Adventure(BaseCog):
             roll = random.randint(1, 10)
             monster_amount = hp + dipl if slain and persuaded else hp if slain else dipl
             if session.transcended:
-                avaliable_loot = [
-                    [0, 0, 1, 5, 1],
-                    [0, 0, 1, 3, 1],
-                    [0, 0, 1, 1, 1],
-                    [0, 0, 0, 0, 1],
-                ]
+                if session.boss and "Trancended" in session.challenge:
+                    avaliable_loot = [
+                        [0, 0, 1, 5, 1],
+                        [0, 0, 0, 0, 2],
+                    ]
+                else:
+                    avaliable_loot = [
+                        [0, 0, 1, 5, 1],
+                        [0, 0, 1, 3, 1],
+                        [0, 0, 1, 1, 1],
+                        [0, 0, 0, 0, 1],
+                    ]
                 treasure = random.choice(avaliable_loot)
             elif session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
                 avaliable_loot = [[0, 0, 3, 1, 0], [0, 0, 1, 2, 0], [0, 0, 0, 3, 0]]
@@ -6455,6 +6500,7 @@ class Adventure(BaseCog):
             lock.release()
             return
         else:
+            rebirth_text = ""
             c.exp += exp
             member = ctx.guild.get_member(user.id)
             cp = max(cp, 0)
@@ -6484,11 +6530,8 @@ class Adventure(BaseCog):
                 c.skill["pool"] += ending_points - starting_points
                 if c.skill["pool"] > 0:
                     extra = _(" You have **{}** skill points available.").format(c.skill["pool"])
-                await smart_embed(
-                    ctx,
-                    _("{} {} is now level **{}**!{}\n{}").format(
-                        levelup_emoji, user.mention, lvl_end, extra, rebirthextra
-                    ),
+                rebirth_text = _("{} {} is now level **{}**!{}\n{}").format(
+                    levelup_emoji, user.mention, lvl_end, extra, rebirthextra
                 )
             if c.rebirths > 1:
                 roll = random.randint(1, 100)
@@ -6520,6 +6563,7 @@ class Adventure(BaseCog):
             if special is not False:
                 c.treasure = [sum(x) for x in zip(c.treasure, special)]
             await self.config.user(user).set(await c.to_json(self.config))
+            return rebirth_text
         finally:
             lock = self.get_lock(user)
             with contextlib.suppress(Exception):
