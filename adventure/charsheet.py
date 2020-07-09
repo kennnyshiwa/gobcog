@@ -2,11 +2,10 @@
 import asyncio
 import contextlib
 import logging
-import operator
 import re
 from copy import copy
 from datetime import date, timedelta, datetime
-from typing import Dict, List, Mapping, Optional, Set, MutableMapping
+from typing import Dict, List, Mapping, Optional, Set, MutableMapping, Tuple
 
 import discord
 from discord.ext.commands import check
@@ -86,6 +85,27 @@ RARITIES = ("normal", "rare", "epic", "legendary", "set", "patreon", "event")
 RARITY_PATREON = re.compile(r"(patreon)")
 DEG = re.compile(r"(-?\d*) degrade")
 LEVEL = re.compile(r"(-?\d*) (level|lvl)")
+PERCENTAGE = re.compile(r"^(\d*\.?\d+)(%?)")
+DAY_REGEX = re.compile(
+    r"^(?P<monday>mon(?:day)?|1)$|"
+    r"^(?P<tuesday>tue(?:sday)?|2)$|"
+    r"^(?P<wednesday>wed(?:nesday)?|3)$|"
+    r"^(?P<thursday>th(?:u(?:rs(?:day)?)?)?|4)$|"
+    r"^(?P<friday>fri(?:day)?|5)$|"
+    r"^(?P<saturday>sat(?:urday)?|6)$|"
+    r"^(?P<sunday>sun(?:day)?|7)$",
+    re.IGNORECASE,
+)
+
+_DAY_MAPPING = {
+    "monday": "1",
+    "tuesday": "2",
+    "wednesday": "3",
+    "thursday": "4",
+    "friday": "5",
+    "saturday": "6",
+    "sunday": "7",
+}
 
 
 class Stats(Converter):
@@ -477,7 +497,6 @@ class Character(Item):
         self.get_set_bonus()
         self.maxlevel = self.get_max_level()
         self.lvl = self.lvl if self.lvl < self.maxlevel else self.maxlevel
-        self.get_equipment()
         self.set_items = self.get_set_item_count()
         self.att, self._att = self.get_stat_value("att")
         self.cha, self._cha = self.get_stat_value("cha")
@@ -515,17 +534,28 @@ class Character(Item):
             "charm": {},
         }
         self.last_skill_reset: int = kwargs.pop("last_skill_reset", 0)
+        self.daily_bonus = kwargs.pop(
+            "daily_bonus_mapping", {"1": 0, "2": 0, "3": 0.5, "4": 0, "5": 0.5, "6": 1.0, "7": 1.0}
+        )
 
     def remove_restrictions(self):
         if self.heroclass["name"] == "Ranger" and self.heroclass["pet"]:
+            requirements = (
+                PETS.get(self.heroclass["pet"]["name"], {}).get("bonuses", {}).get("req", {})
+            )
+            if "Ainz Ooal Gown" in self.sets and self.heroclass["pet"]["name"] in [
+                "Albedo",
+                "Rubedo",
+                "Guardians of Nazarick",
+            ]:
+                return
+
             if self.heroclass["pet"]["cha"] > (
                 self.total_cha + (self.total_int // 3) + (self.luck // 2)
             ):
                 self.heroclass["pet"] = {}
                 return
-            requirements = (
-                PETS.get(self.heroclass["pet"]["name"], {}).get("bonuses", {}).get("req", {})
-            )
+
             if requirements:
                 if requirements.get("set") and requirements.get("set") not in self.sets:
                     self.heroclass["pet"] = {}
@@ -595,7 +625,7 @@ class Character(Item):
                 parts, count, bonus = set_names[item.set]
                 set_names[item.set] = (parts, count + 1, bonus)
         valid_sets = [(s, v[1]) for s, v in set_names.items() if v[1] >= v[0]]
-        self.sets = [s for s, _ in set_names.items() if s]
+        self.sets = [s for s, _ in valid_sets if s]
         for (_set, parts) in valid_sets:
             set_bonuses = SET_BONUSES.get(_set, [])
             for bonus in set_bonuses:
@@ -628,14 +658,22 @@ class Character(Item):
                 if not self.heroclass["pet"]:
                     class_desc += _("\n\n- Current pet: [None]")
                 elif self.heroclass["pet"]:
-                    class_desc += _("\n\n- Current pet: [{}]").format(
-                        self.heroclass["pet"]["name"]
-                    )
+                    if "Ainz Ooal Gown" in self.sets and self.heroclass["pet"]["name"] in [
+                        "Albedo",
+                        "Rubedo",
+                        "Guardians of Nazarick",
+                    ]:
+                        class_desc += _("\n\n- Current servant: [{}]").format(
+                            self.heroclass["pet"]["name"]
+                        )
+                    else:
+                        class_desc += _("\n\n- Current pet: [{}]").format(
+                            self.heroclass["pet"]["name"]
+                        )
         else:
             class_desc = _("Hero.")
-        weekend = datetime.today().weekday() in [5, 6]
-        wedfriday = datetime.today().weekday() in [2, 4]
-        daymult = 1 if weekend else 0.5 if wedfriday else 0
+
+        daymult = self.daily_bonus.get(str(datetime.today().weekday()), 0)
         statmult = self.gear_set_bonus.get("statmult") - 1
         xpmult = (self.gear_set_bonus.get("xpmult") + daymult) - 1
         cpmult = (self.gear_set_bonus.get("cpmult") + daymult) - 1
@@ -680,11 +718,11 @@ class Character(Item):
             else humanize_number(max_level_xp),
             skill_points=0 if self.skill["pool"] < 0 else self.skill["pool"],
             set_bonus=(
-                f"( {self.gear_set_bonus.get('att')} | "
-                f"{self.gear_set_bonus.get('cha')} | "
-                f"{self.gear_set_bonus.get('int')} | "
-                f"{self.gear_set_bonus.get('dex')} | "
-                f"{self.gear_set_bonus.get('luck')} ) "
+                f"( {self.gear_set_bonus.get('att'):<2} | "
+                f"{self.gear_set_bonus.get('cha'):<2} | "
+                f"{self.gear_set_bonus.get('int'):<2} | "
+                f"{self.gear_set_bonus.get('dex'):<2} | "
+                f"{self.gear_set_bonus.get('luck'):<2} ) "
                 f"Stats: {round(statmult * 100)}% | "
                 f"EXP: {round(xpmult * 100)}% | "
                 f"Credits: {round(cpmult * 100)}%"
@@ -742,25 +780,24 @@ class Character(Item):
                     * self.gear_set_bonus.get("statmult", 1)
                 )
             )
-            att_space = " " if len(str(att)) == 1 else ""
-            cha_space = " " if len(str(cha)) == 1 else ""
-            int_space = " " if len(str(inter)) == 1 else ""
-            dex_space = " " if len(str(dex)) == 1 else ""
-            luck_space = " " if len(str(luck)) == 1 else ""
+            att_space = " " if len(str(att)) >= 1 else ""
+            cha_space = " " if len(str(cha)) >= 1 else ""
+            int_space = " " if len(str(inter)) >= 1 else ""
+            dex_space = " " if len(str(dex)) >= 1 else ""
+            luck_space = " " if len(str(luck)) >= 1 else ""
 
             owned = ""
-            if item.rarity in ["legendary", "event"] and item.degrade > 0:
+            if item.rarity in ["legendary", "event"] and item.degrade >= 0:
                 owned += f" | [{item.degrade}#]"
-            owned += f" | {item.owned}"
             if item.set:
                 settext += f" | Set `{item.set}` ({item.parts}pcs)"
             form_string += (
                 f"\n{str(item):<{rjust}} - "
-                f"({att_space}{att} |"
-                f"{cha_space}{cha} |"
-                f"{int_space}{inter} |"
-                f"{dex_space}{dex} |"
-                f"{luck_space}{luck} )"
+                f"({att_space}{att:<3} |"
+                f"{cha_space}{cha:<3} |"
+                f"{int_space}{inter:<3} |"
+                f"{dex_space}{dex:<3} |"
+                f"{luck_space}{luck:<3} )"
                 f" | Lvl { equip_level(self, item):<5}"
                 f"{owned}{settext}"
             )
@@ -807,7 +844,7 @@ class Character(Item):
         else:
             return 7  # common / normal
 
-    async def get_sorted_backpack(self, backpack: dict):
+    async def get_sorted_backpack(self, backpack: dict, slot=None, rarity=None):
         tmp = {}
 
         def _sort(item):
@@ -818,6 +855,10 @@ class Character(Item):
             slot_name = slots[0]
             if len(slots) > 1:
                 slot_name = "two handed"
+            if slot is not None and slot_name != slot:
+                continue
+            if rarity is not None and rarity != backpack[item].rarity:
+                continue
 
             if slot_name not in tmp:
                 tmp[slot_name] = []
@@ -825,7 +866,8 @@ class Character(Item):
 
         final = []
         async for (idx, slot_name) in AsyncIter(tmp.keys()).enumerate():
-            final.append(sorted(tmp[slot_name], key=_sort))
+            if tmp[slot_name]:
+                final.append(sorted(tmp[slot_name], key=_sort))
 
         final.sort(
             key=lambda i: ORDER.index(i[0][1].slot[0])
@@ -834,10 +876,12 @@ class Character(Item):
         )
         return final
 
-    async def get_backpack(self, forging: bool = False, consumed=None, rarity=None, slot=None):
+    async def get_backpack(
+        self, forging: bool = False, consumed=None, rarity=None, slot=None, show_delta=False
+    ):
         if consumed is None:
             consumed = []
-        bkpk = await self.get_sorted_backpack(self.backpack)
+        bkpk = await self.get_sorted_backpack(self.backpack, slot=slot, rarity=rarity)
         form_string = _(
             "Items in Backpack: \n( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | [DEGRADE#] | OWNED | SET (SET PIECES)"
         )
@@ -847,6 +891,7 @@ class Character(Item):
             slot_name_org = slot_group[0][1].slot
             slot_name = slot_name_org[0] if len(slot_name_org) < 2 else "two handed"
             form_string += f"\n\n {slot_name.title()} slot\n"
+            current_equipped = getattr(self, slot_name if slot != "two handed" else "left", None)
             async for item in AsyncIter(slot_group):
                 if forging and (item[1].rarity in ["forged", "set", "patreon"] or item[1] in consumed_list):
                     continue
@@ -856,13 +901,13 @@ class Character(Item):
                     continue
 
                 settext = ""
-                att_space = " " if len(str(item[1].att)) == 1 else ""
-                cha_space = " " if len(str(item[1].cha)) == 1 else ""
-                int_space = " " if len(str(item[1].int)) == 1 else ""
-                dex_space = " " if len(str(item[1].dex)) == 1 else ""
-                luck_space = " " if len(str(item[1].luck)) == 1 else ""
+                att_space = " " if len(str(item[1].att)) >= 1 else ""
+                cha_space = " " if len(str(item[1].cha)) >= 1 else ""
+                int_space = " " if len(str(item[1].int)) >= 1 else ""
+                dex_space = " " if len(str(item[1].dex)) >= 1 else ""
+                luck_space = " " if len(str(item[1].luck)) >= 1 else ""
                 owned = ""
-                if item[1].rarity in ["legendary", "event"] and item[1].degrade > 0:
+                if item[1].rarity in ["legendary", "event"] and item[1].degrade >= 0:
                     owned += f" | [{item[1].degrade}#]"
                 owned += f" | {item[1].owned}"
                 if item[1].set:
@@ -873,18 +918,56 @@ class Character(Item):
                 else:
                     level = f"{e_level}"
 
+                if show_delta:
+                    att = self.get_equipped_delta(current_equipped, item[1], "att")
+                    cha = self.get_equipped_delta(current_equipped, item[1], "cha")
+                    int = self.get_equipped_delta(current_equipped, item[1], "int")
+                    dex = self.get_equipped_delta(current_equipped, item[1], "dex")
+                    luck = self.get_equipped_delta(current_equipped, item[1], "luck")
+                    rjuststat = 5
+                else:
+                    att = item[1].att if len(slot_name_org) < 2 else item[1].att * 2
+                    cha = item[1].cha if len(slot_name_org) < 2 else item[1].cha * 2
+                    int = item[1].int if len(slot_name_org) < 2 else item[1].int * 2
+                    dex = item[1].dex if len(slot_name_org) < 2 else item[1].dex * 2
+                    luck = item[1].luck if len(slot_name_org) < 2 else item[1].luck * 2
+                    rjuststat = 3
+
+                stats = (
+                    f"({att_space}{att:<{rjuststat}} |"
+                    f"{cha_space}{cha:<{rjuststat}} |"
+                    f"{int_space}{int:<{rjuststat}} |"
+                    f"{dex_space}{dex:<{rjuststat}} |"
+                    f"{luck_space}{luck:<{rjuststat}} )"
+                )
+
                 form_string += (
                     f"\n{str(item[1]):<{rjust}} - "
-                    f"({att_space}{item[1].att if len(slot_name_org)  < 2 else item[1].att * 2} |"
-                    f"{cha_space}{item[1].cha if len(slot_name_org)  < 2 else item[1].cha * 2} |"
-                    f"{int_space}{item[1].int if len(slot_name_org) < 2 else item[1].int * 2} |"
-                    f"{dex_space}{item[1].dex if len(slot_name_org) < 2 else item[1].dex * 2} |"
-                    f"{luck_space}{item[1].luck if len(slot_name_org) < 2 else item[1].luck * 2} )"
+                    f"{stats}"
                     f" | Lvl {level:<5}"
                     f"{owned}{settext}"
                 )
 
         return form_string + "\n"
+
+    def get_equipped_delta(self, equiped: Item, to_compare: Item, stat_name: str) -> str:
+        if (equiped and len(equiped.slot) == 2) and (to_compare and len(to_compare.slot) == 2):
+            equipped_stat = getattr(equiped, stat_name, 0) * 2
+            comparing_to_stat = getattr(to_compare, stat_name, 0) * 2
+        elif to_compare and len(to_compare.slot) == 2:
+            equipped_left_stat = getattr(self.left, stat_name, 0)
+            equipped_right_stat = getattr(self.right, stat_name, 0)
+            equipped_stat = equipped_left_stat + equipped_right_stat
+            comparing_to_stat = getattr(to_compare, stat_name, 0) * 2
+        elif (equiped and len(equiped.slot) == 2) and (to_compare and len(to_compare.slot) != 2):
+            equipped_stat = getattr(equiped, stat_name, 0) * 2
+            comparing_to_stat = getattr(to_compare, stat_name, 0)
+        else:
+            equipped_stat = getattr(equiped, stat_name, 0)
+            comparing_to_stat = getattr(to_compare, stat_name, 0)
+
+        diff = int(comparing_to_stat - equipped_stat)
+        return f"[{diff}]" if diff < 0 else f"+{diff}" if diff > 0 else "0"
 
     async def equip_item(self, item: Item, from_backpack: bool = True, dev=False):
         """This handles moving an item from backpack to equipment."""
@@ -959,7 +1042,7 @@ class Character(Item):
             "charm": char.charm.to_json() if char.charm else {},
         }
 
-    def get_current_equipment(self):
+    def get_current_equipment(self) -> List[Item]:
         """returns a list of Items currently equipped."""
         equipped = []
         for slot in ORDER:
@@ -981,7 +1064,9 @@ class Character(Item):
         return self
 
     @classmethod
-    async def from_json(cls, config: Config, user: discord.Member):
+    async def from_json(
+        cls, config: Config, user: discord.Member, daily_bonus_mapping: Dict[str, float]
+    ):
         """Return a Character object from config and user."""
         data = await config.user(user).all()
         balance = await bank.get_balance(user)
@@ -1068,7 +1153,7 @@ class Character(Item):
         for (k, v) in equipment.items():
             hero_data[k] = v
         hero_data["last_skill_reset"] = data.get("last_skill_reset", 0)
-        return cls(**hero_data)
+        return cls(**hero_data, daily_bonus_mapping=daily_bonus_mapping)
 
     def get_set_item_count(self):
         count_set = 0
@@ -1087,7 +1172,7 @@ class Character(Item):
         for (k, v) in self.backpack.items():
             for (n, i) in v.to_json().items():
                 if i.get("rarity", False) in ["set"]:
-                    count_set += 1
+                    count_set += v.owned
         return count_set
 
     async def to_json(self, config) -> dict:
@@ -1173,7 +1258,7 @@ class Character(Item):
                 elif self.rebirths < 50 and i.get("rarity", False) in ["legendary", "event"]:
                     if "degrade" in i:
                         i["degrade"] -= 1
-                        if i.get("degrade", 0) >= 1:
+                        if i.get("degrade", 0) >= 0:
                             backpack[n] = i
 
         tresure = [0, 0, 0, 0, 0]
@@ -1238,14 +1323,98 @@ class Character(Item):
 class ItemConverter(Converter):
     async def convert(self, ctx, argument) -> Item:
         try:
-            c = await Character.from_json(ctx.bot.get_cog("Adventure").config, ctx.author)
+            c = await Character.from_json(
+                ctx.bot.get_cog("Adventure").config,
+                ctx.author,
+                ctx.bot.get_cog("Adventure")._daily_bonus,
+            )
         except Exception as exc:
             log.exception("Error with the new character sheet", exc_info=exc)
             raise BadArgument
         no_markdown = Item.remove_markdowns(argument)
         lookup = list(i for x, i in c.backpack.items() if no_markdown.lower() in x.lower())
-        lookup_m = list(i for x, i in c.backpack.items() if argument.lower() == str(i).lower())
+        lookup_m = list(
+            i for x, i in c.backpack.items() if argument.lower() == str(i).lower() and str(i)
+        )
         lookup_e = list(i for x, i in c.backpack.items() if argument == str(i))
+
+        _temp_items = set()
+        for i in lookup:
+            _temp_items.add(str(i))
+        for i in lookup_m:
+            _temp_items.add(str(i))
+        for i in lookup_e:
+            _temp_items.add(str(i))
+
+        if len(lookup_e) == 1:
+            return lookup_e[0]
+        if len(lookup) == 1:
+            return lookup[0]
+        elif len(lookup_m) == 1:
+            return lookup_m[0]
+        elif len(lookup) == 0 and len(lookup_m) == 0:
+            raise BadArgument(_("`{}` doesn't seem to match any items you own.").format(argument))
+        else:
+            lookup = list(i for x, i in c.backpack.items() if str(i) in _temp_items)
+            if len(lookup) > 10:
+                raise BadArgument(
+                    _(
+                        "You have too many items matching the name `{}`,"
+                        " please be more specific."
+                    ).format(argument)
+                )
+            items = ""
+            for (number, item) in enumerate(lookup):
+                items += f"{number}. {str(item)} (owned {item.owned})\n"
+
+            msg = await ctx.send(
+                _("Multiple items share that name, which one would you like?\n{items}").format(
+                    items=box(items, lang="css")
+                )
+            )
+            emojis = ReactionPredicate.NUMBER_EMOJIS[: len(lookup)]
+            start_adding_reactions(msg, emojis)
+            pred = ReactionPredicate.with_emojis(emojis, msg, user=ctx.author)
+            try:
+                await ctx.bot.wait_for("reaction_add", check=pred, timeout=30)
+            except asyncio.TimeoutError:
+                raise BadArgument(_("Alright then."))
+            return lookup[pred.result]
+
+
+class EquipableItemConverter(Converter):
+    async def convert(self, ctx, argument) -> Item:
+        try:
+            c = await Character.from_json(
+                ctx.bot.get_cog("Adventure").config,
+                ctx.author,
+                ctx.bot.get_cog("Adventure")._daily_bonus,
+            )
+        except Exception as exc:
+            log.exception("Error with the new character sheet", exc_info=exc)
+            raise BadArgument
+        equipped_items = set()
+        for slots in ORDER:
+            if slots == "two handed":
+                continue
+            item = getattr(c, slots, None)
+            if item:
+                equipped_items.add(str(item))
+        no_markdown = Item.remove_markdowns(argument)
+        lookup = list(
+            i
+            for x, i in c.backpack.items()
+            if no_markdown.lower() in x.lower() and str(i) not in equipped_items
+        )
+        lookup_m = list(
+            i
+            for x, i in c.backpack.items()
+            if argument.lower() == str(i).lower() and str(i) not in equipped_items
+        )
+        lookup_e = list(
+            i for x, i in c.backpack.items() if argument == str(i) and str(i) not in equipped_items
+        )
+
         _temp_items = set()
         for i in lookup:
             _temp_items.add(str(i))
@@ -1293,18 +1462,37 @@ class ItemConverter(Converter):
 class EquipmentConverter(Converter):
     async def convert(self, ctx, argument) -> Item:
         try:
-            c = await Character.from_json(ctx.bot.get_cog("Adventure").config, ctx.author)
+            c = await Character.from_json(
+                ctx.bot.get_cog("Adventure").config,
+                ctx.author,
+                ctx.bot.get_cog("Adventure")._daily_bonus,
+            )
         except Exception as exc:
             log.exception("Error with the new character sheet", exc_info=exc)
             raise BadArgument
-        lookup = list(i for i in c.get_current_equipment() if argument.lower() in str(i).lower())
-        lookup_m = list(i for i in c.get_current_equipment() if argument.lower() == str(i).lower())
+        matched = set()
+        lookup = list(
+            i
+            for i in c.get_current_equipment()
+            if argument.lower() in str(i).lower()
+            if len(i.slot) != 2 or (str(i) not in matched and not matched.add(str(i)))
+        )
+        matched = set()
+        lookup_m = list(
+            i
+            for i in c.get_current_equipment()
+            if argument.lower() == str(i).lower()
+            if len(i.slot) != 2 or (str(i) not in matched and not matched.add(str(i)))
+        )
+
         if len(lookup) == 1:
             return lookup[0]
         elif len(lookup_m) == 1:
             return lookup_m[0]
         elif len(lookup) == 0 and len(lookup_m) == 0:
-            raise BadArgument(_("`{}` doesn't seem to match any items you own.").format(argument))
+            raise BadArgument(
+                _("`{}` doesn't seem to match any items you have equipped.").format(argument)
+            )
         else:
             if len(lookup) > 10:
                 raise BadArgument(
@@ -1425,6 +1613,37 @@ class RarityConverter(Converter):
             if rarity not in RARITIES:
                 raise BadArgument
         return argument
+
+
+class DayConverter(Converter):
+    async def convert(self, ctx, argument) -> Tuple[str, str]:
+        matches = DAY_REGEX.match(argument)
+        if not matches:
+            raise BadArgument(_("Day must be one of:\nMon, Tue, Wed, Thurs, Fri, Sat or Sun"))
+        for k, v in matches.groupdict().items():
+            if v is None:
+                continue
+            if (val := _DAY_MAPPING.get(k)) is not None:
+                return (val, k)
+        raise BadArgument(_("Day must be one of:\nMon,Tue,Wed,Thurs,Fri,Sat or Sun"))
+
+
+class PercentageConverter(Converter):
+    async def convert(self, ctx, argument) -> float:
+        arg = argument.lower()
+        if arg in {"nan", "inf", "-inf", "+inf", "infinity", "-infinity", "+infinity"}:
+            raise BadArgument(_("Percentage must be between 0% and 100%"))
+        match = PERCENTAGE.match(argument)
+        if not match:
+            raise BadArgument(_("Percentage must be between 0% and 100%"))
+        value = match.group(1)
+        pencentage = match.group(2)
+        arg = float(value)
+        if pencentage:
+            arg /= 100
+        if arg < 0 or arg > 1:
+            raise BadArgument(_("Percentage must be between 0% and 100%"))
+        return arg
 
 
 def equip_level(char, item):
