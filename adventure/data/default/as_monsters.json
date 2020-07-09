@@ -569,7 +569,7 @@
         "miniboss": {},
         "color": ""
     },
-    "Ascended Posessed Sword": {
+    "Ascended Possessed Sword": {
         "hp": 508.5,
         "pdef": 1.2,
         "mdef": 1.2,
@@ -644,7 +644,7 @@
         "pdef": 1.81,
         "mdef": 1.2,
         "dipl": 531.0,
-        "image": "https://en.wikipedia.org/wiki/Balrog#/media/File:Durin%27s_Bane.jpg",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/1/14/Durin%27s_Bane.jpg",
         "boss": false,
         "miniboss": {},
         "color": ""
@@ -984,7 +984,7 @@
         "pdef": 1.2,
         "mdef": 1.04,
         "dipl": 503.5,
-        "image": "https://wikia.lordofthecraft.net/images/thumb/a/a2/Spriggan1.png/300px-Spriggan1.png",
+        "image": "https://live.staticflickr.com/2814/34070170805_aa8bb0fb74_b.jpg",
         "boss": false,
         "miniboss": {},
         "color": ""
@@ -1554,7 +1554,7 @@
         "pdef": 1.6,
         "mdef": 1.43,
         "dipl": 648.0,
-        "image": "https://cdn.pixabay.com/photo/2016/09/08/02/06/vintage-1653150_960_720.jpg",
+        "image": "https://i.imgur.com/So3u7Ni.png",
         "boss": false,
         "miniboss": {},
         "color": ""
@@ -1678,7 +1678,7 @@
         "pdef": 1.2,
         "mdef": 1.52,
         "dipl": 919.0,
-        "image": "http://mythicalarchive.com/wp-content/uploads/2015/12/basilisk_by_wretchedspawn2012-d8sc6ps-1024x921.jpg",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/7/70/Wenceslas_Hollar_-_The_basilisk_and_the_weasel.jpg",
         "boss": false,
         "miniboss": {
             "requirements": [".mirror_shield", "left"],
