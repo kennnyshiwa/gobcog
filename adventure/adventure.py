@@ -219,7 +219,7 @@ class AdventureResults:
 class Adventure(BaseCog):
     """Adventure, derived from the Goblins Adventure cog by locastan."""
 
-    __version__ = "3.2.30"
+    __version__ = "3.2.31"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -588,32 +588,34 @@ class Adventure(BaseCog):
             tmp = accounts.copy()
             async with group.all() as adventurers_data:
                 async for user in AsyncIter(tmp, steps=10):
-                    equipped = tmp[user]["items"]
-                    for slot, item in equipped.items():
-                        for item_name, item_data in item.items():
-                            if "King Solomos" in item_name:
-                                del adventurers_data[user]["items"][slot][item_name]
-                                item_name = item_name.replace("Solomos", "Solomons")
-                                adventurers_data[user]["items"][slot][item_name] = item_data
-                    loadout = tmp[user]["loadouts"]
-                    for loadout_name, loadout_data in loadout.items():
+                    if "items" in tmp[user]:
+                        equipped = tmp[user]["items"]
                         for slot, item in equipped.items():
                             for item_name, item_data in item.items():
                                 if "King Solomos" in item_name:
-                                    del adventurers_data[user]["loadouts"][loadout_name][slot][
-                                        item_name
-                                    ]
+                                    del adventurers_data[user]["items"][slot][item_name]
                                     item_name = item_name.replace("Solomos", "Solomons")
-                                    adventurers_data[user]["loadouts"][loadout_name][slot][
-                                        item_name
-                                    ] = item_data
-
-                    backpack = tmp[user]["backpack"]
-                    async for item_name, item_data in AsyncIter(backpack.items(), steps=25):
-                        if "King Solomos" in item_name:
-                            del adventurers_data[user]["backpack"][item_name]
-                            item_name = item_name.replace("Solomos", "Solomons")
-                            adventurers_data[user]["backpack"][item_name] = item_data
+                                    adventurers_data[user]["items"][slot][item_name] = item_data
+                    if "loadouts" in tmp[user]:
+                        loadout = tmp[user]["loadouts"]
+                        for loadout_name, loadout_data in loadout.items():
+                            for slot, item in equipped.items():
+                                for item_name, item_data in item.items():
+                                    if "King Solomos" in item_name:
+                                        del adventurers_data[user]["loadouts"][loadout_name][slot][
+                                            item_name
+                                        ]
+                                        item_name = item_name.replace("Solomos", "Solomons")
+                                        adventurers_data[user]["loadouts"][loadout_name][slot][
+                                            item_name
+                                        ] = item_data
+                    if "backpack" in tmp[user]:
+                        backpack = tmp[user]["backpack"]
+                        async for item_name, item_data in AsyncIter(backpack.items(), steps=25):
+                            if "King Solomos" in item_name:
+                                del adventurers_data[user]["backpack"][item_name]
+                                item_name = item_name.replace("Solomos", "Solomons")
+                                adventurers_data[user]["backpack"][item_name] = item_data
             await self.config.schema_version.set(4)
 
     def _convert_item_migration(self, item_name, item_dict):
@@ -4596,7 +4598,7 @@ class Adventure(BaseCog):
             )
 
         bonus_list = sorted(sets, key=itemgetter("parts"))
-        embed_list = []
+        msg_list = []
         for bonus in bonus_list:
             parts = bonus.get("parts", 0)
             attack = bonus.get("att", 0)
@@ -4627,7 +4629,7 @@ class Adventure(BaseCog):
                 "Luck:                  [{luck}]\n"
                 "Stat Mulitplier:       [{statmult}]\n"
                 "XP Multiplier:         [{xpmult}]\n"
-                "Currency Multiplier:   [{cpmult}]\n"
+                "Currency Multiplier:   [{cpmult}]\n\n"
             ).format(
                 attack=attack,
                 charisma=charisma,
@@ -4638,39 +4640,31 @@ class Adventure(BaseCog):
                 xpmult=xpmult,
                 cpmult=cpmult,
             )
-            embed = discord.Embed(
-                title=_("{set_name}\n{part_val} Part Bonus").format(
-                    set_name=title_cased_set_name, part_val=parts
-                ),
-                description=box(breakdown, lang="ini"),
-                colour=await ctx.embed_colour(),
-            )
-            footer_text = (
-                "Multiple complete set bonuses stack.\n"
-                "\n"
-                "Use the information button below to display set piece details."
-            )
-            embed.set_footer(text=footer_text)
-            embed_list.append(embed)
+        stats_msg = _("{set_name}\n{part_val} Part Bonus\n\n").format(set_name=title_cased_set_name, part_val=parts)
+        stats_msg += breakdown
+        stats_msg += ("Multiple complete set bonuses stack.")
+        msg_list.append(box(stats_msg, lang="ini"))
 
-        controls = {}
+        set_items = {
+            key: value
+            for key, value in self.TR_GEAR_SET.items()
+            if value["set"] == title_cased_set_name
+        }
 
-        async def _set_info(
-            ctx: commands.Context,
-            pages: list,
-            controls: MutableMapping,
-            message: discord.Message,
-            page: int,
-            timeout: float,
-            emoji: str,
-        ):
-            if message:
-                await self._setinfo_details(ctx, title_cased_set_name)
-                return None
+        d = {}
+        for k, v in set_items.items():
+            if len(v["slot"]) > 1:
+                d.update({v["slot"][0]: {k: v}})
+                d.update({v["slot"][1]: {k: v}})
+            else:
+                d.update({v["slot"][0]: {k: v}})
 
-        controls["\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"] = _set_info
+        loadout_display = await self._build_loadout_display({"items": d}, loadout=False)
+        set_msg = _("{set_name} Set Pieces\n\n").format(set_name=title_cased_set_name)
+        set_msg += loadout_display
+        msg_list.append(box(set_msg, lang="css"))
 
-        await menu(ctx, pages=embed_list, controls=controls)
+        await menu(ctx, pages=msg_list, controls=DEFAULT_CONTROLS)
 
     async def _setinfo_details(self, ctx: Context, title_cased_set_name: str):
         """
