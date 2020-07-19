@@ -3017,7 +3017,7 @@ class Adventure(BaseCog):
             await self.config.user(after).patron.set(data)
             async with self.get_lock(after):
                 try:
-                    c = await Character.from_json(self.config, after)
+                    c = await Character.from_json(self.config, after, self._daily_bonus)
                 except Exception:
                     log.exception("Error with the new character sheet")
                     return
@@ -3142,7 +3142,7 @@ class Adventure(BaseCog):
             )
         async with self.get_lock(user):
             try:
-                c = await Character.from_json(self.config, user)
+                c = await Character.from_json(self.config, user, self._daily_bonus)
             except Exception:
                 log.exception("Error with the new character sheet")
                 return
