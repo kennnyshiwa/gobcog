@@ -1127,7 +1127,7 @@ class Character(Item):
             "user": user,
             "rebirths": data.pop("rebirths", 0),
             "set_items": data.get("set_items", 0),
-            "patron": data.get("patron", {})
+            "patron": data.get("patron", {}),
         }
         for (k, v) in equipment.items():
             hero_data[k] = v
@@ -1198,7 +1198,7 @@ class Character(Item):
             "rebirths": self.rebirths,
             "set_items": self.set_items,
             "last_skill_reset": self.last_skill_reset,
-            "patron": self.patreon
+            "patron": self.patreon,
             "last_known_currency": self.last_known_currency,
         }
 
@@ -1283,7 +1283,7 @@ class Character(Item):
             "set_items": self.set_items,
             "last_known_currency": 0,
             "last_currency_check": 0,
-            "patron": self.patreon
+            "patron": self.patreon,
         }
 
     def keep_equipped(self):

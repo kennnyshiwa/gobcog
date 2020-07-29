@@ -938,9 +938,7 @@ class Adventure(commands.Cog):
             if equip_item.rarity == "patreon":
                 patreon_status = await self.config.user(ctx.author).patron.has_patron()
                 if patreon_status is not True:
-                    return await smart_embed(
-                        ctx, _("You need to be an active Patreon to equip this item")
-                    )
+                    return await smart_embed(ctx, _("You need to be an active Patreon to equip this item"))
 
             elif not can_equip(c, equip_item):
                 return await smart_embed(
@@ -1043,9 +1041,7 @@ class Adventure(commands.Cog):
                     ctx, _("{} is not a valid rarity, select one of {}").format(rarity, humanize_list(RARITIES)),
                 )
             if rarity.lower() in ["set", "forged", "patreon"]:
-                return await smart_embed(
-                    ctx, _("You cannot sell `{rarity}` rarity items.").format(rarity=rarity)
-                )
+                return await smart_embed(ctx, _("You cannot sell `{rarity}` rarity items.").format(rarity=rarity))
         if slot:
             slot = slot.lower()
             if slot not in ORDER:
@@ -1157,9 +1153,9 @@ class Adventure(commands.Cog):
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(
                 box(
-                    _(
-                        "\n{author}, you are not able to sell Patreon items as they are bound to your wallet."
-                    ).format(author=self.escape(ctx.author.display_name)),
+                    _("\n{author}, you are not able to sell Patreon items as they are bound to your wallet.").format(
+                        author=self.escape(ctx.author.display_name)
+                    ),
                     lang="css",
                 )
             )
@@ -1369,9 +1365,9 @@ class Adventure(commands.Cog):
         elif any([x for x in lookup if x.rarity == "patreon"]):
             return await ctx.send(
                 box(
-                    _(
-                        "\n{character}, you cannot trade Patreon items as they are bound to your wallet."
-                    ).format(character=self.escape(ctx.author.display_name)),
+                    _("\n{character}, you cannot trade Patreon items as they are bound to your wallet.").format(
+                        character=self.escape(ctx.author.display_name)
+                    ),
                     lang="css",
                 )
             )
@@ -1914,7 +1910,7 @@ class Adventure(commands.Cog):
         await self.config.separate_economy.set(not toggle)
         self._separate_economy = not toggle
         await smart_embed(
-            ctx, _("Adventurer currency is: **{}**").format(_("Separated" if not toggle else _("Unified")))
+            ctx, _("Adventurer currency is: **{}**").format(_("Separated" if not toggle else _("Unified"))),
         )
 
     @adventureset.group(name="economy")
@@ -2693,10 +2689,7 @@ class Adventure(commands.Cog):
                         self.escape(ctx.author.display_name)
                     )
                     task.cancel()
-                    return await smart_embed(
-                        ctx,
-                        timeout_msg,
-                    )
+                    return await smart_embed(ctx, timeout_msg,)
                 if item.rarity in ["forged", "set", "patreon"]:
                     return await smart_embed(
                         ctx,
@@ -2984,11 +2977,7 @@ class Adventure(commands.Cog):
             data["has_patron"] = True
             data["first_patron"] = int(time.time())
             await self.config.user(after).patron.set(data)
-        elif (
-            patreon_role in after.roles
-            and patreon_role in before.roles
-            and data["has_patron"] is None
-        ):
+        elif patreon_role in after.roles and patreon_role in before.roles and data["has_patron"] is None:
             data["has_patron"] = True
             data["first_patron"] = int(time.time())
             await self.config.user(after).patron.set(data)
@@ -3017,7 +3006,7 @@ class Adventure(commands.Cog):
 
     @commands.guild_only()
     @commands.command()
-    async def patreon(self, ctx: Context, item_name: str=None, *, stats: str=None):
+    async def patreon(self, ctx: Context, item_name: str = None, *, stats: str = None):
         """Patron reward
 
         Keep in mind only one item can be created per week that you have an active subscription.
@@ -3034,10 +3023,7 @@ class Adventure(commands.Cog):
         patron_stats = await self.config.user(ctx.author).patron.all()
         if not patron_stats["has_patron"]:
             return await smart_embed(
-                ctx,
-                (
-                    "You must donate to BB-8 on Patron in order to create a custom item for adventure"
-                ),
+                ctx, ("You must donate to BB-8 on Patron in order to create a custom item for adventure"),
             )
         current_time = datetime.now()
         active_patreon_on = datetime.fromtimestamp(patron_stats["first_patron"])
@@ -3047,7 +3033,6 @@ class Adventure(commands.Cog):
 
         if any([i is None for i in [item_name, stats]]):
             return await smart_embed(ctx, (f"You can make item with up to `{MAX_STAT}` stat points."))
-
 
         if item_name.isnumeric():
             return await smart_embed(ctx, _("Item names cannot be numbers."))
@@ -3064,12 +3049,7 @@ class Adventure(commands.Cog):
             )
 
     async def actually_give_patreon(
-        self,
-        ctx: Context,
-        user: discord.Member,
-        item_name: str,
-        stats: str,
-        patron_stats: MutableMapping,
+        self, ctx: Context, user: discord.Member, item_name: str, stats: str, patron_stats: MutableMapping,
     ):
         item_stats = await PatreonStats().convert(ctx, stats)
         # DO YOUR CHECKS HERE
@@ -3096,9 +3076,7 @@ class Adventure(commands.Cog):
                 log.exception("Error with the new character sheet")
                 return
             patreon_items = []
-            for (
-                current_item
-            ) in c.get_current_equipment():  # User is only allowed to have 1 at a time
+            for current_item in c.get_current_equipment():  # User is only allowed to have 1 at a time
                 if current_item.rarity == "patreon":
                     c = await c.unequip_item(current_item)
             for (name, back_packitem) in c.backpack.items():
@@ -3110,9 +3088,9 @@ class Adventure(commands.Cog):
             await self.config.user(user).set(await c.to_json(self.config))
         await ctx.send(
             box(
-                _(
-                    "An item named {item} has been created and placed in {author}'s backpack."
-                ).format(item=item, author=self.escape(user.display_name)),
+                _("An item named {item} has been created and placed in {author}'s backpack.").format(
+                    item=item, author=self.escape(user.display_name)
+                ),
                 lang="css",
             )
         )
@@ -3130,19 +3108,15 @@ class Adventure(commands.Cog):
         """[Owner] Adds currency to a specified member's balance."""
         if to is None:
             return await smart_embed(
-                ctx,
-                _("You need to specify a receiving member, **{}**.").format(
-                    self.escape(ctx.author.display_name)
-                ),
+                ctx, _("You need to specify a receiving member, **{}**.").format(self.escape(ctx.author.display_name)),
             )
         to_fund = discord.utils.find(lambda m: m.name == to.name, ctx.guild.members)
         if not to_fund:
             return await smart_embed(
                 ctx,
-                _(
-                    "I could not find that user, **{}**. "
-                    "Try using their full Discord name (name#0000)."
-                ).format(self.escape(ctx.author.display_name)),
+                _("I could not find that user, **{}**. " "Try using their full Discord name (name#0000).").format(
+                    self.escape(ctx.author.display_name)
+                ),
             )
         amount = max(amount, 0)
         try:
@@ -3154,9 +3128,7 @@ class Adventure(commands.Cog):
             currency = "credits"
         await ctx.send(
             box(
-                _(
-                    "{author}, you funded {amount} {currency}. {to} now has {bal} {currency}."
-                ).format(
+                _("{author}, you funded {amount} {currency}. {to} now has {bal} {currency}.").format(
                     author=self.escape(ctx.author.display_name),
                     amount=humanize_number(amount),
                     currency=currency,
@@ -7280,7 +7252,7 @@ class Adventure(commands.Cog):
                         "You're struggling to move under the weight of all your {currency}!"
                         "Please spend some more \N{GRIMACING FACE}\n\n"
                         "You currently have {new_balance} {currency}."
-                    ).format(currency=adventure_credits_name, new_balance=humanize_number(exc.max_balance)),
+                    ).format(currency=adventure_credits_name, new_balance=humanize_number(exc.max_balance),),
                 )
                 return
             # Sets the current time as the latest payday
