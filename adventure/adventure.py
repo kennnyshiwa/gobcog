@@ -129,7 +129,9 @@ def check_global_setting_admin():
 
 def has_separated_economy():
     async def predicate(ctx):
-        return ctx.cog and ctx.cog._separate_economy is True
+        if not (ctx.cog and getattr(ctx.cog, "_separate_economy", False)):
+            raise CheckFailure
+        return True
 
     return check(predicate)
 
@@ -1900,17 +1902,22 @@ class Adventure(commands.Cog):
 
     @commands.is_owner()
     @commands_adventureset_economy.command(name="rate")
-    async def commands_adventureset_economy_conversion_rate(self, ctx: Context, *, rate: int):
-        """[Owner] Set how much 1 bank credit is worth in adventure."""
-        if rate < 0:
+    async def commands_adventureset_economy_conversion_rate(self, ctx: Context, rate_in: int, rate_out: int):
+        """[Owner] Set how much 1 bank credit is worth in adventure.
+
+        **rate_in**: Is how much gold you will get for 1 bank credit. Default is 10
+        **rate_out**: Is how much gold is needed to convert to 1 bank credit. Default is 11
+        """
+        if rate_in < 0 or rate_out < 0:
             return await smart_embed(ctx, _("You are evil ... please DM me your phone number we need to hangout."))
-        await self.config.to_conversion_rate.set(rate)
-        await self.config.from_conversion_rate.set(int(1.1 * rate))
+        await self.config.to_conversion_rate.set(rate_in)
+        await self.config.from_conversion_rate.set(rate_out)
         await smart_embed(
             ctx,
-            _("1 {name} will be worth {rate} {a_name}.").format(
+            _("1 {name} will be worth {rate_in} {a_name}.\n{rate_out} {a_name} will convert into 1 {name}").format(
                 name=await bank.get_currency_name(ctx.guild, _forced=True),
-                rate=rate,
+                rate_in=humanize_number(rate_in),
+                rate_out=humanize_number(rate_out),
                 a_name=await bank.get_currency_name(ctx.guild),
             ),
         )
@@ -7021,7 +7028,7 @@ class Adventure(commands.Cog):
         else:
             return sorted_acc[:positions]
 
-    @commands.command(name="apayday")
+    @commands.command(name="apayday", cooldown_after_parsing=True)
     @has_separated_economy()
     @commands.cooldown(rate=1, per=600, type=commands.BucketType.user)
     async def commands_apayday(self, ctx: commands.Context):
@@ -7101,9 +7108,9 @@ class Adventure(commands.Cog):
             ),
         )
 
-    @commands_atransfer.command(name="withdraw")
-    @commands.cooldown(rate=1, per=600, type=commands.BucketType.user)
+    @commands_atransfer.command(name="withdraw", cooldown_after_parsing=True)
     @commands.guild_only()
+    @commands.cooldown(rate=1, per=600, type=commands.BucketType.user)
     async def commands_atransfer_withdraw(self, ctx: commands.Context, *, amount: int):
         """Convert gold to bank currency."""
         if await bank.is_global(_forced=True):
