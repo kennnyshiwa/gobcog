@@ -397,8 +397,6 @@ class Adventure(commands.Cog):
 
     async def cog_before_invoke(self, ctx: Context):
         await self._ready_event.wait()
-
-    async def cog_before_invoke(self, ctx: Context):
         if ctx.author.id in self.locks and self.locks[ctx.author.id].locked():
             raise CheckFailure(f"There's an active lock for this user ({ctx.author.id})")
         return True
@@ -2988,7 +2986,7 @@ class Adventure(commands.Cog):
             await self.config.user(after).patron.set(data)
 
     @commands.guild_only()
-    @checks.is_owner()
+    @commands.is_owner()
     @commands.command()
     async def updatepatreon(self, ctx: Context):
         """Sync users with Patreon"""
@@ -3127,7 +3125,7 @@ class Adventure(commands.Cog):
         try:
             bal = await bank.deposit_credits(to, amount)
         except BalanceTooHigh:
-            bal = await get_max_balance(ctx.guild)
+            bal = await bank.get_max_balance(ctx.guild)
         currency = await bank.get_currency_name(ctx.guild)
         if str(currency).startswith("<:"):
             currency = "credits"
