@@ -55,6 +55,7 @@ from .charsheet import (
     PatreonStats,
     calculate_sp,
     can_equip,
+    can_run,
     equip_level,
     has_funds,
     parse_timedelta,
@@ -683,8 +684,9 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
+    @can_run()
     async def makecart(self, ctx: Context):
-        """[Owner] Force a cart to appear."""
+        """[Dev] Force a cart to appear."""
         await self._trader(ctx, True)
 
     async def _genitem(self, rarity: str = None, slot: str = None):
@@ -762,8 +764,9 @@ class Adventure(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
+    @can_run()
     async def genitems(self, ctx: Context, rarity: str, slot: str, num: int = 1):
-        """[Owner] Generate random items."""
+        """[Dev] Generate random items."""
         user = ctx.author
         rarity = rarity.lower()
         slot = slot.lower()
@@ -1581,10 +1584,11 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
+    @can_run()
     async def devrebirth(
         self, ctx: Context, rebirth_level: int = 1, character_level: int = 1, user: discord.Member = None,
     ):
-        """[Owner] Set a users rebirth level."""
+        """[Dev] Set a users rebirth level."""
         target = user or ctx.author
 
         if not self.is_dev(ctx.author):
@@ -1624,15 +1628,16 @@ class Adventure(commands.Cog):
                 )
             )
             character_data = await c.rebirth(dev_val=rebirth_level)
-            character_data["lvl"] = character_level
             await self.config.user(target).set(character_data)
+        await self._add_rewards(ctx, target, int((character_level) ** 3.5) + 1, 0, False)
         await ctx.tick()
 
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
+    @can_run()
     async def devreset(self, ctx: commands.Context, user: discord.Member = None):
-        """[Owner] Reset the skill cooldown for this user."""
+        """[Dev] Reset the skill cooldown for this user."""
         target = user or ctx.author
         async with self.get_lock(target):
             try:
@@ -4634,8 +4639,9 @@ class Adventure(commands.Cog):
     @commands.command(name="devcooldown")
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
+    @can_run()
     async def _devcooldown(self, ctx: Context):
-        """[Owner] Resets the after-adventure cooldown in this server."""
+        """[Dev] Resets the after-adventure cooldown in this server."""
         await self.config.guild(ctx.guild).cooldown.set(0)
         await ctx.tick()
 
