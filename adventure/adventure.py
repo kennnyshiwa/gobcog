@@ -394,8 +394,6 @@ class Adventure(commands.Cog):
 
     async def cog_before_invoke(self, ctx: Context):
         await self._ready_event.wait()
-
-    async def cog_before_invoke(self, ctx: Context):
         if ctx.author.id in self.locks and self.locks[ctx.author.id].locked():
             raise CheckFailure(f"There's an active lock for this user ({ctx.author.id})")
         return True
