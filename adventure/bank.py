@@ -399,7 +399,7 @@ async def bank_prune(bot: Red, guild: discord.Guild = None, user_id: int = None)
                 del bank_data[user_id]
 
 
-async def get_leaderboard(positions: int = None, guild: discord.Guild = None) -> List[tuple]:
+async def get_leaderboard(positions: int = None, guild: discord.Guild = None, _forced: bool = False) -> List[tuple]:
     """
     Gets the bank's leaderboard
     Parameters
@@ -418,7 +418,7 @@ async def get_leaderboard(positions: int = None, guild: discord.Guild = None) ->
     TypeError
         If the bank is guild-specific and no guild was specified
     """
-    if (cog := _bot.get_cog("Adventure")) is None or not cog._separate_economy:
+    if _forced or (cog := _bot.get_cog("Adventure")) is None or not cog._separate_economy:
         return await bank.get_leaderboard(positions=positions, guild=guild)
     raw_accounts = await _config.all_users()
     if guild is not None:
