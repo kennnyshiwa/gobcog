@@ -7097,6 +7097,7 @@ class Adventure(commands.Cog):
         )
 
     @commands_atransfer.command(name="withdraw")
+    @commands.cooldown(rate=1, per=600, type=commands.BucketType.user)
     @commands.guild_only()
     async def commands_atransfer_withdraw(self, ctx: commands.Context, *, amount: int):
         """Convert gold to bank currency."""
