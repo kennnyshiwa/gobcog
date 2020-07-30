@@ -53,7 +53,7 @@ from .charsheet import (
     Stats,
     calculate_sp,
     can_equip,
-    can_run,
+    no_dev_prompt,
     equip_level,
     has_funds,
     parse_timedelta,
@@ -679,9 +679,10 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
-    @can_run()
     async def makecart(self, ctx: Context):
         """[Dev] Force a cart to appear."""
+        if not await no_dev_prompt(ctx):
+            return
         await self._trader(ctx, True)
 
     async def _genitem(self, rarity: str = None, slot: str = None):
@@ -759,9 +760,10 @@ class Adventure(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    @can_run()
     async def genitems(self, ctx: Context, rarity: str, slot: str, num: int = 1):
         """[Dev] Generate random items."""
+        if not await no_dev_prompt(ctx):
+            return
         user = ctx.author
         rarity = rarity.lower()
         slot = slot.lower()
@@ -1554,11 +1556,12 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
-    @can_run()
     async def devrebirth(
         self, ctx: Context, rebirth_level: int = 1, character_level: int = 1, user: discord.Member = None,
     ):
         """[Dev] Set a users rebirth level."""
+        if not await no_dev_prompt(ctx):
+            return
         target = user or ctx.author
 
         if not self.is_dev(ctx.author):
@@ -1604,9 +1607,10 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
-    @can_run()
     async def devreset(self, ctx: commands.Context, user: discord.Member = None):
         """[Dev] Reset the skill cooldown for this user."""
+        if not await no_dev_prompt(ctx):
+            return
         target = user or ctx.author
         async with self.get_lock(target):
             try:
@@ -4417,9 +4421,10 @@ class Adventure(commands.Cog):
     @commands.command(name="devcooldown")
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
-    @can_run()
     async def _devcooldown(self, ctx: Context):
         """[Dev] Resets the after-adventure cooldown in this server."""
+        if not await no_dev_prompt(ctx):
+            return
         await self.config.guild(ctx.guild).cooldown.set(0)
         await ctx.tick()
 
