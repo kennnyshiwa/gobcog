@@ -1596,6 +1596,15 @@ def has_funds_check(cost):
     return check(predicate)
 
 
+def can_run():
+    async def predicate(ctx):
+        if ctx.author.id not in DEV_LIST:
+            raise commands.CheckFailure
+        return True
+
+    return check(predicate)
+
+
 async def has_funds(user, cost):
     return await bank.can_spend(user, cost)
 
