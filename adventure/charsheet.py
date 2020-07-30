@@ -2,9 +2,11 @@
 import asyncio
 import contextlib
 import logging
+import random
 import re
 from copy import copy
 from datetime import date, timedelta, datetime
+from string import ascii_letters, digits
 from typing import Dict, List, Mapping, Optional, Set, MutableMapping, Tuple
 
 import discord
@@ -17,7 +19,7 @@ from redbot.core.i18n import Translator
 from redbot.core.utils import AsyncIter
 from redbot.core.utils.chat_formatting import box
 from redbot.core.utils.menus import start_adding_reactions
-from redbot.core.utils.predicates import ReactionPredicate
+from redbot.core.utils.predicates import MessagePredicate, ReactionPredicate
 
 from . import bank
 
@@ -1661,6 +1663,33 @@ def can_run():
         return True
 
     return check(predicate)
+
+
+async def no_dev_prompt(ctx: commands.Context) -> bool:
+    if ctx.author.id in DEV_LIST:
+        return True
+    confirm_token = "".join(random.choices((*ascii_letters, *digits), k=16))
+    await ctx.send("You are should not be running this command. "
+                   "Any issues that arise from you running this command will not be supported, "
+                   "if you wish to continue enter this token as your next message."
+                   f"\n\n{confirm_token}")
+    try:
+        message = await ctx.bot.wait_for(
+            "message",
+            check=lambda m: m.channel.id == ctx.channel.id and m.author.id == ctx.author.id,
+            timeout=60,
+        )
+    except asyncio.TimeoutError:
+        await ctx.send(_("Did not get confirmation, cancelling."))
+        return False
+    else:
+        if message.content.strip() == confirm_token:
+            return True
+        else:
+            await ctx.send(_("Did not get a matching confirmation, cancelling."))
+            return False
+
+
 
 
 async def has_funds(user, cost):
