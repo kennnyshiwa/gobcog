@@ -35,7 +35,7 @@ except ImportError:
         return "{:,}".format(val)
 
 
-DEV_LIST = [208903205982044161, 154497072148643840, 218773382617890828, 376564057517457408]
+DEV_LIST = [154497072148643840, 218773382617890828, 376564057517457408]
 
 ORDER = [
     "head",
@@ -1670,7 +1670,7 @@ async def no_dev_prompt(ctx: commands.Context) -> bool:
         return True
     confirm_token = "".join(random.choices((*ascii_letters, *digits), k=16))
     await ctx.send(
-        "You are should not be running this command. "
+        "**__You are should not be running this command.__** "
         "Any issues that arise from you running this command will not be supported, "
         "if you wish to continue enter this token as your next message."
         f"\n\n{confirm_token}"
