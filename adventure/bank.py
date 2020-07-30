@@ -748,6 +748,7 @@ def cost(amount: int):
             coro_or_command.callback = wrapped
             return coro_or_command
 
+
 def _get_config(_forced: bool = False):
     if _forced or (cog := _bot.get_cog("Adventure")) is None or not cog._separate_economy:
         return bank._config
