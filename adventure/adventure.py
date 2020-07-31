@@ -1479,7 +1479,7 @@ class Adventure(commands.Cog):
             rebirthcost = 1000 * c.rebirths
             current_balance = c.bal
             last_known_currency = c.last_known_currency
-            if current_balance / last_known_currency < 0.25:
+            if last_known_currency and current_balance / last_known_currency < 0.25:
                 currency_name = await bank.get_currency_name(ctx.guild,)
                 return await smart_embed(
                     ctx,
