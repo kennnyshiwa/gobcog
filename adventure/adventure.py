@@ -3634,10 +3634,11 @@ class Adventure(commands.Cog):
                 character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
-            if character.last_currency_check + 600 < time.time() or character.bal > character.last_known_currency:
-                character.last_known_currency = await bank.get_balance(ctx.author)
-                character.last_currency_check = time.time()
-                await self.config.user(ctx.author).set(await character.to_json(self.config))
+            else:
+                if character.last_currency_check + 600 < time.time() or character.bal > character.last_known_currency:
+                    character.last_known_currency = await bank.get_balance(ctx.author)
+                    character.last_currency_check = time.time()
+                    await self.config.user(ctx.author).set(await character.to_json(self.config))
 
     @commands.group(autohelp=False)
     @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
@@ -7048,7 +7049,6 @@ class Adventure(commands.Cog):
                     "You currently have {new_balance} {currency}."
                 ).format(currency=adventure_credits_name, new_balance=humanize_number(exc.max_balance)),
             )
-            return
         else:
             await smart_embed(
                 ctx,
@@ -7064,6 +7064,15 @@ class Adventure(commands.Cog):
                     new_balance=humanize_number(await bank.get_balance(author)),
                 ),
             )
+        try:
+            character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
+        except Exception as exc:
+            log.exception("Error with the new character sheet", exc_info=exc)
+        else:
+            if character.last_currency_check + 600 < time.time() or character.bal > character.last_known_currency:
+                character.last_known_currency = await bank.get_balance(ctx.author)
+                character.last_currency_check = time.time()
+                await self.config.user(ctx.author).set(await character.to_json(self.config))
 
     @commands.group(name="atransfer")
     @has_separated_economy()
@@ -7107,6 +7116,15 @@ class Adventure(commands.Cog):
                 currency=await bank.get_currency_name(ctx.guild, _forced=True),
             ),
         )
+        try:
+            character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
+        except Exception as exc:
+            log.exception("Error with the new character sheet", exc_info=exc)
+        else:
+            if character.last_currency_check + 600 < time.time() or character.bal > character.last_known_currency:
+                character.last_known_currency = await bank.get_balance(ctx.author)
+                character.last_currency_check = time.time()
+                await self.config.user(ctx.author).set(await character.to_json(self.config))
 
     @commands_atransfer.command(name="withdraw", cooldown_after_parsing=True)
     @commands.guild_only()
