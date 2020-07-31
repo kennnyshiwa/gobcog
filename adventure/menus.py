@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Tuple, List, Optional, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 import discord
 from redbot.core.commands import commands
 from redbot.core.i18n import Translator
-from redbot.core.utils.chat_formatting import humanize_number, escape
+from redbot.core.utils.chat_formatting import escape, humanize_number
 from redbot.vendored.discord.ext import menus
 
 from . import bank
@@ -267,9 +267,7 @@ class EconomySource(menus.ListPageSource):
             balance = humanize_number(balance)
 
             if acc[0] != author.id:
-                header += (
-                    f"{f'{humanize_number(position)}.': <{pound_len + 2}} {balance: <{bal_len + 5}} {username}\n"
-                )
+                header += f"{f'{humanize_number(position)}.': <{pound_len + 2}} {balance: <{bal_len + 5}} {username}\n"
             else:
                 header += (
                     f"{f'{humanize_number(position)}.': <{pound_len + 2}} "
@@ -288,7 +286,6 @@ class EconomySource(menus.ListPageSource):
         embed.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
 
         return embed
-
 
 
 class BaseMenu(menus.MenuPages, inherit_buttons=False):
@@ -626,7 +623,6 @@ class LeaderboardMenu(BaseMenu, inherit_buttons=False):
             guild=self.ctx.guild if not self.show_global else None, _forced=self._unified_bank()
         )
         await self.change_source(source=EconomySource(entries=bank_sorted))
-
 
     @menus.button(
         "\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
