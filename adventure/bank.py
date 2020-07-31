@@ -433,7 +433,7 @@ async def get_leaderboard(positions: int = None, guild: discord.Guild = None, _f
         return sorted_acc[:positions]
 
 
-async def get_leaderboard_position(member: Union[discord.User, discord.Member]) -> Union[int, None]:
+async def get_leaderboard_position(member: Union[discord.User, discord.Member], _forced: bool = False) -> Union[int, None]:
     """
     Get the leaderboard position for the specified user
     Parameters
@@ -454,7 +454,7 @@ async def get_leaderboard_position(member: Union[discord.User, discord.Member]) 
     else:
         guild = member.guild if hasattr(member, "guild") else None
     try:
-        leaderboard = await get_leaderboard(None, guild)
+        leaderboard = await get_leaderboard(None, guild, _forced=_forced)
     except TypeError:
         raise
     else:
