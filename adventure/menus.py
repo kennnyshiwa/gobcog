@@ -216,10 +216,10 @@ class NVScoreboardSource(WeeklyScoreboardSource):
 
     async def format_page(self, menu: menus.MenuPages, entries: List[Tuple[int, Dict]]):
         ctx = menu.ctx
-        loses_len =  max(len(humanize_number(entries[0][1]["loses"])) + 3, 8)
+        loses_len = max(len(humanize_number(entries[0][1]["loses"])) + 3, 8)
         win_len = max(len(humanize_number(entries[0][1]["wins"])) + 3, 6)
         xp__len = max(len(humanize_number(entries[0][1]["xp__earnings"])) + 3, 8)
-        gold__len =  max(len(humanize_number(entries[0][1]["gold__losses"])) + 3, 12)
+        gold__len = max(len(humanize_number(entries[0][1]["gold__losses"])) + 3, 12)
         start_position = (menu.current_page * self.per_page) + 1
         pos_len = len(str(start_position + 9)) + 2
         header = (
@@ -260,7 +260,14 @@ class NVScoreboardSource(WeeklyScoreboardSource):
             xp__earnings = humanize_number(account_data["xp__earnings"])
             gold__losses = humanize_number(account_data["gold__losses"])
 
-            data = f"{f'{pos_str}.':{pos_len}}" f"{wins:{win_len}}" f"{loses:{loses_len}}" f"{xp__earnings:{xp__len}}" f"{gold__losses:{gold__len}}"f"{username}"
+            data = (
+                f"{f'{pos_str}.':{pos_len}}"
+                f"{wins:{win_len}}"
+                f"{loses:{loses_len}}"
+                f"{xp__earnings:{xp__len}}"
+                f"{gold__losses:{gold__len}}"
+                f"{username}"
+            )
             players.append(data)
 
         embed = discord.Embed(
@@ -270,6 +277,7 @@ class NVScoreboardSource(WeeklyScoreboardSource):
         )
         embed.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
         return embed
+
 
 class EconomySource(menus.ListPageSource):
     def __init__(self, entries: List[Tuple[str, Dict[str, Any]]]):

@@ -1116,7 +1116,7 @@ class Character(Item):
 
         hero_data = {
             "adventures": adventures,
-            "nega":nega,
+            "nega": nega,
             "weekly_score": weekly,
             "exp": max(data["exp"], 0),
             "lvl": data["lvl"],

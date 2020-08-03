@@ -60,7 +60,8 @@ from .menus import (
     BaseMenu,
     LeaderboardMenu,
     LeaderboardSource,
-    NVScoreboardSource, ScoreBoardMenu,
+    NVScoreboardSource,
+    ScoreBoardMenu,
     ScoreboardSource,
     WeeklyScoreboardSource,
 )
@@ -348,13 +349,7 @@ class Adventure(commands.Cog):
                 "run": 0,
                 "fumbles": 0,
             },
-            "nega": {
-                "wins": 0,
-                "loses": 0,
-                "xp__earnings": 0,
-                "gold__losses": 0,
-            }
-
+            "nega": {"wins": 0, "loses": 0, "xp__earnings": 0, "gold__losses": 0,},
         }
 
         default_guild = {
@@ -7212,9 +7207,7 @@ class Adventure(commands.Cog):
         else:
             return sorted_acc[:positions]
 
-    async def get_global_negaverse_scoreboard(
-        self, positions: int = None, guild: discord.Guild = None
-    ) -> List[tuple]:
+    async def get_global_negaverse_scoreboard(self, positions: int = None, guild: discord.Guild = None) -> List[tuple]:
         """Gets the bank's leaderboard.
 
         Parameters
