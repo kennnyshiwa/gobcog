@@ -60,6 +60,7 @@ from .menus import (
     BaseMenu,
     LeaderboardMenu,
     LeaderboardSource,
+    NVScoreboardSource,
     ScoreBoardMenu,
     ScoreboardSource,
     WeeklyScoreboardSource,
@@ -338,6 +339,17 @@ class Adventure(commands.Cog):
             "class": {"name": _("Hero"), "ability": False, "desc": _("Your basic adventuring hero."), "cooldown": 0,},
             "skill": {"pool": 0, "att": 0, "cha": 0, "int": 0},
             "patron": {"last_reward": 0, "has_patron": None, "first_patron": None},
+            "adventures": {
+                "wins": 0,
+                "loses": 0,
+                "fight": 0,
+                "spell": 0,
+                "talk": 0,
+                "pray": 0,
+                "run": 0,
+                "fumbles": 0,
+            },
+            "nega": {"wins": 0, "loses": 0, "xp__earnings": 0, "gold__losses": 0,},
         }
 
         default_guild = {
@@ -3626,7 +3638,7 @@ class Adventure(commands.Cog):
     @commands.command(name="negaverse", aliases=["nv"], cooldown_after_parsing=True)
     @commands.cooldown(rate=1, per=3600, type=commands.BucketType.user)
     @commands.guild_only()
-    async def _negaverse(self, ctx: Context, offering: int = None):
+    async def _negaverse(self, ctx: Context, offering: int = None, roll: int = -1):
         """This will send you to fight a nega-member!"""
         if self.in_adventure(ctx):
             ctx.command.reset_cooldown(ctx)
@@ -3649,7 +3661,18 @@ class Adventure(commands.Cog):
             ctx.command.reset_cooldown(ctx)
             return await smart_embed(ctx, _("The gods refuse your pitiful offering."))
         if offering > bal:
-            offering = bal
+            offering = int(bal)
+        admin_roll = -1
+        if roll >= 0 and await self.bot.is_owner(ctx.author):
+            if not self.is_dev(ctx.author):
+                if not await no_dev_prompt(ctx):
+                    ctx.command.reset_cooldown(ctx)
+                    return
+            admin_roll = roll
+        offering_value = 0
+        winning_state = False
+        loss_state = False
+        xp_won_final = 0
         lock = self.get_lock(ctx.author)
         await lock.acquire()
         try:
@@ -3686,7 +3709,7 @@ class Adventure(commands.Cog):
 
             percentage_offered = (offering / bal) * 100
             min_roll = int(percentage_offered / 10)
-            entry_roll = random.randint(max(1, min_roll), 20)
+            entry_roll = random.randint(max(1, min_roll), 20) if admin_roll == -1 else admin_roll
             if entry_roll == 1:
                 tax_mod = random.randint(4, 8)
                 tax = round(bal / tax_mod)
@@ -3694,6 +3717,8 @@ class Adventure(commands.Cog):
                     loss = tax
                 else:
                     loss = offering
+                offering_value += loss
+                loss_state = True
                 await bank.withdraw_credits(ctx.author, loss)
                 entry_msg = _(
                     "A swirling void slowly grows and you watch in horror as it rushes to "
@@ -3724,8 +3749,9 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 lock.release()
+                ctx.command.reset_cooldown(ctx)
                 return
-            roll = random.randint(max(1, min_roll * 2), 50)
+            roll = random.randint(max(1, min_roll * 2), 50) if admin_roll == -1 else admin_roll
             versus = random.randint(10, 60)
             xp_mod = random.randint(1, 10)
             daymult = self._daily_bonus.get(str(datetime.today().weekday()), 0)
@@ -3737,12 +3763,16 @@ class Adventure(commands.Cog):
             xp_won = int(xp_won * (character.gear_set_bonus.get("xpmult", 1) + daymult))
             if roll < 10:
                 loss = round(bal // 3)
+                curr_balance = await bank.get_balance(ctx.author)
                 try:
                     await bank.withdraw_credits(ctx.author, loss)
+                    offering_value += loss
                     loss = humanize_number(loss)
                 except ValueError:
                     await bank.set_balance(ctx.author, 0)
+                    offering_value += curr_balance
                     loss = _("all of their")
+                loss_state = True
                 loss_msg = _(
                     ", losing {loss} {currency_name} as **{negachar}** rifled through their belongings"
                 ).format(loss=loss, currency_name=currency_name, negachar=negachar)
@@ -3774,7 +3804,11 @@ class Adventure(commands.Cog):
                 )
                 with contextlib.suppress(Exception):
                     lock.release()
+
                 msg = await self._add_rewards(ctx, ctx.author, xp_won, offering, False)
+                xp_won_final += xp_won
+                offering_value += offering
+                winning_state = True
                 if msg:
                     await smart_embed(ctx, msg, success=True)
             elif roll > versus:
@@ -3796,6 +3830,9 @@ class Adventure(commands.Cog):
                 with contextlib.suppress(Exception):
                     lock.release()
                 msg = await self._add_rewards(ctx, ctx.author, xp_won, 0, False)
+                xp_won_final
+                offering_value
+                winning_state = True
                 if msg:
                     await smart_embed(ctx, msg, success=True)
             elif roll == versus:
@@ -3814,11 +3851,15 @@ class Adventure(commands.Cog):
                 )
             else:
                 loss = round(bal / (random.randint(10, 25)))
+                curr_balance = await bank.get_balance(ctx.author)
                 try:
                     await bank.withdraw_credits(ctx.author, loss)
+                    offering_value += loss
                 except ValueError:
                     await bank.set_balance(ctx.author, 0)
+                    offering_value += curr_balance
                     loss = _("all of their")
+                loss_state = True
                 loss_msg = _(", losing {loss} {currency_name} as **{negachar}** looted their backpack").format(
                     loss=humanize_number(loss) if not isinstance(loss, str) else loss,
                     currency_name=currency_name,
@@ -3846,9 +3887,29 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
             else:
+                changed = False
                 if character.last_currency_check + 600 < time.time() or character.bal > character.last_known_currency:
                     character.last_known_currency = await bank.get_balance(ctx.author)
                     character.last_currency_check = time.time()
+                    changed = True
+                if offering_value > 0:
+                    current_gold__losses_value = character.nega.get("gold__losses", 0)
+                    character.nega.update({"gold__losses": int(current_gold__losses_value + offering_value)})
+                    changed = True
+                if xp_won_final > 0:
+                    current_xp__earnings_value = character.nega.get("xp__earnings", 0)
+                    character.nega.update({"xp__earnings": current_xp__earnings_value + xp_won_final})
+                    changed = True
+                if winning_state is not False:
+                    current_wins_value = character.nega.get("wins", 0)
+                    character.nega.update({"wins": current_wins_value + 1})
+                    changed = True
+                if loss_state is not False:
+                    current_loses_value = character.nega.get("loses", 0)
+                    character.nega.update({"loses": current_loses_value + 1})
+                    changed = True
+
+                if changed:
                     await self.config.user(ctx.author).set(await character.to_json(self.config))
 
     @commands.group(autohelp=False)
@@ -7146,6 +7207,53 @@ class Adventure(commands.Cog):
         else:
             return sorted_acc[:positions]
 
+    async def get_global_negaverse_scoreboard(self, positions: int = None, guild: discord.Guild = None) -> List[tuple]:
+        """Gets the bank's leaderboard.
+
+        Parameters
+        ----------
+        positions : `int`
+            The number of positions to get
+        guild : discord.Guild
+            The guild to get the leaderboard of. If this
+            is provided, get only guild members on the leaderboard
+
+        Returns
+        -------
+        `list` of `tuple`
+            The sorted leaderboard in the form of :code:`(user_id, raw_account)`
+
+        Raises
+        ------
+        TypeError
+            If the bank is guild-specific and no guild was specified
+        """
+        raw_accounts = await self.config.all_users()
+        if guild is not None:
+            tmp = raw_accounts.copy()
+            for acc in tmp:
+                if not guild.get_member(acc):
+                    del raw_accounts[acc]
+        raw_accounts_new = {}
+        async for (k, v) in AsyncIter(raw_accounts.items(), steps=200):
+            user_data = {}
+            for (vk, vi) in v.items():
+                if vk in ["nega"]:
+                    for (s, sv) in vi.items():
+                        user_data.update(vi)
+
+            if user_data:
+                user_data = {k: user_data}
+            raw_accounts_new.update(user_data)
+
+        sorted_acc = sorted(
+            raw_accounts_new.items(), key=lambda x: (x[1].get("wins", 0), x[1].get("loses", 0)), reverse=True,
+        )
+        if positions is None:
+            return sorted_acc
+        else:
+            return sorted_acc[:positions]
+
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.guild_only()
@@ -7161,6 +7269,23 @@ class Adventure(commands.Cog):
                 timeout=60,
                 cog=self,
                 show_global=show_global,
+            ).start(ctx=ctx)
+        else:
+            await smart_embed(ctx, _("There are no adventurers in the server."))
+
+    @commands.command()
+    @commands.bot_has_permissions(add_reactions=True, embed_links=True)
+    @commands.guild_only()
+    async def nvsb(self, ctx: Context, show_global: bool = False):
+        """Print the negaverse scoreboard."""
+        guild = ctx.guild
+        rebirth_sorted = await self.get_global_negaverse_scoreboard(guild=guild if not show_global else None)
+        if rebirth_sorted:
+            await BaseMenu(
+                source=NVScoreboardSource(entries=rebirth_sorted),
+                delete_message_after=True,
+                clear_reactions_after=True,
+                timeout=60,
             ).start(ctx=ctx)
         else:
             await smart_embed(ctx, _("There are no adventurers in the server."))
