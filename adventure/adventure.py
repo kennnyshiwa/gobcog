@@ -1597,11 +1597,9 @@ class Adventure(BaseCog):
                 if bal >= 1000:
                     withdraw = int((bal - 1000) * (rebirth_cost / 100.0))
                     await bank.withdraw_credits(ctx.author, withdraw)
-                    await self.bot.get_cog("Unbelievaboat").walletset(ctx.author, 0)
                 else:
                     withdraw = int(bal * (rebirth_cost / 100.0))
                     await bank.set_balance(ctx.author, 0)
-                    await self.bot.get_cog("Unbelievaboat").walletset(ctx.author, 0)
 
                 await open_msg.edit(
                     content=(
