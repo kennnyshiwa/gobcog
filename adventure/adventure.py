@@ -2784,7 +2784,7 @@ class Adventure(commands.Cog):
                     return await smart_embed(ctx, timeout_msg)
                 finally:
                     task.cancel()
-                if item.rarity in ["forged", "set"]:
+                if item.rarity in ["forged", "set", "patreon"]:
                     return await smart_embed(
                         ctx,
                         _("**{c}**, {item.rarity} items cannot be reforged.").format(
