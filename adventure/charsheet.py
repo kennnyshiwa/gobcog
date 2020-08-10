@@ -141,6 +141,7 @@ class Stats(Converter):
             result["rarity"] = RARITY.search(argument).group(0)
         except AttributeError:
             raise BadArgument(_("No rarity was provided."))
+
         for (key, value) in possible_stats.items():
             try:
                 stat = int(value.group(1))
@@ -182,9 +183,10 @@ class PatreonStats(Converter):
             result["slot"] = slot
         except AttributeError:
             raise BadArgument(_("No slot position was provided."))
+        half = len(result["slot"]) == 2
         for (key, value) in possible_stats.items():
             with contextlib.suppress(AttributeError, ValueError):
-                stat = int(value.group(1))
+                stat = (int(value.group(1)) // 2) if half else int(value.group(1))
                 result[key] = stat
         return result
 
