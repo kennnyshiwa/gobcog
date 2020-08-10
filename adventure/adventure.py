@@ -231,7 +231,7 @@ class AdventureResults:
 class Adventure(commands.Cog):
     """Adventure, derived from the Goblins Adventure cog by locastan."""
 
-    __version__ = "3.3.5"
+    __version__ = "3.3.6"
 
     def __init__(self, bot: Red):
         self.bot = bot
