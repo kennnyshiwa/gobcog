@@ -7623,7 +7623,7 @@ class Adventure(commands.Cog):
 
         try:
             transfered = await bank.transfer_credits(
-                from_=ctx.author, to=player, amount=amount, tax=tax
+                from_=ctx.author, to=player, amount=amount, tax=highest
             )  # Customizable Tax
         except (ValueError, BalanceTooHigh) as e:
             ctx.command.reset_cooldown(ctx)
