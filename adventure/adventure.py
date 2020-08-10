@@ -7504,7 +7504,16 @@ class Adventure(commands.Cog):
                 ),
             )
             return
-        await bank.withdraw_credits(member=ctx.author, amount=amount, _forced=True)
+        try:
+            await bank.withdraw_credits(member=ctx.author, amount=amount, _forced=True)
+        except ValueError:
+            await smart_embed(
+                ctx,
+                _("{author.mention} You don't have enough {name}.").format(
+                    author=ctx.author, name=await bank.get_currency_name(ctx.guild, _forced=True)
+                ),
+            )
+            return
         try:
             await bank.deposit_credits(member=ctx.author, amount=transferable_amount)
         except BalanceTooHigh as exc:
