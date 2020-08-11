@@ -486,6 +486,7 @@ class Character(Item):
         self.total_stats = self.total_att + self.total_int + self.total_cha + self.dex + self.luck
         self.remove_restrictions()
         self.adventures: dict = kwargs.pop("adventures")
+        self.nega: dict = kwargs.pop("nega")
         self.weekly_score: dict = kwargs.pop("weekly_score")
         self.pieces_to_keep: dict = {
             "head": {},
@@ -1088,6 +1089,15 @@ class Character(Item):
                 "run": 0,
                 "fumbles": 0,
             }
+        if "nega" in data:
+            nega = data["nega"]
+        else:
+            nega = {
+                "wins": 0,
+                "loses": 0,
+                "xp__earnings": 0,
+                "gold__losses": 0,
+            }
         current_week = date.today().isocalendar()[1]
         if "weekly_score" in data and data["weekly_score"]["week"] >= current_week:
             weekly = data["weekly_score"]
@@ -1096,6 +1106,7 @@ class Character(Item):
 
         hero_data = {
             "adventures": adventures,
+            "nega": nega,
             "weekly_score": weekly,
             "exp": max(data["exp"], 0),
             "lvl": data["lvl"],
@@ -1154,6 +1165,7 @@ class Character(Item):
 
         return {
             "adventures": self.adventures,
+            "nega": self.nega,
             "weekly_score": self.weekly_score,
             "exp": self.exp,
             "lvl": self.lvl,
@@ -1237,6 +1249,7 @@ class Character(Item):
 
         return {
             "adventures": self.adventures,
+            "nega": self.nega,
             "weekly_score": self.weekly_score,
             "exp": 0,
             "lvl": 1,
