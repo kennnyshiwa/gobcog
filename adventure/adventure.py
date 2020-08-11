@@ -3162,7 +3162,7 @@ class Adventure(commands.Cog):
                 _(
                     "So you feel like taking on a class, **{author}**?\n"
                     "Available classes are: Tinkerer, Berserker, "
-                    "Wizard, Cleric, Ranger and Bard.\n"
+                    "Wizard, Cleric, Ranger, Psychic and Bard.\n"
                     "Use `{prefix}heroclass name-of-class` to choose one."
                 ).format(author=self.escape(ctx.author.display_name), prefix=ctx.prefix),
             )
