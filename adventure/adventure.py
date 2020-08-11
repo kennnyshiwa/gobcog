@@ -76,7 +76,7 @@ _config: Config = None
 TaxesConverter = get_dict_converter(delims=[" ", ",", ";"])
 
 
-async def smart_embed(ctx, message, success=None):
+async def smart_embed(ctx, message, success=None, image=None):
     if ctx.guild:
         use_embeds = await _config.guild(ctx.guild).embed()
     else:
@@ -89,7 +89,10 @@ async def smart_embed(ctx, message, success=None):
                 colour = discord.Colour.dark_red()
             else:
                 colour = await ctx.embed_colour()
-            return await ctx.send(embed=discord.Embed(description=message, color=colour))
+            embed = discord.Embed(description=message, color=colour)
+            if image:
+                embed.set_thumbnail(url=image)
+            return await ctx.send(embed=embed)
         else:
             return await ctx.send(message)
     return await ctx.send(message)
@@ -4090,7 +4093,29 @@ class Adventure(commands.Cog):
                     else:
                         pdef = session.monsters[session.challenge]["pdef"]
                         mdef = session.monsters[session.challenge]["mdef"]
-                        if roll >= 0.9:
+                        if roll == 1:
+                            hp = (
+                                session.monsters[session.challenge]["hp"]
+                                * self.ATTRIBS[session.attribute][0]
+                                * session.monster_stats
+                            )
+                            dipl = (
+                                session.monsters[session.challenge]["dipl"]
+                                * self.ATTRIBS[session.attribute][1]
+                                * session.monster_stats
+                            )
+                            msg += _(
+                                "This monster is **a{attr} {challenge}** ({hp_symbol} {hp}/{dipl_symbol} {dipl}){trans}\n"
+                            ).format(
+                                challenge=session.challenge,
+                                attr=session.attribute,
+                                hp_symbol=self.emojis.hp,
+                                hp=humanize_number(ceil(hp)),
+                                dipl_symbol=self.emojis.dipl,
+                                dipl=humanize_number(ceil(dipl)),
+                                trans=_(" (**Transcended**)") if session.transcended else "",
+                            )
+                        elif roll >= 0.95:
                             hp = (
                                 session.monsters[session.challenge]["hp"]
                                 * self.ATTRIBS[session.attribute][0]
@@ -4111,6 +4136,24 @@ class Adventure(commands.Cog):
                                 dipl_symbol=self.emojis.dipl,
                                 dipl=humanize_number(ceil(dipl)),
                             )
+                        elif roll >= 0.95:
+                            hp = (
+                                session.monsters[session.challenge]["hp"]
+                                * self.ATTRIBS[session.attribute][0]
+                                * session.monster_stats
+                            )
+                            msg += _("This monster is **a{attr} {challenge}** ({hp_symbol} {hp})\n").format(
+                                challenge=session.challenge,
+                                attr=session.attribute,
+                                hp_symbol=self.emojis.hp,
+                                hp=humanize_number(ceil(hp)),
+                            )
+                        elif roll > 0.75:
+                            msg += _("This monster is **a{attr} {challenge}**\n").format(
+                                challenge=session.challenge, attr=session.attribute,
+                            )
+                        elif roll > 0.5:
+                            msg += _("This monster is **a {challenge}**\n").format(challenge=session.challenge,)
                         if roll >= 0.4:
                             if pdef >= 1.5:
                                 msg += _("Swords bounce off this monster as it's skin is **almost impenetrable!**\n")
@@ -4135,7 +4178,10 @@ class Adventure(commands.Cog):
                                 msg += _("Magic spells are **hugely effective** against this monster!\n")
 
                     if msg:
-                        return await smart_embed(ctx, msg)
+                        image = None
+                        if roll >= 0.4:
+                            image = session.monster["image"]
+                        return await smart_embed(ctx, msg, image=image)
                     else:
                         return await smart_embed(ctx, _("You have failed to discover anything about this monster."))
             else:
