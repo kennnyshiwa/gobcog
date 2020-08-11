@@ -1752,10 +1752,12 @@ class Adventure(commands.Cog):
     async def equip_loadout(self, ctx: Context, name: str):
         """Equip a saved loadout."""
         if self.in_adventure(ctx):
+            ctx.command.reset_cooldown(ctx)
             return await smart_embed(
                 ctx, _("You tried to magically equip multiple items at once, but the monster ahead nearly killed you."),
             )
         if not await self.allow_in_dm(ctx):
+            ctx.command.reset_cooldown(ctx)
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         name = name.lower()
         async with self.get_lock(ctx.author):
@@ -1763,6 +1765,7 @@ class Adventure(commands.Cog):
                 c = await Character.from_json(self.config, ctx.author, self._daily_bonus)
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
+                ctx.command.reset_cooldown(ctx)
                 return
             if name not in c.loadouts:
                 ctx.command.reset_cooldown(ctx)
