@@ -3183,10 +3183,13 @@ class Adventure(commands.Cog):
                         c = await Character.from_json(self.config, ctx.author, self._daily_bonus)
                     except Exception as exc:
                         log.exception("Error with the new character sheet", exc_info=exc)
+                        ctx.command.reset_cooldown(ctx)
                         return
                     if c.heroclass["name"] == clz:
+                        ctx.command.reset_cooldown(ctx)
                         return await smart_embed(ctx, _("You already are a {}.").format(clz))
                     if clz == "Psychic" and c.rebirths < 25:
+                        ctx.command.reset_cooldown(ctx)
                         return await smart_embed(ctx, _("You are too inexperienced to become a {}.").format(clz))
                     class_msg = await ctx.send(
                         box(
