@@ -4070,7 +4070,7 @@ class Adventure(commands.Cog):
             if "cooldown" not in c.heroclass:
                 c.heroclass["cooldown"] = cooldown_time + 1
             if c.heroclass["cooldown"] + cooldown_time <= time.time():
-                roll = random.randint(min(c.rebirths, 40), 50) / 50
+                roll = random.randint(min(c.rebirths // 2, 40), 50) / 50
                 if ctx.guild.id in self._sessions and self._sessions[ctx.guild.id].insight[0] < roll:
                     self._sessions[ctx.guild.id].insight = roll, c
                     good = True
@@ -4142,7 +4142,7 @@ class Adventure(commands.Cog):
                                 dipl_symbol=self.emojis.dipl,
                                 dipl=humanize_number(ceil(dipl)),
                             )
-                        elif roll >= 0.95:
+                        elif roll >= 0.90:
                             hp = (
                                 session.monsters[session.challenge]["hp"]
                                 * self.ATTRIBS[session.attribute][0]
