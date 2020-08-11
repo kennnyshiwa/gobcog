@@ -5118,7 +5118,7 @@ class Adventure(commands.Cog):
                 + "** - **"
                 + _("Run")
                 + "**",
-                time=timeout,
+                time=timeout // 4,
             )
             if use_embeds:
                 embed.description = f"{adventure_msg}\n{obscured_text}"
