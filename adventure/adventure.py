@@ -3330,9 +3330,13 @@ class Adventure(commands.Cog):
                                 max(300, (1200 - max((c.luck + c.total_cha) * 2, 0))) + time.time()
                             )
                         elif c.heroclass["name"] == "Tinkerer":
-                            c.heroclass["cooldown"] = max(900, (3600 - max(c.luck + c.total_int) * 2, 0)) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(900, (3600 - max((c.luck + c.total_int) * 2, 0))) + time.time()
+                            )
                         elif c.heroclass["name"] == "Psychic":
-                            c.heroclass["cooldown"] = max(120, (3600 - max(c.luck - c.total_cha) * 2, 0)) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(120, (3600 - max((c.luck - c.total_cha) * 2, 0))) + time.time()
+                            )
                         await self.config.user(ctx.author).set(await c.to_json(self.config))
                         await self._clear_react(class_msg)
                         await class_msg.edit(content=box(now_class_msg, lang="css"))
@@ -3863,7 +3867,7 @@ class Adventure(commands.Cog):
                         bonus = _("But they stepped on a twig and scared it away.")
                     elif roll in [50, 25]:
                         bonus = _("They happen to have its favorite food.")
-                    if force_catch is True or (dipl_value > pet_list[pet]["cha"] and roll > 1 and can_catch):
+                    if force_catch is (dipl_value > pet_list[pet]["cha"] and roll > 1 and can_catch):
                         if force_catch:
                             roll = 0
                         else:
@@ -4027,7 +4031,7 @@ class Adventure(commands.Cog):
         This allows a Psychic to expose the current enemy's weakeness to the party.
         """
         try:
-            c = await Character.from_json(self.config, ctx.author)
+            c = await Character.from_json(self.config, ctx.author, self._daily_bonus)
         except Exception:
             log.exception("Error with the new character sheet")
             return
@@ -4067,7 +4071,7 @@ class Adventure(commands.Cog):
                 c.heroclass["ability"] = True
                 c.heroclass["cooldown"] = time.time()
                 async with self.get_lock(c.user):
-                    await self.config.user(ctx.author).set(c.to_json())
+                    await self.config.user(ctx.author).set(await c.to_json(self.config))
                     if good:
                         await smart_embed(
                             ctx,
@@ -4080,7 +4084,7 @@ class Adventure(commands.Cog):
                     if roll <= 0.4:
                         return await smart_embed(ctx, _("You suck."))
                     msg = ""
-                    if session.challenge is None:
+                    if session.no_monster:
                         if roll >= 0.4:
                             msg += _("You are struggling to find anything in your current adventure.")
                     else:
@@ -4103,9 +4107,9 @@ class Adventure(commands.Cog):
                                 challenge=session.challenge,
                                 attr=session.attribute,
                                 hp_symbol=self.emojis.hp,
-                                hp=ceil(hp),
+                                hp=humanize_number(ceil(hp)),
                                 dipl_symbol=self.emojis.dipl,
-                                dipl=ceil(dipl),
+                                dipl=humanize_number(ceil(dipl)),
                             )
                         if roll >= 0.4:
                             if pdef >= 1.5:
@@ -5118,7 +5122,7 @@ class Adventure(commands.Cog):
                 + "** - **"
                 + _("Run")
                 + "**",
-                time=timeout // 4,
+                time=timeout // 60,
             )
             if use_embeds:
                 embed.description = f"{adventure_msg}\n{obscured_text}"
@@ -5215,7 +5219,7 @@ class Adventure(commands.Cog):
                 getattr(session, x).remove(user)
 
             if not has_fund or user in getattr(session, x, []):
-                with contextlib.suppress(discord.HTTPException):
+                if reaction.message.channel.permissions_for(user.guild.me).manage_messages:
                     symbol = self._adventure_controls[x]
                     await reaction.message.remove_reaction(symbol, user)
 
@@ -5363,7 +5367,33 @@ class Adventure(commands.Cog):
         self._sessions[ctx.guild.id].pray = pray_list
         self._sessions[ctx.guild.id].run = run_list
         self._sessions[ctx.guild.id].magic = magic_list
-        if challenge is None:
+        fight_name_list = []
+        wizard_name_list = []
+        talk_name_list = []
+        pray_name_list = []
+        repair_list = []
+        for user in fight_list:
+            fight_name_list.append(f"**{self.escape(user.display_name)}**")
+        for user in magic_list:
+            wizard_name_list.append(f"**{self.escape(user.display_name)}**")
+        for user in talk_list:
+            talk_name_list.append(f"**{self.escape(user.display_name)}**")
+        for user in pray_list:
+            pray_name_list.append(f"**{self.escape(user.display_name)}**")
+
+        fighters_final_string = _(" and ").join(
+            [", ".join(fight_name_list[:-1]), fight_name_list[-1]] if len(fight_name_list) > 2 else fight_name_list
+        )
+        wizards_final_string = _(" and ").join(
+            [", ".join(wizard_name_list[:-1]), wizard_name_list[-1]] if len(wizard_name_list) > 2 else wizard_name_list
+        )
+        talkers_final_string = _(" and ").join(
+            [", ".join(talk_name_list[:-1]), talk_name_list[-1]] if len(talk_name_list) > 2 else talk_name_list
+        )
+        preachermen_final_string = _(" and ").join(
+            [", ".join(pray_name_list[:-1]), pray_name_list[-1]] if len(pray_name_list) > 2 else pray_name_list
+        )
+        if session.no_monster:
             avaliable_loot = [
                 [0, 0, 1, 5, 2, 1],
                 [0, 0, 0, 0, 1, 2],
@@ -5417,9 +5447,10 @@ class Adventure(commands.Cog):
             )
 
             output = _(
-                "All adventures prepared for an epic adventure, but they soon realise all this treasure was unprotected!\nIt's a shame for the following adventurers {run_msg}\n{text}"
-            ).format(text=text, run_msg=run_msg)
+                "All adventures prepared for an epic adventure, but they soon realise all this treasure was unprotected!\nIt's a shame for the following adventurers\n{run_msg}\n{text}"
+            ).format(text=text, run_msg=run_msg,)
             output = pagify(output, page_length=1900)
+            await calc_msg.delete()
             for i in output:
                 await smart_embed(ctx, i, success=True)
             return
@@ -5469,32 +5500,6 @@ class Adventure(commands.Cog):
             self._adv_results.add_result(ctx, "talk", diplomacy, people, persuaded)
         result_msg = result_msg + "\n" + damage_str + diplo_str
 
-        fight_name_list = []
-        wizard_name_list = []
-        talk_name_list = []
-        pray_name_list = []
-        repair_list = []
-        for user in fight_list:
-            fight_name_list.append(f"**{self.escape(user.display_name)}**")
-        for user in magic_list:
-            wizard_name_list.append(f"**{self.escape(user.display_name)}**")
-        for user in talk_list:
-            talk_name_list.append(f"**{self.escape(user.display_name)}**")
-        for user in pray_list:
-            pray_name_list.append(f"**{self.escape(user.display_name)}**")
-
-        fighters_final_string = _(" and ").join(
-            [", ".join(fight_name_list[:-1]), fight_name_list[-1]] if len(fight_name_list) > 2 else fight_name_list
-        )
-        wizards_final_string = _(" and ").join(
-            [", ".join(wizard_name_list[:-1]), wizard_name_list[-1]] if len(wizard_name_list) > 2 else wizard_name_list
-        )
-        talkers_final_string = _(" and ").join(
-            [", ".join(talk_name_list[:-1]), talk_name_list[-1]] if len(talk_name_list) > 2 else talk_name_list
-        )
-        preachermen_final_string = _(" and ").join(
-            [", ".join(pray_name_list[:-1]), pray_name_list[-1]] if len(pray_name_list) > 2 else pray_name_list
-        )
         await calc_msg.delete()
         text = ""
         success = False
@@ -6050,8 +6055,8 @@ class Adventure(commands.Cog):
                     f"{self.emojis.dice}({roll}) + "
                     f"{self.emojis.attack}{str(humanize_number(att_value))}\n"
                 )
-        if session.insight[0] == 1:
-            attack += session.insight[1].total_att
+            if session.insight[0] == 1:
+                attack += int(session.insight[1].total_att * 0.2)
         for user in magic_list:
             try:
                 c = await Character.from_json(self.config, user, self._daily_bonus)
@@ -6125,19 +6130,19 @@ class Adventure(commands.Cog):
                     f"{self.emojis.dice}({roll}) + "
                     f"{self.emojis.magic}{humanize_number(int_value)}\n"
                 )
-        if session.insight[0] == 1:
-            attack += session.insight[1].total_int
+            if session.insight[0] == 1:
+                attack += int(session.insight[1].total_int * 0.2)
         if fumble_count == len(attack_list):
             report += _("No one!")
         msg += report + "\n"
         for user in fumblelist:
             if user in session.fight:
                 if session.insight[0] == 1:
-                    attack -= session.insight[1].total_att
+                    attack -= int(session.insight[1].total_att * 0.2)
                 session.fight.remove(user)
             elif user in session.magic:
                 if session.insight[0] == 1:
-                    attack -= session.insight[1].total_int
+                    attack -= int(session.insight[1].total_int * 0.2)
                 session.magic.remove(user)
         return (fumblelist, critlist, attack, magic, msg)
 
@@ -6367,14 +6372,14 @@ class Adventure(commands.Cog):
                     f"{self.emojis.talk}{humanize_number(dipl_value)}\n"
                 )
             if session.insight[0] == 1:
-                diplomacy += session.insight[1].total_cha
+                diplomacy += int(session.insight[1].total_cha * 0.2)
         if fumble_count == len(talk_list):
             report += _("No one!")
         msg = msg + report + "\n"
         for user in fumblelist:
             if user in talk_list:
                 if session.insight[0] == 1:
-                    diplomacy -= session.insight[1].total_cha
+                    diplomacy -= int(session.insight[1].total_cha * 0.2)
                 session.talk.remove(user)
         return (fumblelist, critlist, diplomacy, msg)
 
@@ -6962,7 +6967,7 @@ class Adventure(commands.Cog):
 
         word = "has" if len(userlist) == 1 else "have"
         if special is not False and sum(special) == 1:
-            types = [" normal", " rare", "n epic", " legendary", " set"]
+            types = [" normal", " rare", "n epic", " legendary", "n ascended", " set"]
             chest_type = types[special.index(1)]
             phrase += _(
                 "\n{b_reward} {word} been awarded {xp} xp and found "

@@ -822,11 +822,17 @@ class Character(Item):
         looted = []
         if not items:
             return looted
+        count = 0
         while how_many > looted_so_far:
             if looted_so_far >= how_many:
                 break
+            if count >= 5:
+                break
             item = random.choice(items)
             if not bool(random.getrandbits(1)):
+                continue
+            if item.name not in self.backpack:
+                count += 1
                 continue
             loot_number = random.randint(1, min(item.owned, how_many - looted_so_far))
             looted_so_far += loot_number
