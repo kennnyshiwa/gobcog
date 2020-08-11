@@ -7,8 +7,8 @@ import os
 import random
 import re
 import time
-from collections import namedtuple
 from datetime import date, datetime, timedelta
+from math import ceil
 from operator import itemgetter
 from types import SimpleNamespace
 from typing import List, MutableMapping, Optional, Union
@@ -301,7 +301,7 @@ class Adventure(commands.Cog):
         self._trader_countdown = {}
         self._current_traders = {}
         self._curent_trader_stock = {}
-        self._sessions = {}
+        self._sessions: MutableMapping[int, GameSession] = {}
         self._react_messaged = []
         self.tasks = {}
         self.locks: MutableMapping[int, asyncio.Lock] = {}
@@ -382,6 +382,7 @@ class Adventure(commands.Cog):
             "from_conversion_rate": 11,
             "max_allowed_withdraw": 50000,
             "disallow_withdraw": False,
+            "easy_mode": False,
         }
         self.RAISINS: list = None
         self.THREATEE: list = None
@@ -2639,7 +2640,7 @@ class Adventure(commands.Cog):
                     _("**{}**, you need to be a Tinkerer to do this.").format(self.escape(ctx.author.display_name)),
                 )
             else:
-                cooldown_time = max(1800, (7200 - ((c.luck + c.total_int) * 2)))
+                cooldown_time = max(1800, (7200 - max((c.luck + c.total_int) * 2, 0)))
                 if "cooldown" not in c.heroclass:
                     c.heroclass["cooldown"] = cooldown_time + 1
                 if c.heroclass["cooldown"] > time.time():
@@ -3136,6 +3137,16 @@ class Adventure(commands.Cog):
                 ),
                 "cooldown": time.time(),
             },
+            "Psychic": {
+                "name": _("Psychic"),
+                "ability": False,
+                "desc": _(
+                    "Psychics can show the enemy's weaknesses to their group "
+                    "allowing them to target the monster's weak-points.\n"
+                    "Use the insight command in an adventure."
+                ),
+                "cooldown": time.time(),
+            },
         }
 
         if clz is None:
@@ -3172,6 +3183,8 @@ class Adventure(commands.Cog):
                         return
                     if c.heroclass["name"] == clz:
                         return await smart_embed(ctx, _("You already are a {}.").format(clz))
+                    if clz == "Psychic" and c.rebirths < 25:
+                        return await smart_embed(ctx, _("You are too inexperienced to become a {}.").format(clz))
                     class_msg = await ctx.send(
                         box(
                             _("This will cost {spend} {currency_name}. Do you want to continue, {author}?").format(
@@ -3298,18 +3311,28 @@ class Adventure(commands.Cog):
                             c.skill["pool"] = 0
                         c.heroclass = classes[clz]
                         if c.heroclass["name"] in ["Wizard", "Cleric"]:
-                            c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_int) * 2))) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(300, (1200 - max((c.luck + c.total_int) * 2, 0))) + time.time()
+                            )
                         elif c.heroclass["name"] == "Ranger":
-                            c.heroclass["cooldown"] = max(1800, (7200 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(1800, (7200 - max(c.luck * 2 + c.total_int * 2, 0))) + time.time()
+                            )
                             c.heroclass["catch_cooldown"] = (
                                 max(600, (3600 - (c.luck * 2 + c.total_int * 2))) + time.time()
                             )
                         elif c.heroclass["name"] == "Berserker":
-                            c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_att) * 2))) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(300, (1200 - max((c.luck + c.total_att) * 2, 0))) + time.time()
+                            )
                         elif c.heroclass["name"] == "Bard":
-                            c.heroclass["cooldown"] = max(300, (1200 - ((c.luck + c.total_cha) * 2))) + time.time()
+                            c.heroclass["cooldown"] = (
+                                max(300, (1200 - max((c.luck + c.total_cha) * 2, 0))) + time.time()
+                            )
                         elif c.heroclass["name"] == "Tinkerer":
-                            c.heroclass["cooldown"] = max(900, (3600 - (c.luck + c.total_int) * 2)) + time.time()
+                            c.heroclass["cooldown"] = max(900, (3600 - max(c.luck + c.total_int) * 2, 0)) + time.time()
+                        elif c.heroclass["name"] == "Psychic":
+                            c.heroclass["cooldown"] = max(120, (3600 - max(c.luck - c.total_cha) * 2, 0)) + time.time()
                         await self.config.user(ctx.author).set(await c.to_json(self.config))
                         await self._clear_react(class_msg)
                         await class_msg.edit(content=box(now_class_msg, lang="css"))
@@ -3781,7 +3804,7 @@ class Adventure(commands.Cog):
                         )
                     )
                 else:
-                    cooldown_time = max(600, (3600 - ((c.luck + c.total_int) * 2)))
+                    cooldown_time = max(600, (3600 - max((c.luck + c.total_int) * 2, 0)))
                     if "catch_cooldown" not in c.heroclass:
                         c.heroclass["catch_cooldown"] = cooldown_time + 1
                     if c.heroclass["catch_cooldown"] > time.time():
@@ -3903,7 +3926,7 @@ class Adventure(commands.Cog):
                         lang="css",
                     )
                 )
-            cooldown_time = max(1800, (7200 - ((c.luck + c.total_int) * 2)))
+            cooldown_time = max(1800, (7200 - max((c.luck + c.total_int) * 2, 0)))
             if "cooldown" not in c.heroclass:
                 c.heroclass["cooldown"] = cooldown_time + 1
             if c.heroclass["cooldown"] <= time.time():
@@ -3971,7 +3994,7 @@ class Adventure(commands.Cog):
                     return await smart_embed(
                         ctx, _("**{}**, ability already in use.").format(self.escape(ctx.author.display_name)),
                     )
-                cooldown_time = max(300, (1200 - ((c.luck + c.total_int) * 2)))
+                cooldown_time = max(300, (1200 - max((c.luck + c.total_int) * 2, 0)))
                 if "cooldown" not in c.heroclass:
                     c.heroclass["cooldown"] = cooldown_time + 1
                 if c.heroclass["cooldown"] <= time.time():
@@ -3998,6 +4021,129 @@ class Adventure(commands.Cog):
                     )
 
     @commands.command()
+    @commands.guild_only()
+    async def insight(self, ctx: Context):
+        """[Psychic Class Only]
+        This allows a Psychic to expose the current enemy's weakeness to the party.
+        """
+        try:
+            c = await Character.from_json(self.config, ctx.author)
+        except Exception:
+            log.exception("Error with the new character sheet")
+            return
+        if c.heroclass["name"] != "Psychic":
+            ctx.command.reset_cooldown(ctx)
+            return await smart_embed(
+                ctx, _("{}, you need to be a Psychic to do this.").format(self.escape(ctx.author.display_name)),
+            )
+        else:
+            if ctx.guild.id not in self._sessions:
+                ctx.command.reset_cooldown(ctx)
+                return await smart_embed(ctx, _("There is no active adventures."),)
+            if not self.in_adventure(ctx):
+                ctx.command.reset_cooldown(ctx)
+                return await smart_embed(
+                    ctx,
+                    _(
+                        "You tried to expose the enemy's weaknesses, then you realised you were "
+                        "by yourself, alone in a dark alley and the enemy was just your shadow."
+                    ),
+                )
+            if c.heroclass["ability"]:
+                return await smart_embed(
+                    ctx, _("{}, ability already in use.").format(self.escape(ctx.author.display_name)),
+                )
+            cooldown_time = max(120, (3600 - max((c.luck + c.total_cha) * 2, 0)))
+            if "cooldown" not in c.heroclass:
+                c.heroclass["cooldown"] = cooldown_time + 1
+            if c.heroclass["cooldown"] + cooldown_time <= time.time():
+                roll = random.randint(min(c.rebirths, 40), 50) / 50
+                if ctx.guild.id in self._sessions and self._sessions[ctx.guild.id].insight[0] < roll:
+                    self._sessions[ctx.guild.id].insight = roll, c
+                    good = True
+                else:
+                    good = False
+                    await smart_embed(ctx, _("Another hero has already done a better job than you."))
+                c.heroclass["ability"] = True
+                c.heroclass["cooldown"] = time.time()
+                async with self.get_lock(c.user):
+                    await self.config.user(ctx.author).set(c.to_json())
+                    if good:
+                        await smart_embed(
+                            ctx,
+                            _("{skill} **{c}** is focusing on the monster ahead...{skill}").format(
+                                c=self.escape(ctx.author.display_name), skill=self.emojis.skills.psychic,
+                            ),
+                        )
+                if good:
+                    session = self._sessions[ctx.guild.id]
+                    if roll <= 0.4:
+                        return await smart_embed(ctx, _("You suck."))
+                    msg = ""
+                    if session.challenge is None:
+                        if roll >= 0.4:
+                            msg += _("You are struggling to find anything in your current adventure.")
+                    else:
+                        pdef = session.monsters[session.challenge]["pdef"]
+                        mdef = session.monsters[session.challenge]["mdef"]
+                        if roll >= 0.9:
+                            hp = (
+                                session.monsters[session.challenge]["hp"]
+                                * self.ATTRIBS[session.attribute][0]
+                                * session.monster_stats
+                            )
+                            dipl = (
+                                session.monsters[session.challenge]["dipl"]
+                                * self.ATTRIBS[session.attribute][1]
+                                * session.monster_stats
+                            )
+                            msg += _(
+                                "This monster is **a{attr} {challenge}** ({hp_symbol} {hp}/{dipl_symbol} {dipl})\n"
+                            ).format(
+                                challenge=session.challenge,
+                                attr=session.attribute,
+                                hp_symbol=self.emojis.hp,
+                                hp=ceil(hp),
+                                dipl_symbol=self.emojis.dipl,
+                                dipl=ceil(dipl),
+                            )
+                        if roll >= 0.4:
+                            if pdef >= 1.5:
+                                msg += _("Swords bounce off this monster as it's skin is **almost impenetrable!**\n")
+                            elif pdef >= 1.25:
+                                msg += _("This monster has **extremely tough** armour!\n")
+                            elif pdef > 1:
+                                msg += _("Swords don't cut this monster **quite as well!**\n")
+                            elif pdef > 0.75:
+                                msg += _("This monster is **soft and easy** to slice!\n")
+                            else:
+                                msg += _("Swords slice through this monster like a **hot knife through butter!**\n")
+                        if roll >= 0.6:
+                            if mdef >= 1.5:
+                                msg += _("Magic? Pfft, magic is **no match** for this creature!\n")
+                            elif mdef >= 1.25:
+                                msg += _("This monster has **substantial magic resistance!**\n")
+                            elif mdef > 1:
+                                msg += _("This monster has increased **magic resistance!**\n")
+                            elif mdef > 0.75:
+                                msg += _("This monster's hide **melts to magic!**\n")
+                            else:
+                                msg += _("Magic spells are **hugely effective** against this monster!\n")
+
+                    if msg:
+                        return await smart_embed(ctx, msg)
+                    else:
+                        return await smart_embed(ctx, _("You have failed to discover anything about this monster."))
+            else:
+                cooldown_time = (c.heroclass["cooldown"]) + cooldown_time - time.time()
+                return await smart_embed(
+                    ctx,
+                    _(
+                        "Your hero is currently recovering from the last time they used this skill. Try again in {}"
+                    ).format(humanize_timedelta(seconds=int(cooldown_time))),
+                )
+
+    @commands.command()
     async def rage(self, ctx: Context):
         """[Berserker Class Only]
 
@@ -4020,7 +4166,7 @@ class Adventure(commands.Cog):
                     return await smart_embed(
                         ctx, _("**{}**, ability already in use.").format(self.escape(ctx.author.display_name)),
                     )
-                cooldown_time = max(300, (1200 - ((c.luck + c.total_att) * 2)))
+                cooldown_time = max(300, (1200 - max((c.luck + c.total_att) * 2, 0)))
                 if "cooldown" not in c.heroclass:
                     c.heroclass["cooldown"] = cooldown_time + 1
                 if c.heroclass["cooldown"] <= time.time():
@@ -4067,7 +4213,7 @@ class Adventure(commands.Cog):
                     return await smart_embed(
                         ctx, _("**{}**, ability already in use.").format(self.escape(ctx.author.display_name)),
                     )
-                cooldown_time = max(300, (1200 - ((c.luck + c.total_int) * 2)))
+                cooldown_time = max(300, (1200 - max((c.luck + c.total_int) * 2, 0)))
                 if "cooldown" not in c.heroclass:
                     c.heroclass["cooldown"] = cooldown_time + 1
                 if c.heroclass["cooldown"] <= time.time():
@@ -4115,7 +4261,7 @@ class Adventure(commands.Cog):
                     return await smart_embed(
                         ctx, _("{}, ability already in use.").format(self.escape(ctx.author.display_name)),
                     )
-                cooldown_time = max(300, (1200 - ((c.luck + c.total_cha) * 2)))
+                cooldown_time = max(300, (1200 - max((c.luck + c.total_cha) * 2, 0)))
                 if "cooldown" not in c.heroclass:
                     c.heroclass["cooldown"] = cooldown_time + 1
                 if c.heroclass["cooldown"] <= time.time():
@@ -4554,12 +4700,12 @@ class Adventure(commands.Cog):
         if ctx.guild.id in self._sessions:
             adventure_obj = self._sessions[ctx.guild.id]
             link = adventure_obj.message.jump_url
-
+            challenge = adventure_obj.challenge if adventure_obj.easy_mode else _("Unknown")
             return await smart_embed(
                 ctx,
                 _(
                     f"There's already another adventure going on in this server.\n"
-                    f"Currently fighting: [{adventure_obj.challenge}]({link})"
+                    f"Currently fighting: [{challenge}]({link})"
                 ),
             )
 
@@ -4789,6 +4935,7 @@ class Adventure(commands.Cog):
     async def _simple(self, ctx: Context, adventure_msg, challenge: str = None, attribute: str = None):
         self.bot.dispatch("adventure", ctx)
         text = ""
+        easy_mode = await self.config.easy_mode()
         monster_roster, monster_stats, transcended = await self.update_monster_roster(ctx.author)
         if not challenge or challenge not in monster_roster:
             challenge = await self.get_challenge(ctx, monster_roster)
@@ -4797,43 +4944,48 @@ class Adventure(commands.Cog):
             attribute = attribute.lower()
         else:
             attribute = random.choice(list(self.ATTRIBS.keys()))
-
         if transcended:
             new_challenge = challenge.replace("Ascended", "Transcended")
-            if "Transcended" in new_challenge:
-                self.bot.dispatch("adventure_transcended", ctx)
         else:
             new_challenge = challenge
 
-        if "Ascended" in new_challenge:
-            self.bot.dispatch("adventure_ascended", ctx)
-        if attribute == "n immortal":
-            self.bot.dispatch("adventure_immortal", ctx)
-        if attribute == " possessed":
-            self.bot.dispatch("adventure_possessed", ctx)
-        if monster_roster[challenge]["boss"]:
-            timer = 60 * 5
-            text = box(_("\n [{} Alarm!]").format(new_challenge), lang="css")
-            self.bot.dispatch("adventure_boss", ctx)  # dispatches an event on bosses
-        elif monster_roster[challenge]["miniboss"]:
-            timer = 60 * 3
-            self.bot.dispatch("adventure_miniboss", ctx)
+        if easy_mode:
+            no_monster = False
+            if monster_roster[challenge]["boss"]:
+                timer = 60 * 5
+                self.bot.dispatch("adventure_boss", ctx)
+                text = box(_("\n [{} Alarm!]").format(new_challenge), lang="css")
+            elif monster_roster[challenge]["miniboss"]:
+                timer = 60 * 3
+                self.bot.dispatch("adventure_miniboss", ctx)
+            else:
+                timer = 60 * 2
+            if "Transcended" in new_challenge:
+                self.bot.dispatch("adventure_transcended", ctx)
+            elif "Ascended" in new_challenge:
+                self.bot.dispatch("adventure_ascended", ctx)
+            if attribute == "n immortal":
+                self.bot.dispatch("adventure_immortal", ctx)
+            elif attribute == " possessed":
+                self.bot.dispatch("adventure_possessed", ctx)
         else:
-            timer = 60 * 2
-
+            timer = 60 * 4
+            no_monster = random.randint(0, 100) == 25
         self._sessions[ctx.guild.id] = GameSession(
-            challenge=new_challenge,
-            attribute=attribute,
+            challenge=new_challenge if not no_monster else None,
+            attribute=attribute if not no_monster else None,
             guild=ctx.guild,
-            boss=monster_roster[challenge]["boss"],
-            miniboss=monster_roster[challenge]["miniboss"],
+            boss=monster_roster[challenge]["boss"] if not no_monster else None,
+            miniboss=monster_roster[challenge]["miniboss"] if not no_monster else None,
             timer=timer,
-            monster=monster_roster[challenge],
-            monsters=monster_roster,
-            monster_stats=monster_stats,
+            monster=monster_roster[challenge] if not no_monster else None,
+            monsters=monster_roster if not no_monster else None,
+            monster_stats=monster_stats if not no_monster else None,
             message=ctx.message,
-            transcended=transcended,
+            transcended=transcended if not no_monster else None,
             monster_modified_stats=self._dynamic_monster_stats(ctx, monster_roster[challenge]),
+            easy_mode=easy_mode,
+            no_monster=no_monster,
         )
         adventure_msg = (
             f"{adventure_msg}{text}\n{random.choice(self.LOCATIONS)}\n"
@@ -4848,102 +5000,132 @@ class Adventure(commands.Cog):
 
     async def _choice(self, ctx: Context, adventure_msg):
         session = self._sessions[ctx.guild.id]
-        dragon_text = _(
-            "but **a{attr} {chall}** "
-            "just landed in front of you glaring! \n\n"
-            "What will you do and will other heroes be brave enough to help you?\n"
-            "Heroes have 5 minutes to participate via reaction:"
-            "\n\nReact with: {reactions}"
-        ).format(
-            attr=session.attribute,
-            chall=session.challenge,
-            reactions="**"
-            + _("Fight")
-            + "** - **"
-            + _("Spell")
-            + "** - **"
-            + _("Talk")
-            + "** - **"
-            + _("Pray")
-            + "** - **"
-            + _("Run")
-            + "**",
-        )
-        basilisk_text = _(
-            "but **a{attr} {chall}** stepped out looking around. \n\n"
-            "What will you do and will other heroes help your cause?\n"
-            "Heroes have 3 minutes to participate via reaction:"
-            "\n\nReact with: {reactions}"
-        ).format(
-            attr=session.attribute,
-            chall=session.challenge,
-            reactions="**"
-            + _("Fight")
-            + "** - **"
-            + _("Spell")
-            + "** - **"
-            + _("Talk")
-            + "** - **"
-            + _("Pray")
-            + "** - **"
-            + _("Run")
-            + "**",
-        )
-        normal_text = _(
-            "but **a{attr} {chall}** "
-            "is guarding it with{threat}. \n\n"
-            "What will you do and will other heroes help your cause?\n"
-            "Heroes have 2 minutes to participate via reaction:"
-            "\n\nReact with: {reactions}"
-        ).format(
-            attr=session.attribute,
-            chall=session.challenge,
-            threat=random.choice(self.THREATEE),
-            reactions="**"
-            + _("Fight")
-            + "** - **"
-            + _("Spell")
-            + "** - **"
-            + _("Talk")
-            + "** - **"
-            + _("Pray")
-            + "** - **"
-            + _("Run")
-            + "**",
-        )
+        easy_mode = session.easy_mode
+        if easy_mode:
+            dragon_text = _(
+                "but **a{attr} {chall}** "
+                "just landed in front of you glaring! \n\n"
+                "What will you do and will other heroes be brave enough to help you?\n"
+                "Heroes have 5 minutes to participate via reaction:"
+                "\n\nReact with: {reactions}"
+            ).format(
+                attr=session.attribute,
+                chall=session.challenge,
+                reactions="**"
+                + _("Fight")
+                + "** - **"
+                + _("Spell")
+                + "** - **"
+                + _("Talk")
+                + "** - **"
+                + _("Pray")
+                + "** - **"
+                + _("Run")
+                + "**",
+            )
+            basilisk_text = _(
+                "but **a{attr} {chall}** stepped out looking around. \n\n"
+                "What will you do and will other heroes help your cause?\n"
+                "Heroes have 3 minutes to participate via reaction:"
+                "\n\nReact with: {reactions}"
+            ).format(
+                attr=session.attribute,
+                chall=session.challenge,
+                reactions="**"
+                + _("Fight")
+                + "** - **"
+                + _("Spell")
+                + "** - **"
+                + _("Talk")
+                + "** - **"
+                + _("Pray")
+                + "** - **"
+                + _("Run")
+                + "**",
+            )
+            normal_text = _(
+                "but **a{attr} {chall}** "
+                "is guarding it with{threat}. \n\n"
+                "What will you do and will other heroes help your cause?\n"
+                "Heroes have 2 minutes to participate via reaction:"
+                "\n\nReact with: {reactions}"
+            ).format(
+                attr=session.attribute,
+                chall=session.challenge,
+                threat=random.choice(self.THREATEE),
+                reactions="**"
+                + _("Fight")
+                + "** - **"
+                + _("Spell")
+                + "** - **"
+                + _("Talk")
+                + "** - **"
+                + _("Pray")
+                + "** - **"
+                + _("Run")
+                + "**",
+            )
 
-        embed = discord.Embed(colour=discord.Colour.blurple())
-        use_embeds = await self.config.guild(ctx.guild).embed() and ctx.channel.permissions_for(ctx.me).embed_links
-        if session.boss:
-            if use_embeds:
-                embed.description = f"{adventure_msg}\n{dragon_text}"
-                embed.colour = discord.Colour.dark_red()
-                if session.monster["image"]:
-                    embed.set_image(url=session.monster["image"])
-                adventure_msg = await ctx.send(embed=embed)
-            else:
-                adventure_msg = await ctx.send(f"{adventure_msg}\n{dragon_text}")
-            timeout = 60 * 5
+            embed = discord.Embed(colour=discord.Colour.blurple())
+            use_embeds = await self.config.guild(ctx.guild).embed() and ctx.channel.permissions_for(ctx.me).embed_links
+            if session.boss:
+                if use_embeds:
+                    embed.description = f"{adventure_msg}\n{dragon_text}"
+                    embed.colour = discord.Colour.dark_red()
+                    if session.monster["image"]:
+                        embed.set_image(url=session.monster["image"])
+                    adventure_msg = await ctx.send(embed=embed)
+                else:
+                    adventure_msg = await ctx.send(f"{adventure_msg}\n{dragon_text}")
+                timeout = 60 * 5
 
-        elif session.miniboss:
-            if use_embeds:
-                embed.description = f"{adventure_msg}\n{basilisk_text}"
-                embed.colour = discord.Colour.dark_green()
-                if session.monster["image"]:
-                    embed.set_image(url=session.monster["image"])
-                adventure_msg = await ctx.send(embed=embed)
+            elif session.miniboss:
+                if use_embeds:
+                    embed.description = f"{adventure_msg}\n{basilisk_text}"
+                    embed.colour = discord.Colour.dark_green()
+                    if session.monster["image"]:
+                        embed.set_image(url=session.monster["image"])
+                    adventure_msg = await ctx.send(embed=embed)
+                else:
+                    adventure_msg = await ctx.send(f"{adventure_msg}\n{basilisk_text}")
+                timeout = 60 * 3
             else:
-                adventure_msg = await ctx.send(f"{adventure_msg}\n{basilisk_text}")
-            timeout = 60 * 3
+                if use_embeds:
+                    embed.description = f"{adventure_msg}\n{normal_text}"
+                    if session.monster["image"]:
+                        embed.set_thumbnail(url=session.monster["image"])
+                    adventure_msg = await ctx.send(embed=embed)
+                else:
+                    adventure_msg = await ctx.send(f"{adventure_msg}\n{normal_text}")
+                timeout = 60 * 2
         else:
+            embed = discord.Embed(colour=discord.Colour.blurple())
+            use_embeds = await self.config.guild(ctx.guild).embed() and ctx.channel.permissions_for(ctx.me).embed_links
+            timeout = 60 * 4
+            obscured_text = _(
+                "What will you do and will other heroes help your cause?\n"
+                "Heroes have {time} minutes to participate via reaction:"
+                "\n\nReact with: {reactions}"
+            ).format(
+                reactions="**"
+                + _("Fight")
+                + "** - **"
+                + _("Spell")
+                + "** - **"
+                + _("Talk")
+                + "** - **"
+                + _("Pray")
+                + "** - **"
+                + _("Run")
+                + "**",
+                time=timeout,
+            )
             if use_embeds:
-                embed.description = f"{adventure_msg}\n{normal_text}"
-                if session.monster["image"]:
-                    embed.set_thumbnail(url=session.monster["image"])
+                embed.description = f"{adventure_msg}\n{obscured_text}"
                 adventure_msg = await ctx.send(embed=embed)
             else:
-                adventure_msg = await ctx.send(f"{adventure_msg}\n{normal_text}")
-            timeout = 60 * 2
+                adventure_msg = await ctx.send(f"{adventure_msg}\n{obscured_text}")
+
         session.message_id = adventure_msg.id
         session.message = adventure_msg
         start_adding_reactions(adventure_msg, self._adventure_actions)
@@ -5166,10 +5348,10 @@ class Adventure(commands.Cog):
         critlist: list = []
         failed = False
         lost = False
-        session = self._sessions[ctx.guild.id]
         with contextlib.suppress(discord.HTTPException):
             await message.clear_reactions()
-
+        session = self._sessions[ctx.guild.id]
+        challenge = session.challenge
         fight_list = list(set(session.fight))
         talk_list = list(set(session.talk))
         pray_list = list(set(session.pray))
@@ -5181,11 +5363,66 @@ class Adventure(commands.Cog):
         self._sessions[ctx.guild.id].pray = pray_list
         self._sessions[ctx.guild.id].run = run_list
         self._sessions[ctx.guild.id].magic = magic_list
+        if challenge is None:
+            avaliable_loot = [
+                [0, 0, 1, 5, 2, 1],
+                [0, 0, 0, 0, 1, 2],
+                [0, 0, 1, 5, 1, 1],
+                [0, 0, 1, 3, 0, 1],
+                [0, 0, 1, 1, 1, 1],
+                [0, 0, 0, 0, 0, 1],
+                [0, 0, 3, 1, 0, 0],
+                [0, 0, 1, 2, 1, 0],
+                [0, 0, 0, 3, 2, 0],
+            ]
+            treasure = random.choice(avaliable_loot)
+
+            session.participants = set(fight_list + magic_list + talk_list + pray_list + run_list + fumblelist)
+
+            participants = {
+                "fight": fight_list,
+                "spell": magic_list,
+                "talk": talk_list,
+                "pray": pray_list,
+                "run": run_list,
+                "fumbles": fumblelist,
+            }
+            text = ""
+            text += await self._reward(
+                ctx,
+                [u for u in fight_list + magic_list + pray_list + talk_list if u not in fumblelist],
+                1000 * len(session.participants),
+                1000 * len(session.participants),
+                treasure,
+            )
+            parsed_users = []
+            for (action_name, action) in participants.items():
+                for user in action:
+                    try:
+                        c = await Character.from_json(self.config, user, self._daily_bonus)
+                    except Exception as exc:
+                        log.exception("Error with the new character sheet", exc_info=exc)
+                        continue
+                    current_val = c.adventures.get(action_name, 0)
+                    c.adventures.update({action_name: current_val + 1})
+                    if user not in parsed_users:
+                        special_action = "loses" if lost or user in participants["run"] else "wins"
+                        current_val = c.adventures.get(special_action, 0)
+                        c.adventures.update({special_action: current_val + 1})
+                        c.weekly_score.update({"adventures": c.weekly_score.get("adventures", 0) + 1})
+                        parsed_users.append(user)
+                    await self.config.user(user).set(await c.to_json(self.config))
+            attack, diplomacy, magic, run_msg = await self.handle_run(ctx.guild.id, attack, diplomacy, magic, shame=True)
+
+            output = _(
+                "All adventures prepared for an epic adventure, but they soon realise all this treasure was unprotected!\nIt's a shame for the following adventurers {run_msg}\n{text}"
+            ).format(text=text, run_msg=run_msg)
+            output = pagify(output, page_length=1900)
+            for i in output:
+                await smart_embed(ctx, i, success=True)
+            return
 
         people = len(fight_list) + len(magic_list) + len(talk_list) + len(pray_list) + len(run_list)
-
-        challenge = session.challenge
-
         attack, diplomacy, magic, run_msg = await self.handle_run(ctx.guild.id, attack, diplomacy, magic)
         failed = await self.handle_basilisk(ctx, failed)
         fumblelist, attack, diplomacy, magic, pray_msg = await self.handle_pray(
@@ -5194,12 +5431,10 @@ class Adventure(commands.Cog):
         fumblelist, critlist, diplomacy, talk_msg = await self.handle_talk(
             ctx.guild.id, fumblelist, critlist, diplomacy
         )
-
         # need to pass challenge because we need to query MONSTERS[challenge]["pdef"] (and mdef)
         fumblelist, critlist, attack, magic, fight_msg = await self.handle_fight(
             ctx.guild.id, fumblelist, critlist, attack, magic, challenge
         )
-
         result_msg = run_msg + pray_msg + talk_msg + fight_msg
         challenge_attrib = session.attribute
         hp = int(session.monster_modified_stats["hp"] * self.ATTRIBS[challenge_attrib][0] * session.monster_stats)
@@ -5281,15 +5516,15 @@ class Adventure(commands.Cog):
                     ]
                 treasure = random.choice(avaliable_loot)
             elif session.boss:  # rewards 60:30:10 Epic Legendary Gear Set items
-                avaliable_loot = [[0, 0, 3, 1, 0, 0], [0, 0, 1, 2, 0, 0], [0, 0, 0, 3, 0, 0]]
+                avaliable_loot = [[0, 0, 3, 1, 0, 0], [0, 0, 1, 2, 1, 0], [0, 0, 0, 3, 2, 0]]
                 treasure = random.choice(avaliable_loot)
             elif session.miniboss:  # rewards 50:50 rare:normal chest for killing something like the basilisk
                 treasure = random.choice(
-                    [[1, 1, 1, 0, 0, 0], [0, 0, 1, 1, 0, 0], [0, 0, 2, 2, 0, 0], [0, 1, 0, 2, 0, 0]]
+                    [[1, 1, 1, 0, 0, 0], [0, 0, 1, 1, 1, 0], [0, 0, 2, 2, 0, 0], [0, 1, 0, 2, 1, 0]]
                 )
             elif monster_amount >= 700:  # super hard stuff
                 if roll <= 7:
-                    treasure = random.choice([[0, 0, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0]])
+                    treasure = random.choice([[0, 0, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0], [0, 0, 0, 1, 1, 0]])
             elif monster_amount >= 500:  # rewards 50:50 rare:epic chest for killing hard stuff.
                 if roll <= 5:
                     treasure = random.choice([[0, 0, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0], [0, 1, 1, 0, 0, 0]])
@@ -5303,7 +5538,9 @@ class Adventure(commands.Cog):
             if session.boss:  # always rewards at least an epic chest.
                 # roll for legendary chest
                 roll = random.randint(1, 100)
-                if roll <= 20:
+                if roll <= 10:
+                    treasure[4] += 1
+                elif roll <= 20:
                     treasure[3] += 1
                 else:
                     treasure[2] += 1
@@ -5707,7 +5944,7 @@ class Adventure(commands.Cog):
                     parsed_users.append(user)
                 await self.config.user(user).set(await c.to_json(self.config))
 
-    async def handle_run(self, guild_id, attack, diplomacy, magic):
+    async def handle_run(self, guild_id, attack, diplomacy, magic, shame=False):
         runners = []
         msg = ""
         session = self._sessions[guild_id]
@@ -5715,6 +5952,8 @@ class Adventure(commands.Cog):
             for user in session.run:
                 runners.append(f"**{self.escape(user.display_name)}**")
             msg += _("{} just ran away.\n").format(humanize_list(runners))
+            if shame:
+                msg += _("They are now regretting their pathetic display of courage as their friends enjoy all their new loot.\n")
         return (attack, diplomacy, magic, msg)
 
     async def handle_fight(self, guild_id, fumblelist, critlist, attack, magic, challenge):
@@ -5730,30 +5969,6 @@ class Adventure(commands.Cog):
         failed_emoji = self.emojis.fumble
         if len(attack_list) >= 1:
             msg = ""
-            if len(fight_list) >= 1:
-                # TODO: Remove me when psychic gets added
-                if pdef >= 1.5:
-                    msg += _("Swords bounce off this monster as it's skin is **almost impenetrable!**\n")
-                elif pdef >= 1.25:
-                    msg += _("This monster has **extremely tough** armour!\n")
-                elif pdef > 1:
-                    msg += _("Swords don't cut this monster **quite as well!**\n")
-                elif 0.75 <= pdef < 1:
-                    msg += _("This monster is **soft and easy** to slice!\n")
-                elif pdef > 0 and pdef != 1:
-                    msg += _("Swords slice through this monster like a **hot knife through butter!**\n")
-            if len(magic_list) >= 1:
-                if mdef >= 1.5:
-                    msg += _("Magic? Pfft, your puny magic is **no match** for this creature!\n")
-                elif mdef >= 1.25:
-                    msg += _("This monster has **substantial magic resistance!**\n")
-                elif mdef > 1:
-                    msg += _("This monster has increased **magic resistance!**\n")
-                elif 0.75 <= mdef < 1:
-                    msg += _("This monster's hide **melts to magic!**\n")
-                elif mdef > 0 and mdef != 1:
-                    msg += _("Magic spells are **hugely effective** against this monster!\n")
-
             report = _("Attack Party: \n\n")
         else:
             return (fumblelist, critlist, attack, magic, "")
@@ -5831,6 +6046,8 @@ class Adventure(commands.Cog):
                     f"{self.emojis.dice}({roll}) + "
                     f"{self.emojis.attack}{str(humanize_number(att_value))}\n"
                 )
+        if session.insight[0] == 1:
+            attack += session.insight[1].total_att
         for user in magic_list:
             try:
                 c = await Character.from_json(self.config, user, self._daily_bonus)
@@ -5904,13 +6121,19 @@ class Adventure(commands.Cog):
                     f"{self.emojis.dice}({roll}) + "
                     f"{self.emojis.magic}{humanize_number(int_value)}\n"
                 )
+        if session.insight[0] == 1:
+            attack += session.insight[1].total_int
         if fumble_count == len(attack_list):
             report += _("No one!")
         msg += report + "\n"
         for user in fumblelist:
             if user in session.fight:
+                if session.insight[0] == 1:
+                    attack -= session.insight[1].total_att
                 session.fight.remove(user)
             elif user in session.magic:
+                if session.insight[0] == 1:
+                    attack -= session.insight[1].total_int
                 session.magic.remove(user)
         return (fumblelist, critlist, attack, magic, msg)
 
@@ -6139,11 +6362,15 @@ class Adventure(commands.Cog):
                     f"{self.emojis.dice}({roll}) + "
                     f"{self.emojis.talk}{humanize_number(dipl_value)}\n"
                 )
+            if session.insight[0] == 1:
+                diplomacy += session.insight[1].total_cha
         if fumble_count == len(talk_list):
             report += _("No one!")
         msg = msg + report + "\n"
         for user in fumblelist:
             if user in talk_list:
+                if session.insight[0] == 1:
+                    diplomacy -= session.insight[1].total_cha
                 session.talk.remove(user)
         return (fumblelist, critlist, diplomacy, msg)
 

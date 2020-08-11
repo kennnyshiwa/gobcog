@@ -407,6 +407,9 @@ class GameSession:
     transcended: bool = False
     insight = (0, None)
     start_time: datetime = datetime.now()
+    easy_mode: bool = False
+    insight = (0, None)
+    no_monster: bool = False
 
     def __init__(self, **kwargs):
         self.challenge: str = kwargs.pop("challenge")
@@ -430,6 +433,8 @@ class GameSession:
         self.run: List[discord.Member] = []
         self.transcended: bool = kwargs.pop("transcended", False)
         self.start_time = datetime.now()
+        self.easy_mode = kwargs.get("easy_mode", False)
+        self.no_monster = kwargs.get("no_monster", False)
 
 
 class Character(Item):
