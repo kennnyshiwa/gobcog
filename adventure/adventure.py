@@ -5391,8 +5391,8 @@ class Adventure(commands.Cog):
             text += await self._reward(
                 ctx,
                 [u for u in fight_list + magic_list + pray_list + talk_list if u not in fumblelist],
-                1000 * len(session.participants),
-                1000 * len(session.participants),
+                500 + int(500 * (0.25 * len(session.participants))),
+                0,
                 treasure,
             )
             parsed_users = []
@@ -5412,7 +5412,9 @@ class Adventure(commands.Cog):
                         c.weekly_score.update({"adventures": c.weekly_score.get("adventures", 0) + 1})
                         parsed_users.append(user)
                     await self.config.user(user).set(await c.to_json(self.config))
-            attack, diplomacy, magic, run_msg = await self.handle_run(ctx.guild.id, attack, diplomacy, magic, shame=True)
+            attack, diplomacy, magic, run_msg = await self.handle_run(
+                ctx.guild.id, attack, diplomacy, magic, shame=True
+            )
 
             output = _(
                 "All adventures prepared for an epic adventure, but they soon realise all this treasure was unprotected!\nIt's a shame for the following adventurers {run_msg}\n{text}"
@@ -5953,7 +5955,9 @@ class Adventure(commands.Cog):
                 runners.append(f"**{self.escape(user.display_name)}**")
             msg += _("{} just ran away.\n").format(humanize_list(runners))
             if shame:
-                msg += _("They are now regretting their pathetic display of courage as their friends enjoy all their new loot.\n")
+                msg += _(
+                    "They are now regretting their pathetic display of courage as their friends enjoy all their new loot.\n"
+                )
         return (attack, diplomacy, magic, msg)
 
     async def handle_fight(self, guild_id, fumblelist, critlist, attack, magic, challenge):
