@@ -9,13 +9,14 @@ from string import ascii_letters, digits
 from typing import Dict, List, Mapping, MutableMapping, Optional, Set, Tuple
 
 import discord
+from beautifultable import ALIGN_LEFT, BeautifulTable
 from discord.ext.commands import check
 from discord.ext.commands.converter import Converter
 from discord.ext.commands.errors import BadArgument
 from redbot.core import Config, commands
 from redbot.core.i18n import Translator
 from redbot.core.utils import AsyncIter
-from redbot.core.utils.chat_formatting import box, humanize_number
+from redbot.core.utils.chat_formatting import box, escape, humanize_number
 from redbot.core.utils.menus import start_adding_reactions
 from redbot.core.utils.predicates import ReactionPredicate
 
@@ -843,8 +844,6 @@ class Character(Item):
         async for (idx, slot_name) in AsyncIter(tmp.keys(), steps=100).enumerate():
             if tmp[slot_name]:
                 final.append(sorted(tmp[slot_name], key=_sort))
-
-        final.sort(key=lambda i: ORDER.index(i[0][1].slot[0]) if len(i[0][1].slot) == 1 else ORDER.index("two handed"))
         return final
 
     async def looted(self, how_many: int = 1) -> List[Tuple[str, int]]:
@@ -889,11 +888,29 @@ class Character(Item):
         if consumed is None:
             consumed = []
         bkpk = await self.get_sorted_backpack(self.backpack, slot=slot, rarity=rarity)
-        form_string = _(
-            "Items in Backpack: \n( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | [DEGRADE#] | OWNED | SET (SET PIECES)"
-        )
-        consumed_list = [i for i in consumed]
-        rjust = max([len(str(i[1])) + 4 for slot_group in bkpk for i in slot_group] or [1, 4])
+        if not forging:
+            msg = _("{author}'s backpack\n\n").format(author=escape(self.user.display_name, formatting=True))
+        else:
+            msg = _("{author}'s forgeables\n\n").format(author=escape(self.user.display_name, formatting=True))
+        msg_len = len(msg)
+        table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+        table.set_style(BeautifulTable.STYLE_RST)
+        tables = []
+        table.columns.header = [
+            "Name",
+            "Slot",
+            "ATT",
+            "CHA",
+            "INT",
+            "DEX",
+            "LUC",
+            "LVL",
+            "QTY",
+            "DEG",
+            "SET",
+        ]
+        consumed_list = consumed
+        remainder = False
         async for slot_group in AsyncIter(bkpk, steps=100):
             slot_name_org = slot_group[0][1].slot
             slot_name = slot_name_org[0] if len(slot_name_org) < 2 else "two handed"
@@ -901,66 +918,71 @@ class Character(Item):
                 continue
             if clean and not slot_group:
                 continue
-            slot_string = ""
             current_equipped = getattr(self, slot_name if slot != "two handed" else "left", None)
             async for item in AsyncIter(slot_group, steps=100):
-                if forging and (item[1].rarity in ["forged", "set"] or item[1] in consumed_list):
+                item = item[1]
+                if forging and (item.rarity in ["forged", "set"] or item in consumed_list):
                     continue
-                if forging and item[1].rarity == "ascended":
+                if forging and item.rarity == "ascended":
                     if self.rebirths < 30:
                         continue
-                if rarity is not None and rarity != item[1].rarity:
+                if rarity is not None and rarity != item.rarity:
                     continue
-                if equippable and not can_equip(self, item[1]):
+                if equippable and not can_equip(self, item):
                     continue
-                if set_name is not None and set_name != item[1].set:
+                if set_name is not None and set_name != item.set:
                     continue
-                settext = ""
-                att_space = " " if len(str(item[1].att)) >= 1 else ""
-                cha_space = " " if len(str(item[1].cha)) >= 1 else ""
-                int_space = " " if len(str(item[1].int)) >= 1 else ""
-                dex_space = " " if len(str(item[1].dex)) >= 1 else ""
-                luck_space = " " if len(str(item[1].luck)) >= 1 else ""
-                owned = ""
-                if item[1].rarity in ["legendary", "event", "ascended"] and item[1].degrade >= 0:
-                    owned += f" | [{item[1].degrade}#]"
-                owned += f" | {item[1].owned}"
-                if item[1].set:
-                    settext += f" | Set `{item[1].set}` ({item[1].parts}pcs)"
-                e_level = equip_level(self, item[1])
-                if e_level > self.lvl:
-                    level = f"[{e_level}]"
-                else:
-                    level = f"{e_level}"
-
+                if len(str(table)) > (1800 - (msg_len + 20)):
+                    remainder = False
+                    tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
+                    table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+                    table.set_style(BeautifulTable.STYLE_RST)
+                    table.columns.header = [
+                        "Name",
+                        "Slot",
+                        "ATT",
+                        "CHA",
+                        "INT",
+                        "DEX",
+                        "LUC",
+                        "LVL",
+                        "QTY",
+                        "DEG",
+                        "SET",
+                    ]
                 if show_delta:
-                    att = self.get_equipped_delta(current_equipped, item[1], "att")
-                    cha = self.get_equipped_delta(current_equipped, item[1], "cha")
-                    int = self.get_equipped_delta(current_equipped, item[1], "int")
-                    dex = self.get_equipped_delta(current_equipped, item[1], "dex")
-                    luck = self.get_equipped_delta(current_equipped, item[1], "luck")
-                    rjuststat = 5
+                    att = self.get_equipped_delta(current_equipped, item, "att")
+                    cha = self.get_equipped_delta(current_equipped, item, "cha")
+                    int = self.get_equipped_delta(current_equipped, item, "int")
+                    dex = self.get_equipped_delta(current_equipped, item, "dex")
+                    luck = self.get_equipped_delta(current_equipped, item, "luck")
                 else:
-                    att = item[1].att if len(slot_name_org) < 2 else item[1].att * 2
-                    cha = item[1].cha if len(slot_name_org) < 2 else item[1].cha * 2
-                    int = item[1].int if len(slot_name_org) < 2 else item[1].int * 2
-                    dex = item[1].dex if len(slot_name_org) < 2 else item[1].dex * 2
-                    luck = item[1].luck if len(slot_name_org) < 2 else item[1].luck * 2
-                    rjuststat = 3
-
-                stats = (
-                    f"({att_space}{att:<{rjuststat}} |"
-                    f"{cha_space}{cha:<{rjuststat}} |"
-                    f"{int_space}{int:<{rjuststat}} |"
-                    f"{dex_space}{dex:<{rjuststat}} |"
-                    f"{luck_space}{luck:<{rjuststat}} )"
+                    att = item.att if len(slot_name_org) < 2 else item.att * 2
+                    cha = item.cha if len(slot_name_org) < 2 else item.cha * 2
+                    int = item.int if len(slot_name_org) < 2 else item.int * 2
+                    dex = item.dex if len(slot_name_org) < 2 else item.dex * 2
+                    luck = item.luck if len(slot_name_org) < 2 else item.luck * 2
+                remainder = True
+                table.rows.append(
+                    (
+                        str(item),
+                        slot_name,
+                        att,
+                        cha,
+                        int,
+                        dex,
+                        luck,
+                        f"[{r}]" if (r := equip_level(self, item)) is not None and r > self.lvl else f"{r}",
+                        item.owned,
+                        f"[{item.degrade}]"
+                        if item.rarity in ["legendary", "event", "ascended"] and item.degrade >= 0
+                        else "N/A",
+                        item.set or "N/A",
+                    )
                 )
-
-                slot_string += f"\n{str(item[1]):<{rjust}} - {stats} | Lvl {level:<5}{owned}{settext}"
-            if slot_string:
-                form_string += f"\n\n {slot_name.title()} slot\n{slot_string}"
-
-        return form_string + "\n"
+        if remainder:
+            tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
+        return tables
 
     def get_equipped_delta(self, equiped: Item, to_compare: Item, stat_name: str) -> str:
         if (equiped and len(equiped.slot) == 2) and (to_compare and len(to_compare.slot) == 2):

@@ -853,16 +853,8 @@ class Adventure(commands.Cog):
                         ctx, _("{} is not a valid slot, select one of {}").format(slot, humanize_list(ORDER)),
                     )
 
-            backpack_contents = _("{author}'s backpack \n\n{backpack}\n").format(
-                author=self.escape(ctx.author.display_name),
-                backpack=await c.get_backpack(rarity=rarity, slot=slot, show_delta=show_diff, equippable=True),
-            )
-            msgs = []
-            async for page in AsyncIter(
-                pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1900), steps=100
-            ):
-                msgs.append(box(page, lang="css"))
-            return await menu(ctx, msgs, DEFAULT_CONTROLS)
+            backpack_pages = await c.get_backpack(rarity=rarity, slot=slot, show_delta=show_diff, equippable=True)
+            return await menu(ctx, backpack_pages, DEFAULT_CONTROLS)
 
     @commands.group(name="backpack", autohelp=False)
     @commands.bot_has_permissions(add_reactions=True)
@@ -909,15 +901,7 @@ class Adventure(commands.Cog):
                         ctx, _("{} is not a valid slot, select one of {}").format(slot, humanize_list(ORDER)),
                     )
 
-            backpack_contents = _("{author}'s backpack \n\n{backpack}\n").format(
-                author=self.escape(ctx.author.display_name),
-                backpack=await c.get_backpack(rarity=rarity, slot=slot, show_delta=show_diff),
-            )
-            msgs = []
-            async for page in AsyncIter(
-                pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1900), steps=100
-            ):
-                msgs.append(box(page, lang="css"))
+            msgs = await c.get_backpack(rarity=rarity, slot=slot, show_delta=show_diff)
             controls = DEFAULT_CONTROLS.copy()
 
             async def _backpack_info(
@@ -2751,11 +2735,7 @@ class Adventure(commands.Cog):
                             self.escape(ctx.author.display_name)
                         ),
                     )
-                forgeables = _("{author}'s forgeables\n\n{bc}\n").format(
-                    author=self.escape(ctx.author.display_name), bc=await c.get_backpack(forging=True, clean=True)
-                )
-                pages = pagify(forgeables, delims=["\n"], shorten_by=20, page_length=1900)
-                pages = [box(page, lang="css") for page in pages]
+                pages = await c.get_backpack(forging=True, clean=True)
                 task = asyncio.create_task(menu(ctx, pages, DEFAULT_CONTROLS, timeout=180))
                 await smart_embed(
                     ctx,
@@ -3527,7 +3507,9 @@ class Adventure(commands.Cog):
                         await self.config.user(ctx.author).set(await c.to_json(self.config))
                         items = await self._open_chests(ctx, ctx.author, box_type, number, character=c)
                         msg = _("{}, you've opened the following items:\n").format(self.escape(ctx.author.display_name))
+                        msg_len = len(msg)
                         table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+                        table.set_style(BeautifulTable.STYLE_RST)
                         msgs = []
                         total = len(items.values())
                         table.columns.header = [
@@ -3544,11 +3526,11 @@ class Adventure(commands.Cog):
                             "SET",
                         ]
                         async for index, item in AsyncIter(items.values(), steps=100).enumerate(start=1):
-                            if len(str(table)) > 1900:
+                            if len(str(table)) > (1800 - (msg_len + 20)):
                                 table.rows.sort("LVL", reverse=True)
-                                table.set_style(BeautifulTable.STYLE_RST)
                                 msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
                                 table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+                                table.set_style(BeautifulTable.STYLE_RST)
                                 table.columns.header = [
                                     "Name",
                                     "Slot",
@@ -3581,7 +3563,6 @@ class Adventure(commands.Cog):
                             )
                             if index == total:
                                 table.rows.sort("LVL", reverse=True)
-                                table.set_style(BeautifulTable.STYLE_RST)
                                 msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
                 else:
                     # atomically save reduced loot count then lock again when saving inside
@@ -4652,16 +4633,8 @@ class Adventure(commands.Cog):
         set_msg = _("{set_name} Set Pieces\n\n").format(set_name=title_cased_set_name)
         set_msg += loadout_display
         msg_list.append(box(set_msg, lang="css"))
-
-        backpack_contents = _("{author}'s backpack \n\n{backpack}\n").format(
-            author=self.escape(ctx.author.display_name),
-            backpack=await c.get_backpack(set_name=title_cased_set_name, clean=True),
-        )
-        async for page in AsyncIter(
-            pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1950), steps=100
-        ):
-            msg_list.append(box(page, lang="css"))
-
+        backpack_contents = await c.get_backpack(set_name=title_cased_set_name, clean=True)
+        msg_list.extend(backpack_contents)
         await menu(ctx, pages=msg_list, controls=DEFAULT_CONTROLS)
 
     @commands.command()
@@ -4682,7 +4655,9 @@ class Adventure(commands.Cog):
         new_items = set()
         items = c.get_current_equipment()
         msg = _("{}'s Character Sheet\n\n").format(self.escape(ctx.author.display_name))
+        msg_len = len(msg)
         table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+        table.set_style(BeautifulTable.STYLE_RST)
         msgs = []
         total = len(items)
         table.columns.header = [
@@ -4698,9 +4673,8 @@ class Adventure(commands.Cog):
             "DEG",
             "SET",
         ]
-        table.set_style(BeautifulTable.STYLE_RST)
         async for index, item in AsyncIter(items, steps=100).enumerate(start=1):
-            if len(str(table)) > 1900:
+            if len(str(table)) > (1800 - (msg_len + 20)):
                 table.rows.sort("Slot")
                 msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
                 table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
@@ -7933,12 +7907,11 @@ class Adventure(commands.Cog):
         ]
         msgs = []
         for k, v in sets.items():
-            if len(str(table)) > 1900:
-                table.rows.sort("LVL", reverse=True)
-                table.set_style(BeautifulTable.STYLE_RST)
+            if len(str(table)) > (1800 - 20):
                 table.rows.sort("Name", reverse=False)
                 msgs.append(box(str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
                 table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+                table.set_style(BeautifulTable.STYLE_RST)
                 table.columns.header = [
                     "Name",
                     "Unique Pieces",
