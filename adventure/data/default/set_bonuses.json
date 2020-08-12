@@ -8,7 +8,7 @@
     "Ainz Ooal Gown" : [
         {"parts": 4, "att": 0, "cha": 0, "int": 0, "dex": 0, "luck": 0, "statmult": 1.0, "xpmult": 0.0, "cpmult": 1.1},
         {"parts": 8, "att": 0, "cha": 0, "int": 0, "dex": 0, "luck": 0, "statmult": 1.2, "xpmult": 0.0, "cpmult": 1.1},
-        {"parts": 10, "att": 0, "cha": 0, "int": 0, "dex": 0, "luck": 0, "statmult": 1.4, "xpmult": 0.0, "cpmult": 1.3}
+        {"parts": 10, "att": 0, "cha": 0, "int": 0, "dex": 0, "luck": 0, "statmult": 1.6, "xpmult": 0.0, "cpmult": 1.3}
     ],
     "Skrrtis": [
         {"parts": 2, "att": 0, "cha": 0, "int": 0, "dex": 0, "luck": 2, "statmult": 1.0, "xpmult": 1.4, "cpmult": 1.0}
