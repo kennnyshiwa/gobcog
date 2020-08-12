@@ -6370,7 +6370,7 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 continue
-            rebirths = c.rebirths * (3 if c.heroclass["name"] == "Cleric" else 1)
+            rebirths = c.rebirths * (2 if c.heroclass["name"] == "Cleric" else 1)
             if c.heroclass["name"] == "Cleric":
                 crit_mod = max(max(c.dex, c.luck) + (c.total_int // 20), 0)
                 mod = 0
@@ -6426,15 +6426,15 @@ class Adventure(commands.Cog):
 
                     if fight_list:
                         pray_att_bonus = int(
-                            (mod * len(fight_list)) + ((mod * len(fight_list)) * max(rebirths * 0.1, 1.5))
+                            (mod * len(fight_list)) + ((mod * len(fight_list)) * max(rebirths * 0.05, 1.5))
                         )
                     if talk_list:
                         pray_diplo_bonus = int(
-                            (mod * len(talk_list)) + ((mod * len(talk_list)) * max(rebirths * 0.1, 1.5))
+                            (mod * len(talk_list)) + ((mod * len(talk_list)) * max(rebirths * 0.05, 1.5))
                         )
                     if magic_list:
                         pray_magic_bonus = int(
-                            (mod * len(magic_list)) + ((mod * len(magic_list)) * max(rebirths * 0.1, 1.5))
+                            (mod * len(magic_list)) + ((mod * len(magic_list)) * max(rebirths * 0.05, 1.5))
                         )
                     attack += pray_att_bonus
                     magic += pray_magic_bonus
