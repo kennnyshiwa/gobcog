@@ -343,15 +343,24 @@ class EconomySource(menus.ListPageSource):
                     f"{balance: <{bal_len + 5}} "
                     f"<<{username}>>\n"
                 )
-        embed = discord.Embed(
-            title="Adventure Economy Leaderboard\nYou are currently # {}/{}".format(
-                self.author_position, len(self.entries)
-            ),
-            color=await menu.ctx.embed_color(),
-            description="```md\n{}``` ```md\n{}``` ```py\nTotal bank amount {}\nYou have {}% of the total amount!```".format(
-                header_primary, header, humanize_number(_total_balance), percent
-            ),
-        )
+        if self.author_position is not None:
+            embed = discord.Embed(
+                title="Adventure Economy Leaderboard\nYou are currently # {}/{}".format(
+                    self.author_position, len(self.entries)
+                ),
+                color=await menu.ctx.embed_color(),
+                description="```md\n{}``` ```md\n{}``` ```py\nTotal bank amount {}\nYou have {}% of the total amount!```".format(
+                    header_primary, header, humanize_number(_total_balance), percent
+                ),
+            )
+        else:
+            embed = discord.Embed(
+                title="Adventure Economy Leaderboard\n",
+                color=await menu.ctx.embed_color(),
+                description="```md\n{}``` ```md\n{}``` ```py\nTotal bank amount {}\nYou have {}% of the total amount!```".format(
+                    header_primary, header, humanize_number(_total_balance), percent
+                ),
+            )
         embed.set_footer(text=f"Page {menu.current_page + 1}/{self.get_max_pages()}")
 
         return embed
