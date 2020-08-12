@@ -1641,7 +1641,7 @@ class Adventure(commands.Cog):
     async def loadout(self, ctx: Context):
         """Set up gear sets or loadouts."""
 
-    @loadout.command(name="save")
+    @loadout.command(name="save", aliases=["update"])
     async def save_loadout(self, ctx: Context, name: str):
         """Save your current equipment as a loadout."""
         if not await self.allow_in_dm(ctx):
@@ -1653,29 +1653,15 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 return
-            if name in c.loadouts:
-                await smart_embed(
-                    ctx,
-                    _("{author}, you already have a loadout named {name}.").format(
-                        author=self.escape(ctx.author.display_name), name=name
-                    ),
-                )
-                return
-            else:
-                try:
-                    c = await Character.from_json(self.config, ctx.author, self._daily_bonus)
-                except Exception as exc:
-                    log.exception("Error with the new character sheet", exc_info=exc)
-                    return
-                loadout = await Character.save_loadout(c)
-                c.loadouts[name] = loadout
-                await self.config.user(ctx.author).set(await c.to_json(self.config))
-                await smart_embed(
-                    ctx,
-                    _("**{author}**, your current equipment has been saved to {name}.").format(
-                        author=self.escape(ctx.author.display_name), name=name
-                    ),
-                )
+            loadout = await Character.save_loadout(c)
+            c.loadouts[name] = loadout
+            await self.config.user(ctx.author).set(await c.to_json(self.config))
+            await smart_embed(
+                ctx,
+                _("**{author}**, your current equipment has been saved to {name}.").format(
+                    author=self.escape(ctx.author.display_name), name=name
+                ),
+            )
 
     @loadout.command(name="delete", aliases=["del", "rem", "remove"])
     async def remove_loadout(self, ctx: Context, name: str):
@@ -7751,4 +7737,26 @@ class Adventure(commands.Cog):
                 players=players_string,
                 name=await bank.get_currency_name(ctx.guild),
             ),
+        )
+
+    @commands.command(name="mysets")
+    async def commands_mysets(self, ctx: commands.Context):
+        """Show your sets."""
+
+        try:
+            character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
+        except Exception as exc:
+            log.exception("Error with the new character sheet", exc_info=exc)
+            return
+
+        sets = await character.get_set_count()
+        headers = ["Set Name", "Unique Pieces", "Unique Owned"]
+        await ctx.send(
+            box(
+                tabulate(
+                    [(k, f"{v[0]}", f"{v[1]}" if v[1] == v[0] else f"[{v[1]}]") for k, v in sets.items()],
+                    headers=headers,
+                ),
+                lang="css",
+            )
         )
