@@ -3416,7 +3416,7 @@ class Adventure(commands.Cog):
                             )
                         elif c.heroclass["name"] == "Psychic":
                             c.heroclass["cooldown"] = (
-                                max(120, (3600 - max((c.luck - c.total_cha) * 2, 0))) + time.time()
+                                max(300, (900 - max((c.luck - c.total_cha) * 2, 0))) + time.time()
                             )
                         await self.config.user(ctx.author).set(await c.to_json(self.config))
                         await self._clear_react(class_msg)
@@ -4166,7 +4166,7 @@ class Adventure(commands.Cog):
                 return await smart_embed(
                     ctx, _("{}, ability already in use.").format(self.escape(ctx.author.display_name)),
                 )
-            cooldown_time = max(120, (3600 - max((c.luck + c.total_cha) * 2, 0)))
+            cooldown_time = max(300, (900 - max((c.luck + c.total_cha) * 2, 0)))
             if "cooldown" not in c.heroclass:
                 c.heroclass["cooldown"] = cooldown_time + 1
             if c.heroclass["cooldown"] + cooldown_time <= time.time():
