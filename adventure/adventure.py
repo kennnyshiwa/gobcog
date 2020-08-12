@@ -7931,7 +7931,20 @@ class Adventure(commands.Cog):
             "Unique Pieces",
             "Unique Owned",
         ]
+        msgs = []
         for k, v in sets.items():
+            if len(str(table)) > 1900:
+                table.rows.sort("LVL", reverse=True)
+                table.set_style(BeautifulTable.STYLE_RST)
+                table.rows.sort("Name", reverse=False)
+                msgs.append(box(str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
+                table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+                table.columns.header = [
+                    "Name",
+                    "Unique Pieces",
+                    "Unique Owned",
+                ]
             table.rows.append((k, f"{v[0]}", f"{v[1]}" if v[1] == v[0] else f"[{v[1]}]"))
         table.rows.sort("Name", reverse=False)
-        await ctx.send(box(str(table), lang="css",))
+        msgs.append(box(str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
+        await menu(ctx, msgs, DEFAULT_CONTROLS)
