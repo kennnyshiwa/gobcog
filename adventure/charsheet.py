@@ -825,7 +825,7 @@ class Character(Item):
         def _sort(item):
             return self.get_item_rarity(item), item[1].lvl, item[1].total_stats
 
-        async for item in AsyncIter(backpack, steps=5):
+        async for item in AsyncIter(backpack, steps=100):
             slots = backpack[item].slot
             slot_name = slots[0]
             if len(slots) > 1:
@@ -840,7 +840,7 @@ class Character(Item):
             tmp[slot_name].append((item, backpack[item]))
 
         final = []
-        async for (idx, slot_name) in AsyncIter(tmp.keys()).enumerate():
+        async for (idx, slot_name) in AsyncIter(tmp.keys(), steps=100).enumerate():
             if tmp[slot_name]:
                 final.append(sorted(tmp[slot_name], key=_sort))
 
@@ -894,7 +894,7 @@ class Character(Item):
         )
         consumed_list = [i for i in consumed]
         rjust = max([len(str(i[1])) + 4 for slot_group in bkpk for i in slot_group] or [1, 4])
-        async for slot_group in AsyncIter(bkpk):
+        async for slot_group in AsyncIter(bkpk, steps=100):
             slot_name_org = slot_group[0][1].slot
             slot_name = slot_name_org[0] if len(slot_name_org) < 2 else "two handed"
             if slot is not None and slot != slot_name:
@@ -903,7 +903,7 @@ class Character(Item):
                 continue
             slot_string = ""
             current_equipped = getattr(self, slot_name if slot != "two handed" else "left", None)
-            async for item in AsyncIter(slot_group):
+            async for item in AsyncIter(slot_group, steps=100):
                 if forging and (item[1].rarity in ["forged", "set"] or item[1] in consumed_list):
                     continue
                 if forging and item[1].rarity == "ascended":
@@ -1716,8 +1716,9 @@ class PercentageConverter(Converter):
         return arg
 
 
-def equip_level(char, item):
-    return item.lvl if item.rarity == "event" else max(item.lvl - min(max(char.rebirths // 2 - 1, 0), 50), 1)
+def equip_level(char, item, rebirths=None):
+    level = getattr(char, "rebirths", rebirths)
+    return item.lvl if item.rarity == "event" else max(item.lvl - min(max(level // 2 - 1, 0), 50), 1)
 
 
 def can_equip(char: Character, item: Item):
@@ -1728,7 +1729,7 @@ def can_equip(char: Character, item: Item):
 
 async def calculate_sp(lvl_end: int, c: Character):
     points = c.rebirths * 10
-    async for rc in AsyncIter(range(lvl_end)):
+    async for rc in AsyncIter(range(lvl_end), steps=100):
         if lvl_end >= 300:
             points += 1
         elif lvl_end >= 200:

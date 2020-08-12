@@ -14,6 +14,7 @@ from types import SimpleNamespace
 from typing import List, MutableMapping, Optional, Union
 
 import discord
+from beautifultable import ALIGN_LEFT, BeautifulTable
 from discord.ext.commands import CheckFailure
 from discord.ext.commands.errors import BadArgument
 from redbot.core import Config, commands
@@ -27,7 +28,6 @@ from redbot.core.utils.chat_formatting import box, escape, humanize_list, humani
 from redbot.core.utils.common_filters import filter_various_mentions
 from redbot.core.utils.menus import DEFAULT_CONTROLS, menu, start_adding_reactions
 from redbot.core.utils.predicates import MessagePredicate, ReactionPredicate
-from tabulate import tabulate
 
 import adventure.charsheet
 from . import bank
@@ -611,7 +611,7 @@ class Adventure(commands.Cog):
             accounts = await group.all()
             tmp = accounts.copy()
             async with group.all() as adventurers_data:
-                async for user in AsyncIter(tmp, steps=10):
+                async for user in AsyncIter(tmp, steps=100):
                     if "items" in tmp[user]:
                         equipped = tmp[user]["items"]
                         for slot, item in equipped.items():
@@ -631,7 +631,7 @@ class Adventure(commands.Cog):
                                         adventurers_data[user]["loadouts"][loadout_name][slot][item_name] = item_data
                     if "backpack" in tmp[user]:
                         backpack = tmp[user]["backpack"]
-                        async for item_name, item_data in AsyncIter(backpack.items(), steps=25):
+                        async for item_name, item_data in AsyncIter(backpack.items(), steps=100):
                             if "King Solomos" in item_name:
                                 del adventurers_data[user]["backpack"][item_name]
                                 item_name = item_name.replace("Solomos", "Solomons")
@@ -858,7 +858,9 @@ class Adventure(commands.Cog):
                 backpack=await c.get_backpack(rarity=rarity, slot=slot, show_delta=show_diff, equippable=True),
             )
             msgs = []
-            async for page in AsyncIter(pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1900)):
+            async for page in AsyncIter(
+                pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1900), steps=100
+            ):
                 msgs.append(box(page, lang="css"))
             return await menu(ctx, msgs, DEFAULT_CONTROLS)
 
@@ -912,7 +914,9 @@ class Adventure(commands.Cog):
                 backpack=await c.get_backpack(rarity=rarity, slot=slot, show_delta=show_diff),
             )
             msgs = []
-            async for page in AsyncIter(pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1900)):
+            async for page in AsyncIter(
+                pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1900), steps=100
+            ):
                 msgs.append(box(page, lang="css"))
             controls = DEFAULT_CONTROLS.copy()
 
@@ -1807,8 +1811,8 @@ class Adventure(commands.Cog):
             for (l_name, loadout) in c.loadouts.items():
                 if name and name.lower() == l_name:
                     index = count
-                stats = await self._build_loadout_display({"items": loadout})
-                msg = _("[{name} Loadout for {author}]\n\n{stats}").format(
+                stats = await self._build_loadout_display({"items": loadout}, rebirths=c.rebirths, index=count + 1)
+                msg = _("{name} Loadout for {author}\n\n{stats}").format(
                     name=l_name, author=self.escape(ctx.author.display_name), stats=stats
                 )
                 msg_list.append(box(msg, lang="css"))
@@ -1949,7 +1953,7 @@ class Adventure(commands.Cog):
         delta = timedelta(minutes=6)
         with contextlib.suppress(asyncio.CancelledError):
             while True:
-                async for guild_id, session in AsyncIter(self._sessions.copy(), steps=5):
+                async for guild_id, session in AsyncIter(self._sessions.copy(), steps=100):
                     if session.start_time + delta > datetime.now():
                         if guild_id in self._sessions:
                             del self._sessions[guild_id]
@@ -1998,10 +2002,15 @@ class Adventure(commands.Cog):
                 new_taxes[k] = float(v)
         new_taxes = {k: v for k, v in sorted(new_taxes.items(), key=lambda item: item[1])}
         await self.config.tax_brackets.set(new_taxes)
-        headers = ["Tax %", "Tax Threshold"]
-        await smart_embed(
-            ctx, box(tabulate([(f"{v:.2%}", humanize_number(int(k))) for k, v in new_taxes.items()], headers=headers))
-        )
+
+        taxes = await self.config.tax_brackets()
+        table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+        table.set_style(BeautifulTable.STYLE_RST)
+        table.columns.header = ["Tax %", "Tax Threshold"]
+        for k, v in taxes.items():
+            table.rows.append((f"[{v:.2%}]", humanize_number(int(k))))
+        table.rows.sort("Tax %", reverse=True)
+        await smart_embed(ctx, box(str(table), lang="css",))
 
     @commands.is_owner()
     @commands_adventureset_economy.command(name="rate")
@@ -3517,41 +3526,68 @@ class Adventure(commands.Cog):
                         c.treasure[redux] -= number
                         await self.config.user(ctx.author).set(await c.to_json(self.config))
                         items = await self._open_chests(ctx, ctx.author, box_type, number, character=c)
-                        msg = _(
-                            "{}, you've opened the following items:\n"
-                            "( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | LOOTED | SET (SET PIECES)"
-                        ).format(self.escape(ctx.author.display_name))
-                        rjust = max([len(str(i)) for i in items.values()])
-                        async for item in AsyncIter(items.values()):
-                            settext = ""
-                            att_space = " " if len(str(item.att)) >= 1 else ""
-                            cha_space = " " if len(str(item.cha)) >= 1 else ""
-                            int_space = " " if len(str(item.int)) >= 1 else ""
-                            dex_space = " " if len(str(item.dex)) >= 1 else ""
-                            luck_space = " " if len(str(item.luck)) >= 1 else ""
-                            owned = f" | {item.owned}"
-                            if item.set:
-                                settext += f" | Set `{item.set}` ({item.parts}pcs)"
-                            msg += (
-                                f"\n{str(item):<{rjust}} - "
-                                f"({att_space}{item.att} |"
-                                f"{cha_space}{item.cha} |"
-                                f"{int_space}{item.int} |"
-                                f"{dex_space}{item.dex} |"
-                                f"{luck_space}{item.luck} )"
-                                f" | Lv {equip_level(c, item):<3}"
-                                f"{owned}{settext}"
-                            )
+                        msg = _("{}, you've opened the following items:\n").format(self.escape(ctx.author.display_name))
+                        table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
                         msgs = []
-                        async for page in AsyncIter(pagify(msg, page_length=1900)):
-                            msgs.append(box(page, lang="css"))
+                        total = len(items.values())
+                        table.columns.header = [
+                            "Name",
+                            "Slot",
+                            "ATT",
+                            "CHA",
+                            "INT",
+                            "DEX",
+                            "LUC",
+                            "LVL",
+                            "QTY",
+                            "DEG",
+                            "SET",
+                        ]
+                        async for index, item in AsyncIter(items.values(), steps=100).enumerate(start=1):
+                            if len(str(table)) > 1900:
+                                table.rows.sort("LVL", reverse=True)
+                                table.set_style(BeautifulTable.STYLE_RST)
+                                msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
+                                table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+                                table.columns.header = [
+                                    "Name",
+                                    "Slot",
+                                    "ATT",
+                                    "CHA",
+                                    "INT",
+                                    "DEX",
+                                    "LUC",
+                                    "LVL",
+                                    "QTY",
+                                    "DEG",
+                                    "SET",
+                                ]
+                            table.rows.append(
+                                (
+                                    str(item),
+                                    item.slot[0] if len(item.slot) == 1 else "two handed",
+                                    item.att,
+                                    item.cha,
+                                    item.int,
+                                    item.dex,
+                                    item.luck,
+                                    f"[{r}]" if (r := equip_level(c, item)) is not None and r > c.lvl else f"{r}",
+                                    item.owned,
+                                    f"[{item.degrade}]"
+                                    if item.rarity in ["legendary", "event", "ascended"] and item.degrade >= 0
+                                    else "N/A",
+                                    item.set or "N/A",
+                                )
+                            )
+                            if index == total:
+                                table.rows.sort("LVL", reverse=True)
+                                table.set_style(BeautifulTable.STYLE_RST)
+                                msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
                 else:
-                    msgs = []
                     # atomically save reduced loot count then lock again when saving inside
                     # open chests
                     c.treasure[redux] -= 1
                     await self.config.user(ctx.author).set(await c.to_json(self.config))
-
                     await self._open_chest(ctx, ctx.author, box_type, character=c)  # returns item and msg
         if msgs:
             await menu(ctx, msgs, DEFAULT_CONTROLS)
@@ -4612,7 +4648,7 @@ class Adventure(commands.Cog):
             else:
                 d.update({v["slot"][0]: {k: v}})
 
-        loadout_display = await self._build_loadout_display({"items": d}, loadout=False)
+        loadout_display = await self._build_loadout_display({"items": d}, loadout=False, rebirths=c.rebirths)
         set_msg = _("{set_name} Set Pieces\n\n").format(set_name=title_cased_set_name)
         set_msg += loadout_display
         msg_list.append(box(set_msg, lang="css"))
@@ -4621,31 +4657,12 @@ class Adventure(commands.Cog):
             author=self.escape(ctx.author.display_name),
             backpack=await c.get_backpack(set_name=title_cased_set_name, clean=True),
         )
-        async for page in AsyncIter(pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1950)):
+        async for page in AsyncIter(
+            pagify(backpack_contents, delims=["\n"], shorten_by=20, page_length=1950), steps=100
+        ):
             msg_list.append(box(page, lang="css"))
 
         await menu(ctx, pages=msg_list, controls=DEFAULT_CONTROLS)
-
-    async def _setinfo_details(self, ctx: Context, title_cased_set_name: str):
-        """
-        Helper function for setinfo to display set pieces.
-        Reformats TR_GEAR_SET to be displayed using the loadout display.
-        """
-
-        set_items = {key: value for key, value in self.TR_GEAR_SET.items() if value["set"] == title_cased_set_name}
-
-        d = {}
-        for k, v in set_items.items():
-            if len(v["slot"]) > 1:
-                d.update({v["slot"][0]: {k: v}})
-                d.update({v["slot"][1]: {k: v}})
-            else:
-                d.update({v["slot"][0]: {k: v}})
-
-        stats = await self._build_loadout_display({"items": d}, loadout=False)
-        msg = _("{set_name} Set Pieces\n\n").format(set_name=title_cased_set_name)
-        msg += stats
-        await ctx.send(box(msg, lang="css"))
 
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
@@ -4662,18 +4679,86 @@ class Adventure(commands.Cog):
         except Exception:
             log.exception("Error with the new character sheet")
             return
+        new_items = set()
+        items = c.get_current_equipment()
+        msg = _("{}'s Character Sheet\n\n").format(self.escape(ctx.author.display_name))
+        table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+        msgs = []
+        total = len(items)
+        table.columns.header = [
+            "Name",
+            "Slot",
+            "ATT",
+            "CHA",
+            "INT",
+            "DEX",
+            "LUC",
+            "LVL",
+            "QTY",
+            "DEG",
+            "SET",
+        ]
+        table.set_style(BeautifulTable.STYLE_RST)
+        async for index, item in AsyncIter(items, steps=100).enumerate(start=1):
+            if len(str(table)) > 1900:
+                table.rows.sort("Slot")
+                msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
+                table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+                table.set_style(BeautifulTable.STYLE_RST)
+                table.columns.header = [
+                    "Name",
+                    "Slot",
+                    "ATT",
+                    "CHA",
+                    "INT",
+                    "DEX",
+                    "LUC",
+                    "LVL",
+                    "QTY",
+                    "DEG",
+                    "SET",
+                ]
+            data = (
+                str(item),
+                item.slot[0] if len(item.slot) == 1 else "two handed",
+                item.att * (1 if len(item.slot) == 1 else 2),
+                item.cha * (1 if len(item.slot) == 1 else 2),
+                item.int * (1 if len(item.slot) == 1 else 2),
+                item.dex * (1 if len(item.slot) == 1 else 2),
+                item.luck * (1 if len(item.slot) == 1 else 2),
+                f"[{r}]" if (r := equip_level(c, item)) is not None and r > c.lvl else f"{r}",
+                item.owned,
+                f"[{item.degrade}]"
+                if item.rarity in ["legendary", "event", "ascended"] and item.degrade >= 0
+                else "N/A",
+                item.set or "N/A",
+            )
+            if data not in table.rows:
+                table.rows.append(data)
+            if index == total:
+                table.rows.sort("Slot")
+                table.set_style(BeautifulTable.STYLE_RST)
+                msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
 
-        legend = _("( ATT | CHA | INT | DEX | LUCK ) | LEVEL REQ | [DEGRADE#] | SET (SET PIECES)")
-        equipped_gear_msg = _("{user}'s Character Sheet\n\nItems Equipped:\n{legend}{equip}").format(
-            legend=legend, equip=c.get_equipment(), user=c.user.display_name
-        )
         await menu(
-            ctx, pages=[box(c, lang="css"), box(equipped_gear_msg, lang="css")], controls=DEFAULT_CONTROLS,
+            ctx, pages=[box(c, lang="css"), *msgs], controls=DEFAULT_CONTROLS,
         )
 
-    async def _build_loadout_display(self, userdata, loadout=True):
-        form_string = _("( ATT  |  CHA  |  INT  |  DEX  |  LUCK)")
-        form_string += _("\n\nItems Equipped:") if loadout else ""
+    async def _build_loadout_display(self, userdata, loadout=True, rebirths: int = None, index: int = None):
+        table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+        table.set_style(BeautifulTable.STYLE_RST)
+        table.columns.header = [
+            "Name",
+            "Slot",
+            "ATT",
+            "CHA",
+            "INT",
+            "DEX",
+            "LUC",
+            "LVL",
+            "SET",
+        ]
+        form_string = ""
         last_slot = ""
         att = 0
         cha = 0
@@ -4681,39 +4766,42 @@ class Adventure(commands.Cog):
         dex = 0
         luck = 0
         for (slot, data) in userdata["items"].items():
-
             if slot == "backpack":
                 continue
             if last_slot == "two handed":
                 last_slot = slot
                 continue
-
             if not data:
-                last_slot = slot
-                form_string += _("\n\n {} slot").format(slot.title())
                 continue
             item = Item.from_json(data)
-            slot_name = userdata["items"][slot]["".join(i for i in data.keys())]["slot"]
-            slot_name = slot_name[0] if len(slot_name) < 2 else _("two handed")
-            form_string += _("\n\n {} slot").format(slot_name.title())
-            last_slot = slot_name
-            rjust = max([len(i) for i in data.keys()])
-            form_string += f"\n  - {str(item):<{rjust}} - "
-            form_string += (
-                f"({item.att if len(item.slot) < 2 else (item.att * 2)} | "
-                f"{item.cha if len(item.slot) < 2 else (item.cha * 2)} | "
-                f"{item.int if len(item.slot) < 2 else (item.int * 2)} | "
-                f"{item.dex if len(item.slot) < 2 else (item.dex * 2)} | "
-                f"{item.luck if len(item.slot) < 2 else (item.luck * 2)})"
+            data = (
+                str(item),
+                item.slot[0] if len(item.slot) == 1 else "two handed",
+                item.att * (1 if len(item.slot) == 1 else 2),
+                item.cha * (1 if len(item.slot) == 1 else 2),
+                item.int * (1 if len(item.slot) == 1 else 2),
+                item.dex * (1 if len(item.slot) == 1 else 2),
+                item.luck * (1 if len(item.slot) == 1 else 2),
+                equip_level(None, item, rebirths),
+                item.set or "N/A",
             )
-            att += item.att if len(item.slot) < 2 else (item.att * 2)
-            cha += item.cha if len(item.slot) < 2 else (item.cha * 2)
-            intel += item.int if len(item.slot) < 2 else (item.int * 2)
-            dex += item.dex if len(item.slot) < 2 else (item.dex * 2)
-            luck += item.luck if len(item.slot) < 2 else (item.luck * 2)
+            if data not in table.rows:
+                table.rows.append(data)
+            att += item.att
+            cha += item.cha
+            intel += item.int
+            dex += item.dex
+            luck += item.luck
+
+        table.rows.sort("Slot")
+        table.set_style(BeautifulTable.STYLE_RST)
+        form_string += str(table)
+
         form_string += _("\n\nTotal stats: ")
         form_string += f"({att} | {cha} | {intel} | {dex} | {luck})"
-        return form_string + "\n"
+        if index is not None:
+            form_string += f"\nPage {index}"
+        return form_string
 
     @commands.command()
     async def unequip(self, ctx: Context, *, item: EquipmentConverter):
@@ -4938,7 +5026,7 @@ class Adventure(commands.Cog):
             return
         possible_monsters = []
         stat_range = self._adv_results.get_stat_range(ctx)
-        async for (e, (m, stats)) in AsyncIter(monsters.items()).enumerate(start=1):
+        async for (e, (m, stats)) in AsyncIter(monsters.items(), steps=100).enumerate(start=1):
             appropriate_range = max(stats["hp"], stats["dipl"]) <= (max(c.att, c.int, c.cha) * 5)
             if stat_range["max_stat"] > 0:
                 main_stat = stats["hp"] if (stat_range["stat_type"] == "attack") else stats["dipl"]
@@ -6797,7 +6885,7 @@ class Adventure(commands.Cog):
         self, ctx: Context, user: discord.Member, chest_type: str, amount: int, character: Character,
     ):
         items = {}
-        async for i in AsyncIter(range(0, max(amount, 0))):
+        async for i in AsyncIter(range(0, max(amount, 0)), steps=100):
             item = await self._roll_chest(chest_type, character)
             item_name = str(item)
             if item_name in items:
@@ -7044,7 +7132,7 @@ class Adventure(commands.Cog):
         newcp = 0
         rewards_list = []
         phrase = ""
-        async for user in AsyncIter(userlist):
+        async for user in AsyncIter(userlist, steps=100):
             self._rewards[user.id] = {}
             try:
                 c = await Character.from_json(self.config, user, self._daily_bonus)
@@ -7321,7 +7409,7 @@ class Adventure(commands.Cog):
                 if not guild.get_member(acc):
                     del raw_accounts[acc]
         raw_accounts_new = {}
-        async for (k, v) in AsyncIter(raw_accounts.items()):
+        async for (k, v) in AsyncIter(raw_accounts.items(), steps=100):
             user_data = {}
             for item in ["lvl", "rebirths", "set_items"]:
                 if item not in v:
@@ -7836,13 +7924,14 @@ class Adventure(commands.Cog):
             return
 
         sets = await character.get_set_count()
-        headers = ["Set Name", "Unique Pieces", "Unique Owned"]
-        await ctx.send(
-            box(
-                tabulate(
-                    [(k, f"{v[0]}", f"{v[1]}" if v[1] == v[0] else f"[{v[1]}]") for k, v in sets.items()],
-                    headers=headers,
-                ),
-                lang="css",
-            )
-        )
+        table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+        table.set_style(BeautifulTable.STYLE_RST)
+        table.columns.header = [
+            "Name",
+            "Unique Pieces",
+            "Unique Owned",
+        ]
+        for k, v in sets.items():
+            table.rows.append((k, f"{v[0]}", f"{v[1]}" if v[1] == v[0] else f"[{v[1]}]"))
+        table.rows.sort("Name", reverse=False)
+        await ctx.send(box(str(table), lang="css",))
