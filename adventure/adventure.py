@@ -1098,7 +1098,7 @@ class Adventure(commands.Cog):
             async with ctx.typing():
                 items = [i for n, i in c.backpack.items() if i.rarity not in ["forged", "set"]]
                 count = 0
-                async for item in AsyncIter(items):
+                async for item in AsyncIter(items, steps=100):
                     if rarity and item.rarity != rarity:
                         continue
                     if slot:
@@ -1108,7 +1108,7 @@ class Adventure(commands.Cog):
                             continue
                     item_price = 0
                     old_owned = item.owned
-                    async for x in AsyncIter(range(0, item.owned)):
+                    async for x in AsyncIter(range(0, item.owned), steps=100):
                         item.owned -= 1
                         item_price += self._sell(c, item)
                         if item.owned <= 0:
@@ -3316,7 +3316,7 @@ class Adventure(commands.Cog):
                                 max(1800, (7200 - max(c.luck * 2 + c.total_int * 2, 0))) + time.time()
                             )
                             c.heroclass["catch_cooldown"] = (
-                                max(600, (3600 - (c.luck * 2 + c.total_int * 2))) + time.time()
+                                max(600, (3600 - max(c.luck * 2 + c.total_int * 2, 0))) + time.time()
                             )
                         elif c.heroclass["name"] == "Berserker":
                             c.heroclass["cooldown"] = (
@@ -6206,7 +6206,7 @@ class Adventure(commands.Cog):
                 continue
             rebirths = c.rebirths * (3 if c.heroclass["name"] == "Cleric" else 1)
             if c.heroclass["name"] == "Cleric":
-                crit_mod = max(c.dex, c.luck) + (c.total_int // 20)
+                crit_mod = max(max(c.dex, c.luck) + (c.total_int // 20), 0)
                 mod = 0
                 max_roll = 50 if c.rebirths >= 15 else 20
                 if crit_mod != 0:
@@ -6965,11 +6965,11 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 continue
-            userxp = int(xp + (xp * 0.5 * c.rebirths) + (xp * 0.1 * min(250, c.total_int / 10)))
+            userxp = int(xp + (xp * 0.5 * c.rebirths) + max((xp * 0.1 * min(250, c.total_int / 10)), 0))
             # This got exponentially out of control before checking 1 skill
             # To the point where you can spec into only INT and
             # Reach level 1000 in a matter of days
-            usercp = int(cp + (cp * c.luck) // 2)
+            usercp = int(cp + max(cp * c.luck, 0) // 2)
             userxp = int(userxp * (c.gear_set_bonus.get("xpmult", 1) + daymult))
             usercp = int(usercp * (c.gear_set_bonus.get("cpmult", 1) + daymult))
             newxp += userxp
@@ -7057,14 +7057,14 @@ class Adventure(commands.Cog):
         else:
             base = (10, 100)
         price = random.randint(base[0], base[1]) * abs(item.max_main_stat)
-        price += price * int((c.total_cha) / 1000)
+        price += price * max(int((c.total_cha) / 1000), -1)
 
         if c.luck > 0:
             price = price + round(price * (c.luck / 1000))
         if c.luck < 0:
             price = price - round(price * (abs(c.luck) / 1000))
-            if price < 0:
-                price = 0
+        if price < 0:
+            price = 0
         price += round(price * min(0.1 * c.rebirths / 15, 0.4))
 
         return max(price, base[0])
