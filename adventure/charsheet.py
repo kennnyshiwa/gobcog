@@ -563,39 +563,30 @@ class Character(Item):
             stats,
         )
 
-    async def get_set_count(self):
+    async def get_set_count(self, return_items: bool = False, set_name: str = None):
         set_names = {}
+        returnable_items = []
         item_names = set()
         last_slot = ""
-        for slots in ORDER:
-            if slots == "two handed":
-                continue
-            if last_slot == "two handed":
-                last_slot = slots
-                continue
-            item = getattr(self, slots)
-            if item is None or item.name in item_names:
-                continue
-            if item.set and item.set not in set_names:
-                item_names.add(item.name)
-                set_names.update({item.set: (item.parts, 1)})
-            elif item.set and item.set in set_names:
-                item_names.add(item.name)
-                parts, count = set_names[item.set]
-                set_names[item.set] = (parts, count + 1)
         async for item in AsyncIter(self.backpack, steps=100):
             item = self.backpack[item]
             if item.rarity != "set":
                 continue
             if item.name in item_names:
                 continue
+            if set_name and set_name != item.set:
+                continue
             if item.set and item.set not in set_names:
+                returnable_items.append(item)
                 item_names.add(item.name)
                 set_names.update({item.set: (item.parts, 1)})
             elif item.set and item.set in set_names:
+                returnable_items.append(item)
                 item_names.add(item.name)
                 parts, count = set_names[item.set]
                 set_names[item.set] = (parts, count + 1)
+        if return_items:
+            return returnable_items
         for set_name in SET_BONUSES:
             if set_name in set_names:
                 continue

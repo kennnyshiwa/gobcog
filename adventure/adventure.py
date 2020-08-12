@@ -982,6 +982,33 @@ class Adventure(commands.Cog):
                 c = await c.equip_item(equip, True, self.is_dev(ctx.author))  # FIXME:
                 await self.config.user(ctx.author).set(await c.to_json(self.config))
 
+    @_backpack.command(name="eset")
+    async def backpack_eset(self, ctx: Context, *, set_name: str):
+        """Equip all parts of a set that you own."""
+        set_list = humanize_list(sorted([f"`{i}`" for i in self.SET_BONUSES.keys()], key=str.lower))
+        if set_name is None:
+            return await smart_embed(
+                ctx, _("Use this command with one of the following set names: \n{sets}").format(sets=set_list),
+            )
+        async with self.get_lock(ctx.author):
+            try:
+                character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
+            except Exception as exc:
+                log.exception("Error with the new character sheet", exc_info=exc)
+                return
+
+            pieces = await character.get_set_count(return_items=True, set_name=set_name.title())
+            if not pieces:
+                return await smart_embed(
+                    ctx, _("Your have no pieces of `{set_name}` to equip.").format(set_name=set_name),
+                )
+            for piece in pieces:
+                character = await character.equip_item(piece, from_backpack=True)
+            await self.config.user(ctx.author).set(await character.to_json(self.config))
+            await smart_embed(
+                ctx, _("I've equipped all piece of `{set_name}` that you are able to equip.").format(set_name=set_name),
+            )
+
     @_backpack.command(name="disassemble")
     async def backpack_disassemble(self, ctx: Context, *, backpack_item: ItemConverter):
         """
