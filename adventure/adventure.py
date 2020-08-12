@@ -42,6 +42,7 @@ from .charsheet import (
     GameSession,
     Item,
     ItemConverter,
+    ItemsConverter,
     PercentageConverter,
     RarityConverter,
     SlotConverter,
@@ -1010,13 +1011,13 @@ class Adventure(commands.Cog):
             )
 
     @_backpack.command(name="disassemble")
-    async def backpack_disassemble(self, ctx: Context, *, backpack_item: ItemConverter):
+    async def backpack_disassemble(self, ctx: Context, *, backpack_items: ItemsConverter):
         """
         Disassemble a set item from your backpack.
         This will provide a chance for a chest,
         or the item might break while you are handling it...
         """
-        assert isinstance(backpack_item, Item)
+        assert isinstance(backpack_items[0], Item)
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx, _("You tried to disassemble an item but the monster ahead of you commands your attention."),
@@ -1027,39 +1028,70 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 return
-
-            try:
-                item = character.backpack[backpack_item.name]
-            except KeyError:
-                return
-
-            if item.rarity != "set":
-                return await smart_embed(ctx, _("You can only disassemble set items."))
-            if character.heroclass["name"] != "Tinkerer":
-                roll = random.randint(0, 1)
-            else:
-                roll = random.randint(0, 3)
-
-            if roll == 0:
-                item.owned -= 1
-                if item.owned <= 0:
-                    del character.backpack[item.name]
-                await self.config.user(ctx.author).set(await character.to_json(self.config))
-                return await smart_embed(
-                    ctx, _("Your attempt at disassembling {} failed and it has been destroyed.").format(item.name),
-                )
-            else:
-                item.owned -= 1
-                if item.owned <= 0:
-                    del character.backpack[item.name]
-                character.treasure[3] += roll
-                await self.config.user(ctx.author).set(await character.to_json(self.config))
-                return await smart_embed(
-                    ctx,
-                    _("Your attempt at disassembling {} was successful and you have received {} legendary {}.").format(
-                        item.name, roll, _("chests") if roll > 1 else _("chest")
-                    ),
-                )
+            failed = 0
+            success = 0
+            op = backpack_items[0]
+            async for item in AsyncIter(backpack_items[1], steps=100):
+                try:
+                    item = character.backpack[item.name]
+                except KeyError:
+                    continue
+                if op == "single":
+                    if character.heroclass["name"] != "Tinkerer":
+                        roll = random.randint(0, 5)
+                        chests = 1
+                    else:
+                        roll = random.randint(0, 3)
+                        chests = random.randint(1, 2)
+                    index = min(RARITIES.index(item.rarity), 4)
+                    if roll == 0:
+                        item.owned -= 1
+                        if item.owned <= 0:
+                            del character.backpack[item.name]
+                        await self.config.user(ctx.author).set(await character.to_json(self.config))
+                        return await smart_embed(
+                            ctx,
+                            _("Your attempt at disassembling `{}` failed and it has been destroyed.").format(item.name),
+                        )
+                    else:
+                        item.owned -= 1
+                        if item.owned <= 0:
+                            del character.backpack[item.name]
+                        character.treasure[index] += chests
+                        await self.config.user(ctx.author).set(await character.to_json(self.config))
+                        return await smart_embed(
+                            ctx,
+                            _("Your attempt at disassembling `{}` was successful and you have received {}{}.").format(
+                                item.name, chests, _("chests") if chests > 1 else _("chest")
+                            ),
+                        )
+                elif op == "all":
+                    owned = item.owned
+                    async for count in AsyncIter(range(0, owned + 1), steps=100):
+                        if character.heroclass["name"] != "Tinkerer":
+                            roll = random.randint(0, 5)
+                            chests = 1
+                        else:
+                            roll = random.randint(0, 3)
+                            chests = random.randint(1, 2)
+                        if roll != 0:
+                            item.owned -= 1
+                            if item.owned <= 0 and item.name in character.backpack:
+                                del character.backpack[item.name]
+                            failed += 1
+                        else:
+                            item.owned -= 1
+                            if item.owned <= 0 and item.name in character.backpack:
+                                del character.backpack[item.name]
+                            character.treasure[index] += chests
+                            success += 1
+            await self.config.user(ctx.author).set(await character.to_json(self.config))
+            return await smart_embed(
+                ctx,
+                _("Your attempt at disassembling multiple items {succ} were successful and {fail} failed.").format(
+                    succ=humanize_number(success), fail=humanize_number(failed)
+                ),
+            )
 
     @_backpack.command(name="sellall")
     async def backpack_sellall(
@@ -3519,7 +3551,7 @@ class Adventure(commands.Cog):
             return await smart_embed(
                 ctx,
                 _(
-                    "**{author}**, you need to specify how many "
+                    "**{author}**, you need to specify how much "
                     "{currency_name} you are willing to offer to the gods for your success."
                 ).format(author=self.escape(ctx.author.display_name), currency_name=currency_name),
             )
