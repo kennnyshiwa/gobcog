@@ -1022,7 +1022,26 @@ class Adventure(commands.Cog):
             return await smart_embed(
                 ctx, _("You tried to disassemble an item but the monster ahead of you commands your attention."),
             )
+
         async with self.get_lock(ctx.author):
+            if len(backpack_items[1]) > 2:
+                msg = await ctx.send(
+                    "Are you sure you want to disattemble {count} items in your inventory?".format(
+                        count=len(backpack_items[1])
+                    )
+                )
+            start_adding_reactions(msg, ReactionPredicate.YES_OR_NO_EMOJIS)
+            pred = ReactionPredicate.yes_or_no(msg, ctx.author)
+            try:
+                await ctx.bot.wait_for("reaction_add", check=pred, timeout=60)
+            except asyncio.TimeoutError:
+                await self._clear_react(msg)
+                return
+
+            if not pred.result:
+                await ctx.send("Not disassembling those items.")
+                return
+
             try:
                 character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
             except Exception as exc:
