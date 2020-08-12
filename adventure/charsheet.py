@@ -609,9 +609,9 @@ class Character(Item):
                         base[key] += value
                     elif key in ["cpmult", "xpmult", "statmult"]:
                         if value > 1:
-                            base[key] += (value - 1)
+                            base[key] += value - 1
                         elif value >= 0:
-                            base[key] -= (1 - value)
+                            base[key] -= 1 - value
         self.gear_set_bonus = base
         self.gear_set_bonus["cpmult"] = max(0, self.gear_set_bonus["cpmult"])
         self.gear_set_bonus["xpmult"] = max(0, self.gear_set_bonus["xpmult"])

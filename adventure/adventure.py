@@ -379,7 +379,7 @@ class Adventure(commands.Cog):
             "rebirth_cost": 100.0,
             "themes": {},
             "daily_bonus": {"1": 0, "2": 0, "3": 0.5, "4": 0, "5": 0.5, "6": 1.0, "7": 1.0},
-            "tax_brackets": {"1000": 0.1, "5000": 0.2, "10000": 0.3, "50000": 0.4, "100000": 0.5},
+            "tax_brackets": {},
             "separate_economy": True,
             "to_conversion_rate": 10,
             "from_conversion_rate": 11,
@@ -1913,13 +1913,15 @@ class Adventure(commands.Cog):
     async def commands_adventureset_economy(self, ctx: Context):
         """[Admin] Manages the adventure economy."""
 
-    @commands_adventureset_economy.command(name="tax", usage=" gold,tax gold,tax ...")
+    @commands_adventureset_economy.command(name="tax", usage="<gold,tax ...>")
     @commands.is_owner()
     async def commands_adventureset_economy_tax(self, ctx: Context, *, taxes: TaxesConverter):
         """[Owner] Set the tax thresholds.
 
         **gold** must be positive
-        **percentage** must be between 0 and 1.
+        **tax** must be between 0 and 1.
+
+        Example: `[p]adventureset economy tax 10000,0.1 20000,0.2 ...`
 
         """
         new_taxes = {}
@@ -3688,8 +3690,8 @@ class Adventure(commands.Cog):
                 with contextlib.suppress(Exception):
                     lock.release()
                 msg = await self._add_rewards(ctx, ctx.author, xp_won, 0, False)
-                xp_won_final
-                offering_value
+                xp_won_final += xp_won
+                offering_value += offering
                 winning_state = True
                 if msg:
                     await smart_embed(ctx, msg, success=True)
