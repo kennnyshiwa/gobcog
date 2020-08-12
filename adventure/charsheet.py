@@ -593,9 +593,10 @@ class Character(Item):
                 added.append(item.name)
                 parts, count, bonus = set_names[item.set]
                 set_names[item.set] = (parts, count + 1, bonus)
-        valid_sets = [(s, v[1]) for s, v in set_names.items() if v[1] >= v[0]]
-        self.sets = [s for s, _ in valid_sets if s]
-        for (_set, parts) in valid_sets:
+        full_sets = [(s, v[1]) for s, v in set_names.items() if v[1] >= v[0]]
+        partial_sets = [(s, v[1]) for s, v in set_names.items()]
+        self.sets = [s for s, _ in full_sets if s]
+        for (_set, parts) in partial_sets:
             set_bonuses = SET_BONUSES.get(_set, [])
             for bonus in set_bonuses:
                 required_parts = bonus.get("parts", 100)
@@ -608,9 +609,9 @@ class Character(Item):
                         base[key] += value
                     elif key in ["cpmult", "xpmult", "statmult"]:
                         if value > 1:
-                            base[key] += value - 1
+                            base[key] += (value - 1)
                         elif value >= 0:
-                            base[key] -= 1 - value
+                            base[key] -= (1 - value)
         self.gear_set_bonus = base
         self.gear_set_bonus["cpmult"] = max(0, self.gear_set_bonus["cpmult"])
         self.gear_set_bonus["xpmult"] = max(0, self.gear_set_bonus["xpmult"])
