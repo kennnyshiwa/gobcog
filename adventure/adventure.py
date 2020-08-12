@@ -2611,6 +2611,7 @@ class Adventure(commands.Cog):
 
         await ctx.invoke(self.backpack_equip, equip_item=item)
 
+    @commands.max_concurrency(1, per=commands.BucketType.user)
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     async def forge(self, ctx):
