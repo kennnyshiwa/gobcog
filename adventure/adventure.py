@@ -1026,21 +1026,21 @@ class Adventure(commands.Cog):
         async with self.get_lock(ctx.author):
             if len(backpack_items[1]) > 2:
                 msg = await ctx.send(
-                    "Are you sure you want to disattemble {count} items in your inventory?".format(
-                        count=len(backpack_items[1])
+                    "Are you sure you want to disassemble {count} items in your inventory?".format(
+                        count=humanize_number(len(backpack_items[1]))
                     )
                 )
-            start_adding_reactions(msg, ReactionPredicate.YES_OR_NO_EMOJIS)
-            pred = ReactionPredicate.yes_or_no(msg, ctx.author)
-            try:
-                await ctx.bot.wait_for("reaction_add", check=pred, timeout=60)
-            except asyncio.TimeoutError:
-                await self._clear_react(msg)
-                return
+                start_adding_reactions(msg, ReactionPredicate.YES_OR_NO_EMOJIS)
+                pred = ReactionPredicate.yes_or_no(msg, ctx.author)
+                try:
+                    await ctx.bot.wait_for("reaction_add", check=pred, timeout=60)
+                except asyncio.TimeoutError:
+                    await self._clear_react(msg)
+                    return
 
-            if not pred.result:
-                await ctx.send("Not disassembling those items.")
-                return
+                if not pred.result:
+                    await ctx.send("Not disassembling those items.")
+                    return
 
             try:
                 character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
@@ -1055,6 +1055,7 @@ class Adventure(commands.Cog):
                     item = character.backpack[item.name]
                 except KeyError:
                     continue
+                index = min(RARITIES.index(item.rarity), 4)
                 if op == "single":
                     if character.heroclass["name"] != "Tinkerer":
                         roll = random.randint(0, 5)
@@ -1062,7 +1063,6 @@ class Adventure(commands.Cog):
                     else:
                         roll = random.randint(0, 3)
                         chests = random.randint(1, 2)
-                    index = min(RARITIES.index(item.rarity), 4)
                     if roll == 0:
                         item.owned -= 1
                         if item.owned <= 0:
@@ -1080,7 +1080,7 @@ class Adventure(commands.Cog):
                         await self.config.user(ctx.author).set(await character.to_json(self.config))
                         return await smart_embed(
                             ctx,
-                            _("Your attempt at disassembling `{}` was successful and you have received {}{}.").format(
+                            _("Your attempt at disassembling `{}` was successful and you have received {} {}.").format(
                                 item.name, chests, _("chests") if chests > 1 else _("chest")
                             ),
                         )
@@ -4920,8 +4920,14 @@ class Adventure(commands.Cog):
         ):
             while ctx.guild.id in self._sessions:
                 del self._sessions[ctx.guild.id]
+            handled = False
+        elif not isinstance(
+            error,
+            (RuntimeError),
+        ):
+            handled = True
 
-        await ctx.bot.on_command_error(ctx, error, unhandled_by_cog=True)
+        await ctx.bot.on_command_error(ctx, error, unhandled_by_cog=not handled)
 
     async def get_challenge(self, ctx: Context, monsters):
         try:
