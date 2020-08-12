@@ -872,6 +872,8 @@ class Character(Item):
         items = [i for n, i in self.backpack.items() if i.rarity not in ["normal", "rare", "epic", "forged", "patreon"]]
         looted_so_far = 0
         looted = []
+        if not items:
+            return looted
         while how_many > looted_so_far:
             if looted_so_far >= how_many:
                 break
@@ -919,6 +921,9 @@ class Character(Item):
             async for item in AsyncIter(slot_group):
                 if forging and (item[1].rarity in ["forged", "set", "patreon"] or item[1] in consumed_list):
                     continue
+                if forging and item[1].rarity == "ascended":
+                    if self.rebirths < 30:
+                        continue
                 if rarity is not None and rarity != item[1].rarity:
                     continue
                 if equippable and not can_equip(self, item[1]):
@@ -1746,9 +1751,9 @@ async def no_dev_prompt(ctx: commands.Context) -> bool:
         return True
     confirm_token = "".join(random.choices((*ascii_letters, *digits), k=16))
     await ctx.send(
-        "**__You are should not be running this command.__** "
-        "Any issues that arise from you running this command will not be supported, "
-        "if you wish to continue enter this token as your next message."
+        "**__You should not be running this command.__** "
+        "Any issues that arise from you running this command will not be supported. "
+        "If you wish to continue, enter this token as your next message."
         f"\n\n{confirm_token}"
     )
     try:
