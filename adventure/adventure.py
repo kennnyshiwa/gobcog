@@ -1050,10 +1050,13 @@ class Adventure(commands.Cog):
             failed = 0
             success = 0
             op = backpack_items[0]
+            disassembled = set()
             async for item in AsyncIter(backpack_items[1], steps=100):
                 try:
                     item = character.backpack[item.name]
                 except KeyError:
+                    continue
+                if item.name in disassembled:
                     continue
                 index = min(RARITIES.index(item.rarity), 4)
                 if op == "single":
@@ -1085,8 +1088,9 @@ class Adventure(commands.Cog):
                             ),
                         )
                 elif op == "all":
+                    disassembled.add(item.name)
                     owned = item.owned
-                    async for count in AsyncIter(range(0, owned + 1), steps=100):
+                    async for count in AsyncIter(range(0, owned), steps=100):
                         if character.heroclass["name"] != "Tinkerer":
                             roll = random.randint(0, 5)
                             chests = 1
@@ -4921,10 +4925,7 @@ class Adventure(commands.Cog):
             while ctx.guild.id in self._sessions:
                 del self._sessions[ctx.guild.id]
             handled = False
-        elif not isinstance(
-            error,
-            (RuntimeError),
-        ):
+        elif not isinstance(error, (RuntimeError),):
             handled = True
 
         await ctx.bot.on_command_error(ctx, error, unhandled_by_cog=not handled)
