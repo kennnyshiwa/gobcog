@@ -1019,7 +1019,7 @@ class Adventure(commands.Cog):
         async with self.get_lock(ctx.author):
             if len(backpack_items[1]) > 2:
                 msg = await ctx.send(
-                    "Are you sure you want to disassemble {count} items in your inventory?".format(
+                    "Are you sure you want to disassemble {count} unique items and their duplicates?".format(
                         count=humanize_number(len(backpack_items[1]))
                     )
                 )
