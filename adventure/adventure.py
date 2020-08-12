@@ -854,7 +854,10 @@ class Adventure(commands.Cog):
                     )
 
             backpack_pages = await c.get_backpack(rarity=rarity, slot=slot, show_delta=show_diff, equippable=True)
-            return await menu(ctx, backpack_pages, DEFAULT_CONTROLS)
+            if backpack_pages:
+                return await menu(ctx, backpack_pages, DEFAULT_CONTROLS)
+            else:
+                return await smart_embed(ctx, _("You have no equippable items that match this query."),)
 
     @commands.group(name="backpack", autohelp=False)
     @commands.bot_has_permissions(add_reactions=True)
@@ -902,6 +905,8 @@ class Adventure(commands.Cog):
                     )
 
             msgs = await c.get_backpack(rarity=rarity, slot=slot, show_delta=show_diff)
+            if not msgs:
+                return await smart_embed(ctx, _("You have no items in your backpack."),)
             controls = DEFAULT_CONTROLS.copy()
 
             async def _backpack_info(
@@ -2736,6 +2741,13 @@ class Adventure(commands.Cog):
                         ),
                     )
                 pages = await c.get_backpack(forging=True, clean=True)
+                if not pages:
+                    return await smart_embed(
+                        ctx,
+                        _("**{}**, you need at least two forgeable items in your backpack to forge.").format(
+                            self.escape(ctx.author.display_name)
+                        ),
+                    )
                 task = asyncio.create_task(menu(ctx, pages, DEFAULT_CONTROLS, timeout=180))
                 await smart_embed(
                     ctx,
@@ -4634,7 +4646,8 @@ class Adventure(commands.Cog):
         set_msg += loadout_display
         msg_list.append(box(set_msg, lang="css"))
         backpack_contents = await c.get_backpack(set_name=title_cased_set_name, clean=True)
-        msg_list.extend(backpack_contents)
+        if backpack_contents:
+            msg_list.extend(backpack_contents)
         await menu(ctx, pages=msg_list, controls=DEFAULT_CONTROLS)
 
     @commands.command()
@@ -4809,8 +4822,13 @@ class Adventure(commands.Cog):
                 "charm",
             ]
             msg = ""
-
-            if item in slots:
+            if isinstance(item, list):
+                for i in item:
+                    await c.unequip_item(i)
+                msg = _("{author} unequipped all their items and put them into their backpack.").format(
+                    author=self.escape(ctx.author.display_name)
+                )
+            elif item in slots:
                 current_item = getattr(c, item, None)
                 if not current_item:
                     msg = _("{author}, you do not have an item equipped in the {item} slot.").format(

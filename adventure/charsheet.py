@@ -6,7 +6,7 @@ import re
 from copy import copy
 from datetime import date, datetime, timedelta
 from string import ascii_letters, digits
-from typing import Dict, List, Mapping, MutableMapping, Optional, Set, Tuple
+from typing import Dict, List, Mapping, MutableMapping, Optional, Set, Tuple, Union
 
 import discord
 from beautifultable import ALIGN_LEFT, BeautifulTable
@@ -1551,7 +1551,7 @@ class EquipableItemConverter(Converter):
 
 
 class EquipmentConverter(Converter):
-    async def convert(self, ctx, argument) -> Item:
+    async def convert(self, ctx, argument) -> Union[Item, List[Item]]:
         try:
             c = await Character.from_json(
                 ctx.bot.get_cog("Adventure").config, ctx.author, ctx.bot.get_cog("Adventure")._daily_bonus,
@@ -1559,6 +1559,16 @@ class EquipmentConverter(Converter):
         except Exception as exc:
             log.exception("Error with the new character sheet", exc_info=exc)
             raise BadArgument
+        if argument.lower() == "all":
+            items = []
+            for slot in ORDER:
+                if slot == "two handed":
+                    continue
+                equipped_item = getattr(c, slot)
+                if not equipped_item:
+                    continue
+                items.append(equipped_item)
+            return items
 
         if argument.lower() in ORDER:
             for slot in ORDER:
