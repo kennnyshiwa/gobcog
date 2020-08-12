@@ -5005,7 +5005,7 @@ class Adventure(commands.Cog):
             while ctx.guild.id in self._sessions:
                 del self._sessions[ctx.guild.id]
             handled = False
-        elif not isinstance(error, (RuntimeError),):
+        elif not isinstance(error, RuntimeError):
             handled = True
 
         await ctx.bot.on_command_error(ctx, error, unhandled_by_cog=not handled)
