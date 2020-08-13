@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+import argparse
 import asyncio
 import logging
 import random
 import re
+import shlex
+from collections import defaultdict
 from copy import copy
 from datetime import date, datetime, timedelta
 from string import ascii_letters, digits
-from typing import Dict, List, Mapping, MutableMapping, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Tuple, Union
 
 import discord
 from beautifultable import ALIGN_LEFT, BeautifulTable
@@ -14,6 +17,7 @@ from discord.ext.commands import check
 from discord.ext.commands.converter import Converter
 from discord.ext.commands.errors import BadArgument
 from redbot.core import Config, commands
+from redbot.core.commands import UserFeedbackCheckFailure
 from redbot.core.i18n import Translator
 from redbot.core.utils import AsyncIter
 from redbot.core.utils.chat_formatting import box, escape, humanize_number
@@ -101,6 +105,15 @@ _DAY_MAPPING = {
     "saturday": "6",
     "sunday": "7",
 }
+ARG_OP_REGEX = re.compile(r"(?P<op>>|<)?(?P<value>-?\d+)")
+
+
+class ArgParserFailure(UserFeedbackCheckFailure):
+    """Raised when parsing an argument fails."""
+
+    def __init__(self, cmd: str, message: str):
+        self.cmd = cmd
+        super().__init__(message=message)
 
 
 class Stats(Converter):
@@ -931,7 +944,7 @@ class Character(Item):
                     continue
                 if set_name is not None and set_name != item.set:
                     continue
-                if len(str(table)) > (1800 - (msg_len + 20)):
+                if len(str(table)) > 1500:
                     remainder = False
                     tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
                     table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
@@ -980,6 +993,213 @@ class Character(Item):
                     )
                 )
         if remainder:
+            tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
+        return tables
+
+    async def get_sorted_backpack_arg_parse(
+        self,
+        backpack: dict,
+        slots: List[str],
+        rarities: List[str],
+        sets: List[str],
+        equippable: bool,
+        strength: MutableMapping[str, Any],
+        intelligence: MutableMapping[str, Any],
+        charisma: MutableMapping[str, Any],
+        luck: MutableMapping[str, Any],
+        dexterity: MutableMapping[str, Any],
+        level: MutableMapping[str, Any],
+        degrade: MutableMapping[str, Any],
+        ignore_case: bool,
+        match: Optional[str],
+    ):
+        tmp = {}
+
+        def _sort(item):
+            return self.get_item_rarity(item), item[1].lvl, item[1].total_stats
+
+        async for item_name in AsyncIter(backpack, steps=100):
+            item = backpack[item_name]
+            item_slots = item.slot
+            slot_name = item_slots[0]
+
+            if len(item_slots) > 1:
+                slot_name = "two handed"
+            if match:
+                actual_item_name = str(item)
+                if ignore_case:
+                    if match.lower() not in actual_item_name.lower():
+                        continue
+                elif match not in actual_item_name:
+                    continue
+            if slots and slot_name not in slots:
+                continue
+            if sets and item.rarity != "set":
+                continue
+            elif rarities and item.rarity not in rarities:
+                continue
+            if sets and item.set not in sets:
+                continue
+            e_level = equip_level(self, item)
+            if equippable and self.lvl >= e_level:
+                continue
+            if degrade and item.rarity in ["legendary", "ascended", "event"]:
+                if (d := degrade.get("equal")) is not None:
+                    if item.degrade != d:
+                        continue
+                elif not degrade["min"] < item.degrade < degrade["max"]:
+                    continue
+            if level:
+                if (d := level.get("equal")) is not None:
+                    if e_level != d:
+                        continue
+                elif not level["min"] < e_level < level["max"]:
+                    continue
+            if dexterity:
+                if (d := dexterity.get("equal")) is not None:
+                    if item.dex != d:
+                        continue
+                elif not dexterity["min"] < item.dex < dexterity["max"]:
+                    continue
+            if luck:
+                if (d := luck.get("equal")) is not None:
+                    if item.luck != d:
+                        continue
+                elif not luck["min"] < item.luck < luck["max"]:
+                    continue
+            if charisma:
+                if (d := charisma.get("equal")) is not None:
+                    if item.cha != d:
+                        continue
+                elif not charisma["min"] < item.cha < charisma["max"]:
+                    continue
+            if intelligence:
+                if (d := intelligence.get("equal")) is not None:
+                    if item.int != d:
+                        continue
+                elif not intelligence["min"] < item.int < intelligence["max"]:
+                    continue
+            if strength:
+                if (d := strength.get("equal")) is not None:
+                    if item.att != d:
+                        continue
+                elif not strength["min"] < item.att <= strength["max"]:
+                    continue
+
+            if slot_name not in tmp:
+                tmp[slot_name] = []
+            tmp[slot_name].append((item_name, item))
+        allslots = sorted(tmp.keys())
+        final = []
+        async for (idx, slot_name) in AsyncIter(allslots, steps=100).enumerate():
+            if tmp[slot_name]:
+                final.append((slot_name, sorted(tmp[slot_name], key=_sort)))
+        return final
+
+    async def get_argparse_backpack(self, query: MutableMapping[str, Any]) -> List[str]:
+        delta = query.pop("delta", False)
+        equippable = query.pop("equippable", False)
+        sets = query.pop("set", [])
+        rarities = query.pop("rarity", [])
+        slots = query.pop("slot", [])
+        strength = query.pop("strength", {})
+        intelligence = query.pop("intelligence", {})
+        charisma = query.pop("charisma", {})
+        luck = query.pop("luck", {})
+        dexterity = query.pop("dexterity", {})
+        level = query.pop("level", {})
+        degrade = query.pop("degrade", {})
+        ignore_case = query.pop("icase", False)
+        match = query.pop("match", None)
+
+        bkpk = await self.get_sorted_backpack_arg_parse(
+            self.backpack,
+            slots=slots,
+            rarities=rarities,
+            sets=sets,
+            equippable=equippable,
+            strength=strength,
+            intelligence=intelligence,
+            charisma=charisma,
+            luck=luck,
+            dexterity=dexterity,
+            level=level,
+            degrade=degrade,
+            match=match,
+            ignore_case=ignore_case,
+        )
+
+        msg = _("{author}'s backpack\n\n").format(author=escape(self.user.display_name, formatting=True))
+        table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+        table.set_style(BeautifulTable.STYLE_RST)
+        tables = []
+        headers = [
+            "Name",
+            "Slot",
+            "ATT",
+            "CHA",
+            "INT",
+            "DEX",
+            "LUC",
+            "LVL",
+            "QTY",
+        ]
+        if not rarities or any(x in rarities for x in ["legendary", "event", "ascended"]):
+            headers.append("DEG")
+
+        if sets or not rarities or "set" in rarities:
+            headers.append("SET")
+
+        table.columns.header = headers
+
+        remainder = False
+        async for slot_name, slot_group in AsyncIter(bkpk, steps=100):
+            slot_name_org = slot_group[0][1].slot
+            current_equipped = getattr(self, slot_name if slot_name != "two handed" else "left", None)
+            async for item in AsyncIter(slot_group, steps=100):
+                item = item[1]
+                if len(str(table)) > 1500:
+                    table.rows.sort("Slot")
+                    tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
+                    table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
+                    table.set_style(BeautifulTable.STYLE_RST)
+                    table.columns.header = headers
+                    remainder = False
+                if delta:
+                    att = self.get_equipped_delta(current_equipped, item, "att")
+                    cha = self.get_equipped_delta(current_equipped, item, "cha")
+                    int = self.get_equipped_delta(current_equipped, item, "int")
+                    dex = self.get_equipped_delta(current_equipped, item, "dex")
+                    luck = self.get_equipped_delta(current_equipped, item, "luck")
+                else:
+                    att = item.att if len(slot_name_org) < 2 else item.att * 2
+                    cha = item.cha if len(slot_name_org) < 2 else item.cha * 2
+                    int = item.int if len(slot_name_org) < 2 else item.int * 2
+                    dex = item.dex if len(slot_name_org) < 2 else item.dex * 2
+                    luck = item.luck if len(slot_name_org) < 2 else item.luck * 2
+                data = [
+                    str(item),
+                    slot_name,
+                    att,
+                    cha,
+                    int,
+                    dex,
+                    luck,
+                    f"[{r}]" if (r := equip_level(self, item)) is not None and r > self.lvl else f"{r}",
+                    item.owned,
+                ]
+                if "DEG" in headers:
+                    data.append(
+                        f"[{item.degrade}]"
+                        if item.rarity in ["legendary", "event", "ascended"] and item.degrade >= 0
+                        else "N/A"
+                    )
+                if "SET" in headers:
+                    data.append(item.set or "N/A",)
+                table.rows.append(data)
+                remainder = True
+        if remainder:
+            table.rows.sort("Slot")
             tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
         return tables
 
@@ -1833,3 +2053,117 @@ async def no_dev_prompt(ctx: commands.Context) -> bool:
         else:
             await ctx.send(_("Did not get a matching confirmation, cancelling."))
             return False
+
+
+class NoExitParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise commands.BadArgument(message=message)
+
+
+class BackpackFilterParser(commands.Converter):
+    async def convert(self, ctx: commands.Context, argument: str) -> Mapping[str, Any]:
+        argument = argument.replace("—", "--")
+
+        command, *arguments = argument.split(" -- ")
+        if arguments:
+            argument = " -- ".join(arguments)
+        else:
+            command = ""
+        response = {}
+        set_names = set(SET_BONUSES.keys())
+        parser = NoExitParser(description="Backpack Filter Parsing.", add_help=False)
+        parser.add_argument("--str", dest="strength", nargs="+")
+        parser.add_argument("--strength", dest="strength", nargs="+")
+
+        parser.add_argument("--intelligence", dest="intelligence", nargs="+")
+        parser.add_argument("--int", dest="intelligence", nargs="+")
+
+        parser.add_argument("--cha", dest="charisma", nargs="+")
+        parser.add_argument("--charisma", dest="charisma", nargs="+")
+
+        parser.add_argument("--luc", dest="luck", nargs="+")
+        parser.add_argument("--luck", dest="luck", nargs="+")
+
+        parser.add_argument("--dex", dest="dexterity", nargs="+")
+        parser.add_argument("--dexterity", dest="dexterity", nargs="+")
+
+        parser.add_argument("--lvl", dest="level", nargs="+")
+        parser.add_argument("--level", dest="level", nargs="+")
+
+        parser.add_argument("--deg", dest="degrade", nargs="+")
+        parser.add_argument("--degrade", dest="degrade", nargs="+")
+
+        parser.add_argument("--slot", nargs="*", dest="slot", default=ORDER, choices=ORDER)
+
+        parser.add_argument("--rarity", nargs="*", dest="rarity", default=RARITIES, choices=RARITIES)
+
+        parser.add_argument("--set", nargs="*", dest="set", choices=set_names, default=[])
+
+        parser.add_argument("--equip", dest="equippable", action="store_true", default=False)
+        parser.add_argument("--equippable", dest="equippable", action="store_true", default=False)
+
+        parser.add_argument("--delta", dest="delta", action="store_true", default=False)
+        parser.add_argument("--diff", dest="delta", action="store_true", default=False)
+        parser.add_argument("--icase", dest="icase", action="store_true", default=False)
+
+        parser.add_argument("--match", nargs="*", dest="match", default=[])
+
+        if not command:
+            parser.add_argument("command", nargs="*")
+        try:
+            arg = shlex.split(argument, posix=True)
+            vals = vars(parser.parse_args(arg))
+        except argparse.ArgumentError as exc:
+            raise ArgParserFailure(exc.argument_name, exc.message)
+        response["delta"] = vals["delta"]
+        response["equippable"] = vals["equippable"]
+        response["set"] = vals["set"]
+        if vals["rarity"]:
+            response["rarity"] = vals["rarity"]
+        if vals["slot"]:
+            response["slot"] = vals["slot"]
+        response["icase"] = vals["icase"]
+        if vals["match"]:
+            response["match"] = " ".join(vals["match"]).strip()
+
+        response.update(process_argparse_stat(vals, "strength"))
+        response.update(process_argparse_stat(vals, "intelligence"))
+        response.update(process_argparse_stat(vals, "charisma"))
+        response.update(process_argparse_stat(vals, "luck"))
+        response.update(process_argparse_stat(vals, "dexterity"))
+        response.update(process_argparse_stat(vals, "level"))
+        response.update(process_argparse_stat(vals, "degrade"))
+        return response
+
+
+def process_argparse_stat(data: Mapping, stat: str) -> Mapping:
+    temp = {}
+    temp[stat] = {}
+    if variable := data.get(stat):
+        temp[stat] = {}
+        matches = re.findall(ARG_OP_REGEX, " ".join(variable))
+        if matches:
+            operands = [(o, int(v)) for o, v in matches if o]
+            if not operands:
+                exact = [int(v) for o, v in matches if not o]
+                if len(exact) == 1:
+                    temp[stat]["equal"] = exact[0]
+                else:
+                    temp[stat]["max"] = max(exact)
+                    temp[stat]["min"] = min(exact)
+            else:
+                if len(operands) == 1:
+                    o, v = operands[0]
+                    if o in {">"}:
+                        temp[stat]["max"] = float("inf")
+                        temp[stat]["min"] = v
+                    else:
+                        temp[stat]["min"] = float("-inf")
+                        temp[stat]["max"] = v
+                else:
+                    d = defaultdict(set)
+                    for o, v in operands:
+                        d[o].add(v)
+                    temp[stat]["max"] = min(float("inf"), *d["<"])
+                    temp[stat]["min"] = max(float("-inf"), *d[">"])
+    return temp

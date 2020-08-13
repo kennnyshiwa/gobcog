@@ -35,6 +35,7 @@ from .charsheet import (
     DEV_LIST,
     ORDER,
     RARITIES,
+    BackpackFilterParser,
     Character,
     DayConverter,
     EquipableItemConverter,
@@ -857,6 +858,46 @@ class Adventure(commands.Cog):
                 return await menu(ctx, backpack_pages, DEFAULT_CONTROLS)
             else:
                 return await smart_embed(ctx, _("You have no equippable items that match this query."),)
+
+    @commands.command(name="cbackpack")
+    @commands.bot_has_permissions(add_reactions=True)
+    async def commands_cbackpack(
+        self, ctx: Context, *, query: BackpackFilterParser,
+    ):
+        """This shows the contents of your backpack.
+
+
+        **--slot** - Accepts multiple slot (use quotes if there are spaces in a slot name)
+        **--rarity** - Accepts multiple rarities (use quotes if there are spaces in a rarity name)
+        **--set** - Accepts multiple sets (use quotes if there are spaces in the set name)
+        **--equip** - If used will only show equippable items
+        **--diff** - If used will shows stat delta compared to what you currently have equipped
+        **--match** - Accepts a string, no quotes are needed. will attempt to match items to this string.
+        ​ ​ ​ ​**--icase** - If `--match` is used  and this is used then matches will not be case sensitive.
+        For the following arguments:
+        ​ ​ These accept 1 or 2 numbers, if 1 is passed, it is treated as an equal match, if 2 then it is a range
+        ​ ​ ​ ​ **--str**
+        ​ ​ ​ ​ **--int**
+        ​ ​ ​ ​ **--cha**
+        ​ ​ ​ ​ **--luc**
+        ​ ​ ​ ​ **--dex**
+        ​ ​ ​ ​ **--lvl**
+        ​ ​ ​ ​ **--deg**
+
+        """
+        if not await self.allow_in_dm(ctx):
+            return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
+
+        try:
+            c = await Character.from_json(self.config, ctx.author, self._daily_bonus)
+        except Exception as exc:
+            log.exception("Error with the new character sheet", exc_info=exc)
+            return
+        backpack_pages = await c.get_argparse_backpack(query)
+        if backpack_pages:
+            return await menu(ctx, backpack_pages, DEFAULT_CONTROLS)
+        else:
+            return await smart_embed(ctx, _("You have no equippable items that match this query."),)
 
     @commands.group(name="backpack", autohelp=False)
     @commands.bot_has_permissions(add_reactions=True)
@@ -3537,7 +3578,7 @@ class Adventure(commands.Cog):
                             "SET",
                         ]
                         async for index, item in AsyncIter(items.values(), steps=100).enumerate(start=1):
-                            if len(str(table)) > (1800 - (msg_len + 20)):
+                            if len(str(table)) > 1500:
                                 table.rows.sort("LVL", reverse=True)
                                 msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
                                 table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
@@ -4699,7 +4740,7 @@ class Adventure(commands.Cog):
             "SET",
         ]
         async for index, item in AsyncIter(items, steps=100).enumerate(start=1):
-            if len(str(table)) > (1800 - (msg_len + 20)):
+            if len(str(table)) > 1500:
                 table.rows.sort("Slot")
                 msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
                 table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
@@ -5010,6 +5051,7 @@ class Adventure(commands.Cog):
     @_adventure.error
     async def _error_handler(self, ctx: commands.Context, error: Exception) -> None:
         error = getattr(error, "original", error)
+        handled = False
         if not isinstance(
             error,
             (commands.CheckFailure, commands.UserInputError, commands.DisabledCommand, commands.CommandOnCooldown,),
@@ -5017,8 +5059,20 @@ class Adventure(commands.Cog):
             while ctx.guild.id in self._sessions:
                 del self._sessions[ctx.guild.id]
             handled = False
-        elif not isinstance(error, RuntimeError):
+        elif isinstance(error, RuntimeError):
             handled = True
+
+        await ctx.bot.on_command_error(ctx, error, unhandled_by_cog=not handled)
+
+    async def cog_command_error(self, ctx: commands.Context, error: Exception) -> None:
+        error = getattr(error, "original", error)
+        handled = False
+        if hasattr(ctx.command, "on_error"):
+            return
+        if isinstance(error, adventure.charsheet.ArgParserFailure):
+            handled = True
+            msg = _("`{command}` {message}").format(message=error.message, command=error.cmd,)
+            await ctx.send(msg)
 
         await ctx.bot.on_command_error(ctx, error, unhandled_by_cog=not handled)
 
@@ -7954,7 +8008,7 @@ class Adventure(commands.Cog):
         ]
         msgs = []
         for k, v in sets.items():
-            if len(str(table)) > (1800 - 20):
+            if len(str(table)) > 1500:
                 table.rows.sort("Name", reverse=False)
                 msgs.append(box(str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
                 table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
