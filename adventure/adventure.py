@@ -3526,6 +3526,13 @@ class Adventure(commands.Cog):
                         lang="css",
                     )
                 )
+            if c.is_backpack_full(is_dev=self.is_dev(ctx.author)):
+                await ctx.send(
+                    _("**{author}**, Your backpack it currently full.").format(
+                        author=self.escape(ctx.author.display_name)
+                    )
+                )
+                return
             if box_type == "normal":
                 redux = 0
             elif box_type == "rare":
@@ -4079,6 +4086,13 @@ class Adventure(commands.Cog):
                         lang="css",
                     )
                 )
+            if c.is_backpack_full(is_dev=self.is_dev(ctx.author)):
+                await ctx.send(
+                    _("**{author}**, Your backpack it currently full.").format(
+                        author=self.escape(ctx.author.display_name)
+                    )
+                )
+                return
             cooldown_time = max(1800, (7200 - max((c.luck + c.total_int) * 2, 0)))
             if "cooldown" not in c.heroclass:
                 c.heroclass["cooldown"] = cooldown_time + 1
@@ -5593,6 +5607,16 @@ class Adventure(commands.Cog):
                     c = await Character.from_json(self.config, user, self._daily_bonus)
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
+                    return
+                if c.is_backpack_full(is_dev=self.is_dev(user)):
+                    with contextlib.suppress(discord.HTTPException):
+                        await to_delete.delete()
+                        await msg.delete()
+                    await channel.send(
+                        _("**{author}**, Your backpack it currently full.").format(
+                            author=self.escape(user.display_name)
+                        )
+                    )
                     return
                 item = items["item"]
                 item.owned = pred.result
