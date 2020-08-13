@@ -1884,6 +1884,13 @@ class Adventure(commands.Cog):
                 )
             else:
                 c = await c.equip_loadout(name)
+                await self.config.user(ctx.author).set(await c.to_json(self.config))
+                try:
+                    c = await Character.from_json(self.config, ctx.author, self._daily_bonus)
+                except Exception as exc:
+                    log.exception("Error with the new character sheet", exc_info=exc)
+                    ctx.command.reset_cooldown(ctx)
+                    return
                 current_stats = box(
                     _(
                         "{author}'s new stats: "
@@ -1906,7 +1913,6 @@ class Adventure(commands.Cog):
                     lang="css",
                 )
                 await ctx.send(current_stats)
-                await self.config.user(ctx.author).set(await c.to_json(self.config))
 
     @commands.group()
     @commands.guild_only()
