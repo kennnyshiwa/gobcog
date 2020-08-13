@@ -534,7 +534,6 @@ class Adventure(commands.Cog):
             await asyncio.sleep(300)
 
     async def _migrate_config(self, from_version: int, to_version: int) -> None:
-        database_entries = []
         log.debug(f"from_version: {from_version} to_version:{to_version}")
         if from_version == to_version:
             return
@@ -797,7 +796,7 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 return
-            for i in range(num):
+            for _loop_counter in range(num):
                 await c.add_to_backpack(await self._genitem(rarity, slot))
             await self.config.user(ctx.author).set(await c.to_json(self.config))
         await ctx.invoke(self._backpack)
@@ -1083,7 +1082,7 @@ class Adventure(commands.Cog):
                 elif op == "all":
                     disassembled.add(item.name)
                     owned = item.owned
-                    async for count in AsyncIter(range(0, owned), steps=100):
+                    async for _loop_counter in AsyncIter(range(0, owned), steps=100):
                         if character.heroclass["name"] != "Tinkerer":
                             roll = random.randint(0, 5)
                             chests = 1
@@ -1183,7 +1182,7 @@ class Adventure(commands.Cog):
                             continue
                     item_price = 0
                     old_owned = item.owned
-                    async for x in AsyncIter(range(0, item.owned), steps=100):
+                    async for _loop_counter in AsyncIter(range(0, item.owned), steps=100):
                         item.owned -= 1
                         item_price += self._sell(c, item)
                         if item.owned <= 0:
@@ -1311,7 +1310,7 @@ class Adventure(commands.Cog):
                 price = 0
                 old_owned = item.owned
                 count = 0
-                for x in range(0, item.owned):
+                for _loop_counter in range(0, item.owned):
                     item.owned -= 1
                     price += price_shown
                     if item.owned <= 0:
@@ -1340,7 +1339,7 @@ class Adventure(commands.Cog):
                 price = 0
                 old_owned = item.owned
                 count = 0
-                for x in range(1, item.owned):
+                for _loop_counter in range(1, item.owned):
                     item.owned -= 1
                     price += price_shown
                 if not count % 10:
@@ -1757,7 +1756,6 @@ class Adventure(commands.Cog):
                         author=self.escape(ctx.author.display_name), name=name
                     ),
                 )
-                return
             else:
                 del c.loadouts[name]
                 await self.config.user(ctx.author).set(await c.to_json(self.config))
@@ -3518,7 +3516,7 @@ class Adventure(commands.Cog):
                         # open chests
                         c.treasure[redux] -= number
                         await self.config.user(ctx.author).set(await c.to_json(self.config))
-                        items = await self._open_chests(ctx, ctx.author, box_type, number, character=c)
+                        items = await self._open_chests(ctx, box_type, number, character=c)
                         msg = _("{}, you've opened the following items:\n").format(self.escape(ctx.author.display_name))
                         msg_len = len(msg)
                         table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
@@ -4682,7 +4680,6 @@ class Adventure(commands.Cog):
         except Exception:
             log.exception("Error with the new character sheet")
             return
-        new_items = set()
         items = c.get_current_equipment()
         msg = _("{}'s Character Sheet\n\n").format(self.escape(ctx.author.display_name))
         msg_len = len(msg)
@@ -5502,7 +5499,6 @@ class Adventure(commands.Cog):
                             ).format(c=self.escape(user.display_name))
                         )
                         self._react_messaged.append(user_id)
-                        return
                 else:
                     getattr(session, action).append(user)
             else:
@@ -5696,7 +5692,7 @@ class Adventure(commands.Cog):
 
         people = len(fight_list) + len(magic_list) + len(talk_list) + len(pray_list) + len(run_list)
         attack, diplomacy, magic, run_msg = await self.handle_run(ctx.guild.id, attack, diplomacy, magic)
-        failed = await self.handle_basilisk(ctx, failed)
+        failed = await self.handle_basilisk(ctx)
         fumblelist, attack, diplomacy, magic, pray_msg = await self.handle_pray(
             ctx.guild.id, fumblelist, attack, diplomacy, magic
         )
@@ -6231,7 +6227,7 @@ class Adventure(commands.Cog):
                 continue
             crit_mod = max(max(c.dex, c.luck) + (c.total_att // 20), 1)  # Thanks GoaFan77
             mod = 0
-            max_roll = 50 if c.rebirths >= 15 else 20
+            max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
             if crit_mod != 0:
                 mod = round(crit_mod / 10)
             if c.rebirths < 15 < mod:
@@ -6250,10 +6246,10 @@ class Adventure(commands.Cog):
                     roll = random.randint(max_roll - 5, max_roll)
                 elif roll > 25 and pet_crit >= 95:
                     roll = random.randint(roll, max_roll)
-
+            roll_perc = roll / max_roll
             att_value = c.total_att
             rebirths = c.rebirths * (3 if c.heroclass["name"] == "Berserker" else 1)
-            if roll == 1:
+            if roll_perc < 0.10:
                 if c.heroclass["name"] == "Berserker" and c.heroclass["ability"]:
                     bonus_roll = random.randint(5, 15)
                     bonus_multi = random.choice([0.2, 0.3, 0.4, 0.5])
@@ -6269,11 +6265,11 @@ class Adventure(commands.Cog):
                     msg += _("**{}** fumbled the attack.\n").format(self.escape(user.display_name))
                     fumblelist.append(user)
                     fumble_count += 1
-            elif roll == max_roll or c.heroclass["name"] == "Berserker":
+            elif roll_perc > 0.95 or c.heroclass["name"] == "Berserker":
                 crit_str = ""
                 crit_bonus = 0
                 base_bonus = random.randint(5, 10) + rebirths
-                if roll == max_roll:
+                if roll_perc > 0.95:
                     msg += _("**{}** landed a critical hit.\n").format(self.escape(user.display_name))
                     critlist.append(user)
                     crit_bonus = (random.randint(5, 20) + 2) * rebirths
@@ -6296,7 +6292,7 @@ class Adventure(commands.Cog):
                     f"{self.emojis.dice}({roll}) + "
                     f"{self.emojis.attack}{str(humanize_number(att_value))}\n"
                 )
-            if session.insight[0] == 1:
+            if session.insight[0] == 1 and user.id != session.insight[1].id:
                 attack += int(session.insight[1].total_att * 0.2)
         for user in magic_list:
             try:
@@ -6306,7 +6302,7 @@ class Adventure(commands.Cog):
                 continue
             crit_mod = max(max(c.dex, c.luck) + (c.total_int // 20), 0)
             mod = 0
-            max_roll = 50 if c.rebirths >= 15 else 20
+            max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
             if crit_mod != 0:
                 mod = round(crit_mod / 10)
             if c.rebirths < 15 < mod:
@@ -6324,9 +6320,10 @@ class Adventure(commands.Cog):
                     roll = random.randint(max_roll - 5, max_roll)
                 elif roll > 25 and pet_crit >= 95:
                     roll = random.randint(roll, max_roll)
+            roll_perc = roll / max_roll
             int_value = c.total_int
             rebirths = c.rebirths * (3 if c.heroclass["name"] == "Wizard" else 1)
-            if roll == 1:
+            if roll_perc < 0.10:
                 msg += _("{}**{}** almost set themselves on fire.\n").format(
                     failed_emoji, self.escape(user.display_name)
                 )
@@ -6343,12 +6340,12 @@ class Adventure(commands.Cog):
                         f"{self.emojis.magic_crit}{humanize_number(bonus)} + "
                         f"{self.emojis.magic}{str(humanize_number(int_value))}\n"
                     )
-            elif roll == max_roll or (c.heroclass["name"] == "Wizard"):
+            elif roll_perc > 0.95 or (c.heroclass["name"] == "Wizard"):
                 crit_str = ""
                 crit_bonus = 0
                 base_bonus = random.randint(5, 10) + rebirths
                 base_str = f"{self.emojis.magic_crit}️ {humanize_number(base_bonus)}"
-                if roll == max_roll:
+                if roll_perc > 0.95:
                     msg += _("**{}** had a surge of energy.\n").format(self.escape(user.display_name))
                     critlist.append(user)
                     crit_bonus = (random.randint(5, 20) + 2) * rebirths
@@ -6371,18 +6368,18 @@ class Adventure(commands.Cog):
                     f"{self.emojis.dice}({roll}) + "
                     f"{self.emojis.magic}{humanize_number(int_value)}\n"
                 )
-            if session.insight[0] == 1:
+            if session.insight[0] == 1 and user.id != session.insight[1].id:
                 attack += int(session.insight[1].total_int * 0.2)
         if fumble_count == len(attack_list):
             report += _("No one!")
         msg += report + "\n"
         for user in fumblelist:
             if user in session.fight:
-                if session.insight[0] == 1:
+                if session.insight[0] == 1 and user.id != session.insight[1].id:
                     attack -= int(session.insight[1].total_att * 0.2)
                 session.fight.remove(user)
-            elif user in session.magic:
-                if session.insight[0] == 1:
+            elif user in session.magic and user.id != session.insight[1].id:
+                if session.insight[0] == 1 and user.id != session.insight[1].id:
                     attack -= int(session.insight[1].total_int * 0.2)
                 session.magic.remove(user)
         return (fumblelist, critlist, attack, magic, msg)
@@ -6409,7 +6406,7 @@ class Adventure(commands.Cog):
             if c.heroclass["name"] == "Cleric":
                 crit_mod = max(max(c.dex, c.luck) + (c.total_int // 20), 0)
                 mod = 0
-                max_roll = 50 if c.rebirths >= 15 else 20
+                max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
                 if crit_mod != 0:
                     mod = round(crit_mod / 10)
                 if c.rebirths < 15 < mod:
@@ -6418,11 +6415,12 @@ class Adventure(commands.Cog):
                 elif (mod + 1) > 45:
                     mod = 45
                 roll = max(random.randint((1 + mod), max_roll), 1)
+                roll_perc = roll / max_roll
                 if len(fight_list + talk_list + magic_list) == 0:
                     msg += _("**{}** blessed like a madman but nobody was there to receive it.\n").format(
                         self.escape(user.display_name)
                     )
-                if roll == 1:
+                if roll_perc < 0.15:
                     pray_att_bonus = 0
                     pray_diplo_bonus = 0
                     pray_magic_bonus = 0
@@ -6452,7 +6450,6 @@ class Adventure(commands.Cog):
                         roll_emoji=self.emojis.dice,
                         roll=roll,
                     )
-
                 else:
                     mod = roll // 3 if not c.heroclass["ability"] else roll
                     pray_att_bonus = 0
@@ -6561,7 +6558,7 @@ class Adventure(commands.Cog):
                 continue
             crit_mod = max(max(c.dex, c.luck) + (c.total_int // 50) + (c.total_cha // 20), 1)
             mod = 0
-            max_roll = 50 if c.rebirths >= 15 else 20
+            max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
             if crit_mod != 0:
                 mod = round(crit_mod / 10)
             if c.rebirths < 15 < mod:
@@ -6571,7 +6568,8 @@ class Adventure(commands.Cog):
             roll = max(random.randint((1 + mod), max_roll), 1)
             dipl_value = c.total_cha
             rebirths = c.rebirths * (3 if c.heroclass["name"] == "Bard" else 1)
-            if roll == 1:
+            roll_perc = roll / max_roll
+            if roll_perc < 0.10:
                 if c.heroclass["name"] == "Bard" and c.heroclass["ability"]:
                     bonus = random.randint(5, 15)
                     diplomacy += int((roll - bonus + dipl_value + rebirths) / cdef)
@@ -6585,11 +6583,11 @@ class Adventure(commands.Cog):
                     )
                     fumblelist.append(user)
                     fumble_count += 1
-            elif roll == max_roll or c.heroclass["name"] == "Bard":
+            elif roll_perc > 0.95 or c.heroclass["name"] == "Bard":
                 crit_str = ""
                 crit_bonus = 0
                 base_bonus = random.randint(5, 10) + rebirths
-                if roll == max_roll:
+                if roll_perc > 0.95:
                     msg += _("**{}** made a compelling argument.\n").format(self.escape(user.display_name))
                     critlist.append(user)
                     crit_bonus = (random.randint(5, 20) + 2) * rebirths
@@ -6613,19 +6611,19 @@ class Adventure(commands.Cog):
                     f"{self.emojis.dice}({roll}) + "
                     f"{self.emojis.talk}{humanize_number(dipl_value)}\n"
                 )
-            if session.insight[0] == 1:
+            if session.insight[0] == 1 and user.id != session.insight[1].id:
                 diplomacy += int(session.insight[1].total_cha * 0.2)
         if fumble_count == len(talk_list):
             report += _("No one!")
         msg = msg + report + "\n"
         for user in fumblelist:
             if user in talk_list:
-                if session.insight[0] == 1:
+                if session.insight[0] == 1 and user.id != session.insight[1].id:
                     diplomacy -= int(session.insight[1].total_cha * 0.2)
                 session.talk.remove(user)
         return (fumblelist, critlist, diplomacy, msg)
 
-    async def handle_basilisk(self, ctx: Context, failed):
+    async def handle_basilisk(self, ctx: Context):
         session = self._sessions[ctx.guild.id]
         fight_list = list(set(session.fight))
         talk_list = list(set(session.talk))
@@ -6910,10 +6908,10 @@ class Adventure(commands.Cog):
         return await self._genitem(rarity)
 
     async def _open_chests(
-        self, ctx: Context, user: discord.Member, chest_type: str, amount: int, character: Character,
+        self, ctx: Context, chest_type: str, amount: int, character: Character,
     ):
         items = {}
-        async for i in AsyncIter(range(0, max(amount, 0)), steps=100):
+        async for _loop_counter in AsyncIter(range(0, max(amount, 0)), steps=100):
             item = await self._roll_chest(chest_type, character)
             item_name = str(item)
             if item_name in items:
@@ -7083,7 +7081,6 @@ class Adventure(commands.Cog):
             character.last_known_currency = await bank.get_balance(ctx.author)
             character.last_currency_check = time.time()
             await self.config.user(ctx.author).set(await character.to_json(self.config))
-            return
         elif self._treasure_controls[react.emoji] == "equip":
             equiplevel = equip_level(character, item)
             if self.is_dev(ctx.author):
@@ -7116,7 +7113,6 @@ class Adventure(commands.Cog):
             await open_msg.edit(content=equip_msg)
             character = await character.equip_item(item, False, self.is_dev(ctx.author))
             await self.config.user(ctx.author).set(await character.to_json(self.config))
-            return
         else:
             await character.add_to_backpack(item)
             await open_msg.edit(
@@ -7131,7 +7127,6 @@ class Adventure(commands.Cog):
             )
             await self._clear_react(open_msg)
             await self.config.user(ctx.author).set(await character.to_json(self.config))
-            return
 
     @staticmethod
     async def _remaining(epoch):

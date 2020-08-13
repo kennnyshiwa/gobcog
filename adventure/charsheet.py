@@ -406,7 +406,7 @@ class GameSession:
     run: List[discord.Member] = []
     message: discord.Message = None
     transcended: bool = False
-    insight = (0, None)
+    insight: Tuple[float, discord.Member] = (0, None)
     start_time: datetime = datetime.now()
     easy_mode: bool = False
     insight = (0, None)
@@ -536,7 +536,7 @@ class Character(Item):
         rebirths = copy(self.rebirths)
         extrapoints += rebirths // 10 * 5
 
-        for rc in range(rebirths):
+        for _loop_counter in range(rebirths):
             if rebirths >= 30:
                 extrapoints += 3
             elif rebirths >= 20:
@@ -568,7 +568,6 @@ class Character(Item):
         set_names = {}
         returnable_items = []
         item_names = set()
-        last_slot = ""
         async for item in AsyncIter(self.backpack, steps=100):
             item = self.backpack[item]
             if item.rarity != "set":
@@ -788,7 +787,7 @@ class Character(Item):
         else:
             maxlevel = REBIRTH_LVL
 
-        for rc in range(rebirths):
+        for _loop_counter in range(rebirths):
             if rebirths >= 20:
                 maxlevel += REBIRTH_STEP
             elif rebirths >= 10:
@@ -1765,7 +1764,7 @@ def can_equip(char: Character, item: Item):
 
 async def calculate_sp(lvl_end: int, c: Character):
     points = c.rebirths * 10
-    async for rc in AsyncIter(range(lvl_end), steps=100):
+    async for _loop_counter in AsyncIter(range(lvl_end), steps=100):
         if lvl_end >= 300:
             points += 1
         elif lvl_end >= 200:
