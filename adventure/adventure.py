@@ -5768,7 +5768,7 @@ class Adventure(commands.Cog):
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
                     continue
-                multiplier = 0.2
+                multiplier = 0.2 if c.rebirths >= 5 else 0.01
                 if c.dex != 0:
                     if c.dex < 0:
                         dex = min(1 / abs(c.dex), 1)
@@ -5818,7 +5818,7 @@ class Adventure(commands.Cog):
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
                     continue
-                multiplier = 0.2
+                multiplier = 0.2 if c.rebirths >= 5 else 0.01
                 if c.dex != 0:
                     if c.dex < 0:
                         dex = min(1 / abs(c.dex), 1)
@@ -5893,7 +5893,7 @@ class Adventure(commands.Cog):
                     except Exception as exc:
                         log.exception("Error with the new character sheet", exc_info=exc)
                         continue
-                    multiplier = 0.2
+                    multiplier = 0.2 if c.rebirths >= 5 else 0.01
                     if c.dex != 0:
                         if c.dex < 0:
                             dex = min(1 / abs(c.dex), 1)
@@ -6053,7 +6053,7 @@ class Adventure(commands.Cog):
                     except Exception as exc:
                         log.exception("Error with the new character sheet", exc_info=exc)
                         continue
-                    multiplier = 0.2
+                    multiplier = 0.2 if c.rebirths >= 5 else 0.01
                     if c.dex != 0:
                         if c.dex < 0:
                             dex = min(1 / abs(c.dex), 1)
@@ -6123,8 +6123,11 @@ class Adventure(commands.Cog):
 
         output = f"{result_msg}\n{text}"
         output = pagify(output, page_length=1900)
+        img_sent = session.monster["image"] if not session.easy_mode else None
         for i in output:
-            await smart_embed(ctx, i, success=success)
+            await smart_embed(ctx, i, success=success, image=img_sent)
+            if img_sent:
+                img_sent = None
         await self._data_check(ctx)
         session.participants = set(fight_list + magic_list + talk_list + pray_list + run_list + fumblelist)
 
