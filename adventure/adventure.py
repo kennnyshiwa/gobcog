@@ -4144,16 +4144,13 @@ class Adventure(commands.Cog):
             log.exception("Error with the new character sheet")
             return
         if c.heroclass["name"] != "Psychic":
-            ctx.command.reset_cooldown(ctx)
             return await smart_embed(
                 ctx, _("{}, you need to be a Psychic to do this.").format(self.escape(ctx.author.display_name)),
             )
         else:
             if ctx.guild.id not in self._sessions:
-                ctx.command.reset_cooldown(ctx)
                 return await smart_embed(ctx, _("There is no active adventures."),)
             if not self.in_adventure(ctx):
-                ctx.command.reset_cooldown(ctx)
                 return await smart_embed(
                     ctx,
                     _(
@@ -4170,7 +4167,7 @@ class Adventure(commands.Cog):
                 c.heroclass["cooldown"] = cooldown_time + 1
             if c.heroclass["cooldown"] + cooldown_time <= time.time():
                 max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
-                roll = random.randint(min(c.rebirths - 25 // 2, (max_roll//2)), max_roll) / max_roll
+                roll = random.randint(min(c.rebirths - 25 // 2, (max_roll // 2)), max_roll) / max_roll
                 if ctx.guild.id in self._sessions and self._sessions[ctx.guild.id].insight[0] < roll:
                     self._sessions[ctx.guild.id].insight = roll, c
                     good = True
