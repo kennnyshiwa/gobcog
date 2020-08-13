@@ -6252,7 +6252,7 @@ class Adventure(commands.Cog):
                     roll = random.randint(roll, max_roll)
 
             att_value = c.total_att
-            rebirths = c.rebirths * 3 if c.heroclass["name"] == "Berserker" else 0
+            rebirths = c.rebirths * (3 if c.heroclass["name"] == "Berserker" else 1)
             if roll == 1:
                 if c.heroclass["name"] == "Berserker" and c.heroclass["ability"]:
                     bonus_roll = random.randint(5, 15)
@@ -6276,10 +6276,10 @@ class Adventure(commands.Cog):
                 if roll == max_roll:
                     msg += _("**{}** landed a critical hit.\n").format(self.escape(user.display_name))
                     critlist.append(user)
-                    crit_bonus = random.randint(5, 20) + 2 * rebirths
+                    crit_bonus = (random.randint(5, 20) + 2) * rebirths
                     crit_str = f"{self.emojis.crit} {humanize_number(crit_bonus)}"
                 if c.heroclass["ability"]:
-                    base_bonus = random.randint(15, 50) + 5 * rebirths
+                    base_bonus = (random.randint(15, 50) + 5) * rebirths
                 base_str = f"{self.emojis.crit}️ {humanize_number(base_bonus)}"
                 attack += int((roll + base_bonus + crit_bonus + att_value) / pdef)
                 bonus = base_str + crit_str
@@ -6325,7 +6325,7 @@ class Adventure(commands.Cog):
                 elif roll > 25 and pet_crit >= 95:
                     roll = random.randint(roll, max_roll)
             int_value = c.total_int
-            rebirths = c.rebirths * 3 if c.heroclass["name"] == "Wizard" else 0
+            rebirths = c.rebirths * (3 if c.heroclass["name"] == "Wizard" else 1)
             if roll == 1:
                 msg += _("{}**{}** almost set themselves on fire.\n").format(
                     failed_emoji, self.escape(user.display_name)
@@ -6351,10 +6351,10 @@ class Adventure(commands.Cog):
                 if roll == max_roll:
                     msg += _("**{}** had a surge of energy.\n").format(self.escape(user.display_name))
                     critlist.append(user)
-                    crit_bonus = random.randint(5, 20) + 2 * rebirths
+                    crit_bonus = (random.randint(5, 20) + 2) * rebirths
                     crit_str = f"{self.emojis.crit} {humanize_number(crit_bonus)}"
                 if c.heroclass["ability"]:
-                    base_bonus = random.randint(15, 50) + 5 * rebirths
+                    base_bonus = (random.randint(15, 50) + 5) * rebirths
                     base_str = f"{self.emojis.magic_crit}️ {humanize_number(base_bonus)}"
                 magic += int((roll + base_bonus + crit_bonus + int_value) / mdef)
                 bonus = base_str + crit_str
@@ -6570,7 +6570,7 @@ class Adventure(commands.Cog):
                 mod = 45
             roll = max(random.randint((1 + mod), max_roll), 1)
             dipl_value = c.total_cha
-            rebirths = c.rebirths * 3 if c.heroclass["name"] == "Bard" else 0
+            rebirths = c.rebirths * (3 if c.heroclass["name"] == "Bard" else 1)
             if roll == 1:
                 if c.heroclass["name"] == "Bard" and c.heroclass["ability"]:
                     bonus = random.randint(5, 15)
@@ -6592,11 +6592,11 @@ class Adventure(commands.Cog):
                 if roll == max_roll:
                     msg += _("**{}** made a compelling argument.\n").format(self.escape(user.display_name))
                     critlist.append(user)
-                    crit_bonus = random.randint(5, 20) + 2 * rebirths
+                    crit_bonus = (random.randint(5, 20) + 2) * rebirths
                     crit_str = f"{self.emojis.crit} {crit_bonus}"
 
                 if c.heroclass["ability"]:
-                    base_bonus = random.randint(15, 50) + 5 * rebirths
+                    base_bonus = (random.randint(15, 50) + 5) * rebirths
                 base_str = f"🎵 {humanize_number(base_bonus)}"
                 diplomacy += int((roll + base_bonus + crit_bonus + dipl_value) / cdef)
                 bonus = base_str + crit_str
