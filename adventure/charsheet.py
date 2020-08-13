@@ -733,7 +733,7 @@ class Character(Item):
             ),
             daily="" if daymult == 0 else _("* Daily bonus active"),
             bp=len(self.backpack),
-            bptotal=self.get_backpack_slots()
+            bptotal=self.get_backpack_slots(),
         )
 
     def get_equipment(self):
@@ -1250,6 +1250,7 @@ class Character(Item):
             return "N/A"
         else:
             return humanize_number((50 + (self.rebirths * 5)))
+
     def is_backpack_full(self, is_dev: bool = False):
         return not is_dev or len(self.backpack) > (50 + (self.rebirths * 5))
 

@@ -1442,6 +1442,18 @@ class Adventure(commands.Cog):
         except Exception as exc:
             log.exception("Error with the new character sheet", exc_info=exc)
             return
+        try:
+            buy_user = await Character.from_json(self.config, buyer, self._daily_bonus)
+        except Exception as exc:
+            log.exception("Error with the new character sheet", exc_info=exc)
+            return
+
+        if buy_user.is_backpack_full(is_dev=self.is_dev(buyer)):
+            await ctx.send(
+                _("**{author}**'s backpack is currently full.").format(author=self.escape(buyer.display_name))
+            )
+            return
+
         if not any([x for x in c.backpack if item.name.lower() == x.lower()]):
             return await smart_embed(
                 ctx,
@@ -1521,11 +1533,6 @@ class Adventure(commands.Cog):
                 if pred.result:  # buyer reacted with Yes.
                     with contextlib.suppress(discord.errors.NotFound):
                         if await bank.can_spend(buyer, asking):
-                            try:
-                                buy_user = await Character.from_json(self.config, buyer, self._daily_bonus)
-                            except Exception as exc:
-                                log.exception("Error with the new character sheet", exc_info=exc)
-                                return
                             if buy_user.rebirths + 1 < c.rebirths:
                                 return await smart_embed(
                                     ctx,
@@ -3528,7 +3535,7 @@ class Adventure(commands.Cog):
                 )
             if c.is_backpack_full(is_dev=self.is_dev(ctx.author)):
                 await ctx.send(
-                    _("**{author}**, Your backpack it currently full.").format(
+                    _("**{author}**, Your backpack is currently full.").format(
                         author=self.escape(ctx.author.display_name)
                     )
                 )
@@ -4088,7 +4095,7 @@ class Adventure(commands.Cog):
                 )
             if c.is_backpack_full(is_dev=self.is_dev(ctx.author)):
                 await ctx.send(
-                    _("**{author}**, Your backpack it currently full.").format(
+                    _("**{author}**, Your backpack is currently full.").format(
                         author=self.escape(ctx.author.display_name)
                     )
                 )
@@ -5613,7 +5620,7 @@ class Adventure(commands.Cog):
                         await to_delete.delete()
                         await msg.delete()
                     await channel.send(
-                        _("**{author}**, Your backpack it currently full.").format(
+                        _("**{author}**, Your backpack is currently full.").format(
                             author=self.escape(user.display_name)
                         )
                     )
