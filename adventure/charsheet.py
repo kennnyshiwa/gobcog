@@ -1041,7 +1041,7 @@ class Character(Item):
             if sets and item.set not in sets:
                 continue
             e_level = equip_level(self, item)
-            if equippable and self.lvl >= e_level:
+            if equippable and self.lvl < e_level:
                 continue
             if degrade and item.rarity in ["legendary", "ascended", "event"]:
                 if (d := degrade.get("equal")) is not None:
