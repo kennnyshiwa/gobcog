@@ -897,7 +897,7 @@ class Adventure(commands.Cog):
         if backpack_pages:
             return await menu(ctx, backpack_pages, DEFAULT_CONTROLS)
         else:
-            return await smart_embed(ctx, _("You have no equippable items that match this query."),)
+            return await smart_embed(ctx, _("You have no items that match this query."),)
 
     @commands.group(name="backpack", autohelp=False)
     @commands.bot_has_permissions(add_reactions=True)
