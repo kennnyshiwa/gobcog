@@ -2004,6 +2004,17 @@ class Adventure(commands.Cog):
 
     @adventureset.command()
     @commands.is_owner()
+    async def easymode(self, ctx: Context):
+        """[Owner] Set whether or not Adventure will be in easy mode.
+
+        Easy mode gives less rewards, but monster information is shown.
+        """
+        toggle = await self.config.easy_mode()
+        await self.config.easy_mode.set(not toggle)
+        await smart_embed(ctx, _("Adventure easy mode is now **{}**.").format("Enabled" if not toggle else "Disabled"))
+
+    @adventureset.command()
+    @commands.is_owner()
     async def sepcurrency(self, ctx: Context):
         """[Owner] Toggle whether the currency should be separated from main bot currency."""
         toggle = await self.config.separate_economy()
