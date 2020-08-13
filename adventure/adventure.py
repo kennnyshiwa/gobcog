@@ -3415,9 +3415,7 @@ class Adventure(commands.Cog):
                                 max(900, (3600 - max((c.luck + c.total_int) * 2, 0))) + time.time()
                             )
                         elif c.heroclass["name"] == "Psychic":
-                            c.heroclass["cooldown"] = (
-                                max(300, (900 - max((c.luck - c.total_cha) * 2, 0))) + time.time()
-                            )
+                            c.heroclass["cooldown"] = max(300, (900 - max((c.luck - c.total_cha) * 2, 0))) + time.time()
                         await self.config.user(ctx.author).set(await c.to_json(self.config))
                         await self._clear_react(class_msg)
                         await class_msg.edit(content=box(now_class_msg, lang="css"))
