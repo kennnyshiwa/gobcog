@@ -694,6 +694,7 @@ class Character(Item):
             "INTELLIGENCE: {int} [+{int_skill}]\n\n - "
             "DEXTERITY: {dex} - "
             "LUCK: {luck} \n\n "
+            "Backpack: {bp}/{bptotal} \n- "
             "Currency: {bal} \n- "
             "Experience: {xp}/{next_lvl} \n- "
             "Unspent skillpoints: {skill_points}\n\n"
@@ -731,6 +732,8 @@ class Character(Item):
                 f"Credits: {round(cpmult * 100)}%"
             ),
             daily="" if daymult == 0 else _("* Daily bonus active"),
+            bp=len(self.backpack),
+            bptotal=self.get_backpack_slots()
         )
 
     def get_equipment(self):
@@ -1242,6 +1245,11 @@ class Character(Item):
             setattr(self, slot, item)
         return self
 
+    def get_backpack_slots(self, is_dev: bool = False):
+        if is_dev:
+            return "N/A"
+        else:
+            return humanize_number((50 + (self.rebirths * 5)))
     def is_backpack_full(self, is_dev: bool = False):
         return not is_dev or len(self.backpack) > (50 + (self.rebirths * 5))
 
