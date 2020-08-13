@@ -5715,14 +5715,14 @@ class Adventure(commands.Cog):
         damage_str = ""
         diplo_str = ""
         if dmg_dealt > 0:
-            damage_str = _("The group {status} {challenge} **({result}/{int_hp})**.\n").format(
+            damage_str = _("The group {status} **{challenge}** **({result}/{int_hp})**.\n").format(
                 status=_("hit the") if failed or not slain else _("killed the"),
                 challenge=challenge,
                 result=humanize_number(dmg_dealt),
                 int_hp=humanize_number(hp),
             )
         if diplomacy > 0:
-            diplo_str = _("The group {status} the {challenge} with {how} **({diplomacy}/{int_dipl})**.\n").format(
+            diplo_str = _("The group {status} the **{challenge}** with {how} **({diplomacy}/{int_dipl})**.\n").format(
                 status=_("tried to persuade") if not persuaded else _("distracted"),
                 challenge=challenge,
                 how=_("flattery") if failed or not persuaded else _("insults"),
@@ -5880,7 +5880,7 @@ class Adventure(commands.Cog):
             miniboss = session.challenge
             special = session.miniboss["special"]
             result_msg += _(
-                "The {miniboss}'s "
+                "The **{miniboss}'s** "
                 "{special} was countered, but he still managed to kill you."
                 "\n{loss_l} to repay a passing "
                 "cleric that resurrected the group."
