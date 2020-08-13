@@ -1252,7 +1252,9 @@ class Character(Item):
             return humanize_number((50 + (self.rebirths * 5)))
 
     def is_backpack_full(self, is_dev: bool = False):
-        return not is_dev or len(self.backpack) > (50 + (self.rebirths * 5))
+        if is_dev:
+            return False
+        return len(self.backpack) > (50 + (self.rebirths * 5))
 
     async def add_to_backpack(self, item: Item, number: int = 1):
         if item:
