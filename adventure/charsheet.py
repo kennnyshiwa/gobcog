@@ -1637,17 +1637,20 @@ class ThemeSetMonterConverter(Converter):
             dipl = float(arguments[3])
             pdef = float(arguments[4])
             mdef = float(arguments[5])
+            cdef = float(arguments[6])
             if any([i < 0 for i in [hp, dipl, pdef, mdef]]):
-                raise BadArgument("HP, Charisma, Magical defence and Physical defence cannot be negative.")
+                raise BadArgument(
+                    "HP, Charisma, Magical defence, Persuasion defence and Physical defence cannot be negative."
+                )
 
-            image = arguments[7]
-            boss = True if arguments[6].lower() == "true" else False
+            image = arguments[8]
+            boss = True if arguments[7].lower() == "true" else False
             if not image:
                 raise Exception
         except BadArgument:
             raise
         except Exception:
-            raise BadArgument("Invalid format, Excepted:\n`theme++name++hp++dipl++pdef++mdef++boss++image`")
+            raise BadArgument("Invalid format, Excepted:\n`theme++name++hp++dipl++pdef++mdef++cdef++boss++image`")
         if "transcended" in name.lower() or "ascended" in name.lower():
             raise BadArgument("You are not worthy.")
         return {
@@ -1656,6 +1659,7 @@ class ThemeSetMonterConverter(Converter):
             "hp": hp,
             "pdef": pdef,
             "mdef": mdef,
+            "cdef": cdef,
             "dipl": dipl,
             "image": image,
             "boss": boss,

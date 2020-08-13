@@ -2238,7 +2238,7 @@ class Adventure(commands.Cog):
     async def themeset_add_monster(self, ctx: Context, *, theme_data: ThemeSetMonterConverter):
         """[Owner] Add/Update a monster object in the specified theme.
 
-        Usage: `[p]themeset add monster theme++name++hp++dipl++pdef++mdef++boss++image`
+        Usage: `[p]themeset add monster theme++name++hp++dipl++pdef++mdef++cdef++boss++image`
         """
         assert isinstance(theme_data, dict)
         theme = theme_data.pop("theme", None)
@@ -2259,11 +2259,12 @@ class Adventure(commands.Cog):
         text = _(
             "Monster: `{monster}` has been {status} the `{theme}` theme\n"
             "```ini\n"
-            "HP:               [{hp}]\n"
-            "Diplomacy:        [{dipl}]\n"
-            "Physical defence: [{pdef}]\n"
-            "Magical defence:  [{mdef}]\n"
-            "Is a boss:        [{boss}]```"
+            "HP:                  [{hp}]\n"
+            "Diplomacy:           [{dipl}]\n"
+            "Physical defence:    [{pdef}]\n"
+            "Magical defence:     [{mdef}]\n"
+            "Persuasion defence:  [{cdef}]\n"
+            "Is a boss:           [{boss}]```"
         ).format(monster=monster, theme=theme, status=_("added to") if not updated else _("updated in"), **theme_data,)
 
         embed = discord.Embed(description=text, colour=await ctx.embed_colour())
@@ -2371,13 +2372,15 @@ class Adventure(commands.Cog):
         embed_list = []
         for monster, monster_stats in monster_data.items():
             image = monster_stats.get("image")
+            monster_stats["cdef"] = monster_stats.get("cdef", 1.0)
             text = _(
                 "```ini\n"
-                "HP:               [{hp}]\n"
-                "Diplomacy:        [{dipl}]\n"
-                "Physical defence: [{pdef}]\n"
-                "Magical defence:  [{mdef}]\n"
-                "Is a boss:        [{boss}]```"
+                "HP:                  [{hp}]\n"
+                "Diplomacy:           [{dipl}]\n"
+                "Physical defence:    [{pdef}]\n"
+                "Magical defence:     [{mdef}]\n"
+                "Persuasion defence:  [{cdef}]\n"
+                "Is a boss:           [{boss}]```"
             ).format(**monster_stats)
             embed = discord.Embed(title=monster, description=text)
             embed.set_image(url=image)
@@ -4197,13 +4200,14 @@ class Adventure(commands.Cog):
                     else:
                         pdef = session.monsters[session.challenge]["pdef"]
                         mdef = session.monsters[session.challenge]["mdef"]
+                        cdef = session.monsters[session.challenge].get("cdef", 1.0)
                         if roll == 1:
-                            hp = (
+                            hp = int(
                                 session.monsters[session.challenge]["hp"]
                                 * self.ATTRIBS[session.attribute][0]
                                 * session.monster_stats
                             )
-                            dipl = (
+                            dipl = int(
                                 session.monsters[session.challenge]["dipl"]
                                 * self.ATTRIBS[session.attribute][1]
                                 * session.monster_stats
@@ -4217,7 +4221,9 @@ class Adventure(commands.Cog):
                                 hp=humanize_number(ceil(hp)),
                                 dipl_symbol=self.emojis.dipl,
                                 dipl=humanize_number(ceil(dipl)),
-                                trans=_(" (**Transcended**)") if session.transcended else "",
+                                trans=f" (**Transcended**) {self.emojis.skills.psychic}"
+                                if session.transcended
+                                else f"{self.emojis.skills.psychic}",
                             )
                         elif roll >= 0.95:
                             hp = (
@@ -4280,6 +4286,19 @@ class Adventure(commands.Cog):
                                 msg += _("This monster's hide **melts to magic!**\n")
                             else:
                                 msg += _("Magic spells are **hugely effective** against this monster!\n")
+                        if roll >= 0.8:
+                            if cdef >= 1.5:
+                                msg += _(
+                                    "You think you are charismatic? Pfft, this creature couldn't care less for what you want to say!\n"
+                                )
+                            elif cdef >= 1.25:
+                                msg += _("Any attempts to communicate with this creature will be **very difficult!**\n")
+                            elif cdef > 1:
+                                msg += _("Any attempts to talk to this creature will be **difficult!**\n")
+                            elif cdef > 0.75:
+                                msg += _("This creature **can be reasoned** with!\n")
+                            else:
+                                msg += _("This monster can be **easily influenced!**\n")
 
                     if msg:
                         image = None
@@ -5043,6 +5062,7 @@ class Adventure(commands.Cog):
     def _dynamic_monster_stats(self, ctx: Context, choice: MutableMapping):
         stat_range = self._adv_results.get_stat_range(ctx)
         win_percentage = stat_range.get("win_percent", 0.5)
+        choice["cdef"] = choice.get("cdef", 1.0)
         if win_percentage >= 0.90:
             monster_hp_min = int(choice["hp"] * 2)
             monster_hp_max = int(choice["hp"] * 3)
@@ -5052,6 +5072,8 @@ class Adventure(commands.Cog):
             monster_pdef = choice["pdef"] * percent_pdef
             percent_mdef = random.randrange(25, 30) / 100
             monster_mdef = choice["mdef"] * percent_mdef
+            percent_cdef = random.randrange(25, 30) / 100
+            monster_cdef = choice["cdef"] * percent_cdef
         elif win_percentage >= 0.75:
             monster_hp_min = int(choice["hp"] * 1.5)
             monster_hp_max = int(choice["hp"] * 2)
@@ -5061,6 +5083,8 @@ class Adventure(commands.Cog):
             monster_pdef = choice["pdef"] * percent_pdef
             percent_mdef = random.randrange(15, 25) / 100
             monster_mdef = choice["mdef"] * percent_mdef
+            percent_cdef = random.randrange(15, 25) / 100
+            monster_cdef = choice["cdef"] * percent_cdef
         elif win_percentage >= 0.50:
             monster_hp_min = int(choice["hp"])
             monster_hp_max = int(choice["hp"] * 1.5)
@@ -5070,6 +5094,8 @@ class Adventure(commands.Cog):
             monster_pdef = choice["pdef"] * percent_pdef
             percent_mdef = random.randrange(1, 15) / 100
             monster_mdef = choice["mdef"] * percent_mdef
+            percent_cdef = random.randrange(1, 15) / 100
+            monster_cdef = choice["cdef"] * percent_cdef
         elif win_percentage >= 0.35:
             monster_hp_min = int(choice["hp"] * 0.9)
             monster_hp_max = int(choice["hp"])
@@ -5079,6 +5105,8 @@ class Adventure(commands.Cog):
             monster_pdef = choice["pdef"] * percent_pdef * -1
             percent_mdef = random.randrange(1, 15) / 100
             monster_mdef = choice["mdef"] * percent_mdef * -1
+            percent_cdef = random.randrange(1, 15) / 100
+            monster_cdef = choice["cdef"] * percent_cdef * -1
         elif win_percentage >= 0.15:
             monster_hp_min = int(choice["hp"] * 0.8)
             monster_hp_max = int(choice["hp"] * 0.9)
@@ -5088,6 +5116,8 @@ class Adventure(commands.Cog):
             monster_pdef = choice["pdef"] * percent_pdef * -1
             percent_mdef = random.randrange(15, 25) / 100
             monster_mdef = choice["mdef"] * percent_mdef * -1
+            percent_cdef = random.randrange(15, 25) / 100
+            monster_cdef = choice["cdef"] * percent_cdef * -1
         else:
             monster_hp_min = int(choice["hp"] * 0.6)
             monster_hp_max = int(choice["hp"] * 0.8)
@@ -5097,6 +5127,8 @@ class Adventure(commands.Cog):
             monster_pdef = choice["pdef"] * percent_pdef * -1
             percent_mdef = random.randrange(25, 30) / 100
             monster_mdef = choice["mdef"] * percent_mdef * -1
+            percent_cdef = random.randrange(25, 30) / 100
+            monster_cdef = choice["cdef"] * percent_cdef * -1
 
         if monster_hp_min < monster_hp_max:
             new_hp = random.randrange(monster_hp_min, monster_hp_max)
@@ -5110,12 +5142,15 @@ class Adventure(commands.Cog):
             new_diplo = random.randrange(monster_diplo_max, monster_diplo_min)
         else:
             new_diplo = max(monster_diplo_max, monster_diplo_min)
+
         new_pdef = choice["pdef"] + monster_pdef
         new_mdef = choice["mdef"] + monster_mdef
+        new_cdef = choice["cdef"] + monster_cdef
         choice["hp"] = new_hp
         choice["dipl"] = new_diplo
         choice["pdef"] = new_pdef
         choice["mdef"] = new_mdef
+        choice["cdef"] = new_cdef
         return choice
 
     async def update_monster_roster(self, user):
@@ -5668,9 +5703,8 @@ class Adventure(commands.Cog):
         fumblelist, critlist, diplomacy, talk_msg = await self.handle_talk(
             ctx.guild.id, fumblelist, critlist, diplomacy
         )
-        # need to pass challenge because we need to query MONSTERS[challenge]["pdef"] (and mdef)
         fumblelist, critlist, attack, magic, fight_msg = await self.handle_fight(
-            ctx.guild.id, fumblelist, critlist, attack, magic, challenge
+            ctx.guild.id, fumblelist, critlist, attack, magic
         )
         result_msg = run_msg + pray_msg + talk_msg + fight_msg
         challenge_attrib = session.attribute
@@ -6172,7 +6206,7 @@ class Adventure(commands.Cog):
                 )
         return (attack, diplomacy, magic, msg)
 
-    async def handle_fight(self, guild_id, fumblelist, critlist, attack, magic, challenge):
+    async def handle_fight(self, guild_id, fumblelist, critlist, attack, magic):
         session = self._sessions[guild_id]
         fight_list = list(set(session.fight))
         magic_list = list(set(session.magic))
@@ -6510,6 +6544,7 @@ class Adventure(commands.Cog):
 
     async def handle_talk(self, guild_id, fumblelist, critlist, diplomacy):
         session = self._sessions[guild_id]
+        cdef = max(session.monster_modified_stats["cdef"], 0.5)
         talk_list = list(set(session.talk))
         if len(talk_list) >= 1:
             report = _("Talking Party: \n\n")
@@ -6539,7 +6574,7 @@ class Adventure(commands.Cog):
             if roll == 1:
                 if c.heroclass["name"] == "Bard" and c.heroclass["ability"]:
                     bonus = random.randint(5, 15)
-                    diplomacy += roll - bonus + dipl_value + rebirths
+                    diplomacy += int((roll - bonus + dipl_value + rebirths) / cdef)
                     report += (
                         f"**{self.escape(user.display_name)}** "
                         f"🎲({roll}) +💥{bonus} +🗨{humanize_number(dipl_value)} | "
@@ -6563,7 +6598,7 @@ class Adventure(commands.Cog):
                 if c.heroclass["ability"]:
                     base_bonus = random.randint(15, 50) + 5 * rebirths
                 base_str = f"🎵 {humanize_number(base_bonus)}"
-                diplomacy += roll + base_bonus + crit_bonus + dipl_value
+                diplomacy += int((roll + base_bonus + crit_bonus + dipl_value) / cdef)
                 bonus = base_str + crit_str
                 report += (
                     f"**{self.escape(user.display_name)}** "
@@ -6572,7 +6607,7 @@ class Adventure(commands.Cog):
                     f"{self.emojis.talk}{humanize_number(dipl_value)}\n"
                 )
             else:
-                diplomacy += roll + dipl_value + c.rebirths // 5
+                diplomacy += int((roll + dipl_value + c.rebirths // 5) / cdef)
                 report += (
                     f"**{self.escape(user.display_name)}** "
                     f"{self.emojis.dice}({roll}) + "
