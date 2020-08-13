@@ -4169,7 +4169,8 @@ class Adventure(commands.Cog):
             if "cooldown" not in c.heroclass:
                 c.heroclass["cooldown"] = cooldown_time + 1
             if c.heroclass["cooldown"] + cooldown_time <= time.time():
-                roll = random.randint(min(c.rebirths // 2, 40), 50) / 50
+                max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
+                roll = random.randint(min(c.rebirths - 25 // 2, (max_roll//2)), max_roll) / max_roll
                 if ctx.guild.id in self._sessions and self._sessions[ctx.guild.id].insight[0] < roll:
                     self._sessions[ctx.guild.id].insight = roll, c
                     good = True
