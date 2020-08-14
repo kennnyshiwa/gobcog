@@ -1282,7 +1282,7 @@ class Adventure(commands.Cog):
                     else:
                         roll = random.randint(0, 3)
                         chests = random.randint(1, 2)
-                    if roll == 0:
+                    if roll != 0:
                         item.owned -= 1
                         if item.owned <= 0:
                             del character.backpack[item.name]
