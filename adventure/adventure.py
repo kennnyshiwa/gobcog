@@ -303,6 +303,7 @@ class Adventure(commands.Cog):
 
         self._adventure_countdown = {}
         self._rewards = {}
+        self._reward_message = {}
         self._trader_countdown = {}
         self._current_traders = {}
         self._curent_trader_stock = {}
@@ -5261,7 +5262,10 @@ class Adventure(commands.Cog):
                         c.last_known_currency = await bank.get_balance(user)
                         c.last_currency_check = time.time()
                     await self.config.user(user).set(await c.to_json(self.config))
-
+        if ctx.message.id in self._reward_message:
+            extramsg = self._reward_message.pop(ctx.message.id)
+            for msg in pagify(extramsg, page_length=1900):
+                await smart_embed(ctx, msg, success=True)
         while ctx.guild.id in self._sessions:
             del self._sessions[ctx.guild.id]
 
@@ -7434,6 +7438,9 @@ class Adventure(commands.Cog):
         newcp = 0
         rewards_list = []
         phrase = ""
+        reward_message = ""
+        currency_name = await bank.get_currency_name(ctx.guild,)
+        can_embed = not ctx.guild or (await _config.guild(ctx.guild).embed() and await ctx.embed_requested())
         async for user in AsyncIter(userlist, steps=100):
             self._rewards[user.id] = {}
             try:
@@ -7461,13 +7468,22 @@ class Adventure(commands.Cog):
                 petcp = int(usercp * c.heroclass["pet"]["bonus"])
                 newcp += petcp
                 usercp += petcp
-                self._rewards[user.id]["cp"] = usercp + petcp
+                self._rewards[user.id]["cp"] = usercp
+                reward_message += "{mention} gained {xp} XP and {coin} {currency}\n".format(
+                    mention=user.mention if can_embed else f"**{user.display_name}**",
+                    xp=humanize_number(int(userxp)),
+                    coin=humanize_number(int(usercp)),
+                    currency=currency_name,
+                )
                 percent = round((c.heroclass["pet"]["bonus"] - 1.0) * 100)
                 phrase += _("\n**{user}** received a **{percent}%** reward bonus from their {pet_name}.").format(
                     user=self.escape(user.display_name), percent=str(percent), pet_name=c.heroclass["pet"]["name"],
                 )
 
             else:
+                reward_message += "{mention} gained {xp} XP and {coin} {currency}\n".format(
+                    mention=user.mention, xp=humanize_number(int(userxp)), coin=humanize_number(int(usercp))
+                )
                 self._rewards[user.id]["xp"] = userxp
                 self._rewards[user.id]["cp"] = usercp
             if special is not False:
@@ -7476,7 +7492,7 @@ class Adventure(commands.Cog):
                 self._rewards[user.id]["special"] = False
             rewards_list.append(f"**{self.escape(user.display_name)}**")
 
-        currency_name = await bank.get_currency_name(ctx.guild,)
+        self._reward_message[ctx.message.id] = reward_message
         to_reward = " and ".join(
             [", ".join(rewards_list[:-1]), rewards_list[-1]] if len(rewards_list) > 2 else rewards_list
         )
