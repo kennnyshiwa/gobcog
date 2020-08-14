@@ -7513,7 +7513,10 @@ class Adventure(commands.Cog):
 
             else:
                 reward_message += "{mention} gained {xp} XP and {coin} {currency}\n".format(
-                    mention=user.mention, xp=humanize_number(int(userxp)), coin=humanize_number(int(usercp))
+                    mention=user.mention,
+                    xp=humanize_number(int(userxp)),
+                    coin=humanize_number(int(usercp)),
+                    currency=currency_name,
                 )
                 self._rewards[user.id]["xp"] = userxp
                 self._rewards[user.id]["cp"] = usercp
