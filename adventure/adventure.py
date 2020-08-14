@@ -4772,6 +4772,13 @@ class Adventure(commands.Cog):
                 bal = c.bal
                 currency_name = await bank.get_currency_name(ctx.guild,)
                 offering = min(int(bal / 5 + (c.total_int // 3)), 1000000000)
+                if not await bank.can_spend(ctx.author, offering):
+                    return await smart_embed(
+                        ctx,
+                        _("{author.mention} You don't have enough {name}.").format(
+                            author=ctx.author, name=await bank.get_currency_name(ctx.guild)
+                        ),
+                    )
                 nv_msg = await ctx.send(
                     _(
                         "{author}, this will cost you at least {offering} {currency_name}.\n"
