@@ -1055,16 +1055,16 @@ class Adventure(commands.Cog):
                             item_price += self._sell(character, item)
                             if item.owned <= 0 and item.name in character.backpack:
                                 del character.backpack[item.name]
+                        item_price = max(item_price, 0)
                         msg += _("{old_item} sold for {price}.\n").format(
                             old_item=str(old_owned) + " " + str(item), price=humanize_number(item_price),
                         )
                         total_price += item_price
-                        item_price = max(item_price, 0)
-                        if item_price > 0:
-                            try:
-                                await bank.deposit_credits(ctx.author, item_price)
-                            except BalanceTooHigh as e:
-                                await bank.set_balance(ctx.author, e.max_balance)
+                if item_price > 0:
+                    try:
+                        await bank.deposit_credits(ctx.author, item_price)
+                    except BalanceTooHigh as e:
+                        await bank.set_balance(ctx.author, e.max_balance)
                 character.last_known_currency = await bank.get_balance(ctx.author)
                 character.last_currency_check = time.time()
                 await self.config.user(ctx.author).set(await character.to_json(self.config))
@@ -1406,22 +1406,21 @@ class Adventure(commands.Cog):
                             continue
                     item_price = 0
                     old_owned = item.owned
-                    async for _loop_counter in AsyncIter(range(0, item.owned), steps=100):
+                    async for _loop_counter in AsyncIter(range(0, old_owned), steps=100):
                         item.owned -= 1
                         item_price += self._sell(c, item)
                         if item.owned <= 0:
                             del c.backpack[item.name]
-                        count += 1
+                    item_price = max(item_price, 0)
                     msg += _("{old_item} sold for {price}.\n").format(
                         old_item=str(old_owned) + " " + str(item), price=humanize_number(item_price),
                     )
                     total_price += item_price
-                    item_price = max(item_price, 0)
-                    if item_price > 0:
-                        try:
-                            await bank.deposit_credits(ctx.author, item_price)
-                        except BalanceTooHigh as e:
-                            await bank.set_balance(ctx.author, e.max_balance)
+                if total_price > 0:
+                    try:
+                        await bank.deposit_credits(ctx.author, total_price)
+                    except BalanceTooHigh as e:
+                        await bank.set_balance(ctx.author, e.max_balance)
                 c.last_known_currency = await bank.get_balance(ctx.author)
                 c.last_currency_check = time.time()
                 await self.config.user(ctx.author).set(await c.to_json(self.config))
