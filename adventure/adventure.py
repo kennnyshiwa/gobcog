@@ -1004,7 +1004,7 @@ class Adventure(commands.Cog):
             await self.config.user(ctx.author).set(await character.to_json(self.config))
             return await smart_embed(
                 ctx,
-                _("Your attempt at disassembling multiple items {succ} were successful and {fail} failed.").format(
+                _("You attempted to disassemble multiple items: {succ} were successful and {fail} failed.").format(
                     succ=humanize_number(success), fail=humanize_number(failed)
                 ),
             )
@@ -1338,7 +1338,7 @@ class Adventure(commands.Cog):
             await self.config.user(ctx.author).set(await character.to_json(self.config))
             return await smart_embed(
                 ctx,
-                _("Your attempt at disassembling multiple items {succ} were successful and {fail} failed.").format(
+                _("You attempted to disassemble multiple items: {succ} were successful and {fail} failed.").format(
                     succ=humanize_number(success), fail=humanize_number(failed)
                 ),
             )
