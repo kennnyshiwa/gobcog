@@ -875,7 +875,7 @@ class Adventure(commands.Cog):
         **--match** - Accepts a string, no quotes are needed. Will attempt to match items to this string.
         ​ ​ ​  ​**--icase** - If `--match` and `--icase` are used, matches will not be case sensitive.
         For the following arguments:
-         ​ These arguments accept 1 or 2 numbers. If 1 is passed it is treated as an equal match, if 2 then it is a range.
+        ​ ​ These arguments accept 1 or 2 numbers. If 1 is passed it is treated as an equal match, if 2 then it is a range.
         ​ ​ ​ ​ **--str**
         ​ ​ ​ ​ **--int**
         ​ ​ ​ ​ **--cha**
