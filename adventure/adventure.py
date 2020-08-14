@@ -3026,8 +3026,14 @@ class Adventure(commands.Cog):
                             item = await ItemConverter().convert(new_ctx, reply.content)
                             if str(item) not in forgeables_items:
                                 item = None
+
                         if not item:
                             wrong_item = _("**{c}**, I could not find that item - check your spelling.").format(
+                                c=self.escape(ctx.author.display_name)
+                            )
+                            await smart_embed(ctx, wrong_item)
+                        elif not can_equip(c, item):
+                            wrong_item = _("**{c}**, This item it too high level for you to reforge it.").format(
                                 c=self.escape(ctx.author.display_name)
                             )
                             await smart_embed(ctx, wrong_item)
@@ -3077,6 +3083,11 @@ class Adventure(commands.Cog):
                             continue
                         if not item:
                             wrong_item = _("**{c}**, I could not find that item - check your spelling.").format(
+                                c=self.escape(ctx.author.display_name)
+                            )
+                            await smart_embed(ctx, wrong_item)
+                        elif not can_equip(c, item):
+                            wrong_item = _("**{c}**, This item it too high level for you to reforge it.").format(
                                 c=self.escape(ctx.author.display_name)
                             )
                             await smart_embed(ctx, wrong_item)
