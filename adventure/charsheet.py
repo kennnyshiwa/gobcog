@@ -693,7 +693,7 @@ class Character(Item):
             "CHARISMA: {cha} [+{cha_skill}] - "
             "INTELLIGENCE: {int} [+{int_skill}]\n\n - "
             "DEXTERITY: {dex} - "
-            "LUCK: {luck} \n\n "
+            "LUCK: {luck} \n\n- "
             "Backpack: {bp}/{bptotal} \n- "
             "Currency: {bal} \n- "
             "Experience: {xp}/{next_lvl} \n- "
