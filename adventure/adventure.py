@@ -1062,9 +1062,9 @@ class Adventure(commands.Cog):
                             old_item=str(old_owned) + " " + str(item), price=humanize_number(item_price),
                         )
                         total_price += item_price
-                if item_price > 0:
+                if total_price > 0:
                     try:
-                        await bank.deposit_credits(ctx.author, item_price)
+                        await bank.deposit_credits(ctx.author, total_price)
                     except BalanceTooHigh as e:
                         await bank.set_balance(ctx.author, e.max_balance)
                 character.last_known_currency = await bank.get_balance(ctx.author)
