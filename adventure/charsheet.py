@@ -835,6 +835,12 @@ class Character(Item):
         else:
             return 7  # common / normal
 
+    @staticmethod
+    def get_slot_index(slot):
+        if slot not in ORDER:
+            return float("inf")
+        return ORDER.index(slot)
+
     async def get_sorted_backpack(self, backpack: dict, slot=None, rarity=None):
         tmp = {}
 
@@ -854,9 +860,9 @@ class Character(Item):
             if slot_name not in tmp:
                 tmp[slot_name] = []
             tmp[slot_name].append((item, backpack[item]))
-
+        slots = sorted(list(tmp.keys()), key=self.get_slot_index)
         final = []
-        async for (idx, slot_name) in AsyncIter(tmp.keys(), steps=100).enumerate():
+        async for (idx, slot_name) in AsyncIter(slots, steps=100).enumerate():
             if tmp[slot_name]:
                 final.append(sorted(tmp[slot_name], key=_sort))
         return final
@@ -1091,9 +1097,10 @@ class Character(Item):
             if slot_name not in tmp:
                 tmp[slot_name] = []
             tmp[slot_name].append((item_name, item))
-        allslots = sorted(tmp.keys())
+        slots = sorted(list(tmp.keys()), key=self.get_slot_index)
+
         final = []
-        async for (idx, slot_name) in AsyncIter(allslots, steps=100).enumerate():
+        async for (idx, slot_name) in AsyncIter(slots, steps=100).enumerate():
             if tmp[slot_name]:
                 final.append((slot_name, sorted(tmp[slot_name], key=_sort)))
         return final
@@ -1160,7 +1167,6 @@ class Character(Item):
             current_equipped = getattr(self, slot_name if slot_name != "two handed" else "left", None)
             async for item_name, item in AsyncIter(slot_group, steps=100):
                 if len(str(table)) > 1500:
-                    table.rows.sort("Slot")
                     tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
                     table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
                     table.set_style(BeautifulTable.STYLE_RST)
@@ -1200,7 +1206,6 @@ class Character(Item):
                 table.rows.append(data)
                 remainder = True
         if remainder:
-            table.rows.sort("Slot")
             tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
         return tables
 

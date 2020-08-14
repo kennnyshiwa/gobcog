@@ -1245,7 +1245,6 @@ class Adventure(commands.Cog):
         This will provide a chance for a chest,
         or the item might break while you are handling it...
         """
-        assert isinstance(backpack_items[1][0], Item)
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx, _("You tried to disassemble an item but the monster ahead of you commands your attention."),
@@ -4997,7 +4996,6 @@ class Adventure(commands.Cog):
         ]
         async for index, item in AsyncIter(items, steps=100).enumerate(start=1):
             if len(str(table)) > 1500:
-                table.rows.sort("Slot")
                 msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
                 table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
                 table.set_style(BeautifulTable.STYLE_RST)
@@ -5032,7 +5030,6 @@ class Adventure(commands.Cog):
             if data not in table.rows:
                 table.rows.append(data)
             if index == total:
-                table.rows.sort("Slot")
                 table.set_style(BeautifulTable.STYLE_RST)
                 msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
 
@@ -5061,7 +5058,15 @@ class Adventure(commands.Cog):
         intel = 0
         dex = 0
         luck = 0
-        for (slot, data) in userdata["items"].items():
+
+        def get_slot_index(slot):
+            slot = slot[0]
+            if slot not in ORDER:
+                return float("inf")
+            return ORDER.index(slot)
+
+        data_sorted = sorted(userdata["items"].items(), key=get_slot_index)
+        for (slot, data) in data_sorted:
             if slot == "backpack":
                 continue
             if last_slot == "two handed":
@@ -5089,7 +5094,6 @@ class Adventure(commands.Cog):
             dex += item.dex
             luck += item.luck
 
-        table.rows.sort("Slot")
         table.set_style(BeautifulTable.STYLE_RST)
         form_string += str(table)
 
