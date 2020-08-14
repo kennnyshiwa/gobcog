@@ -882,7 +882,7 @@ class Adventure(commands.Cog):
         ​ ​ ​ ​ **--luc**
         ​ ​ ​ ​ **--dex**
         ​ ​ ​ ​ **--lvl**
-        ​ ​ ​ ​ **--deg**
+        ​ ​ ​ ​ **--deg** (Only works of `[p]cbackpack show`)
 
         Sub Commands: - These Take the same arguments above
         """
