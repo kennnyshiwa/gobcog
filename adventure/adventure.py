@@ -859,13 +859,12 @@ class Adventure(commands.Cog):
             else:
                 return await smart_embed(ctx, _("You have no equippable items that match this query."),)
 
-    @commands.command(name="cbackpack")
+    @commands.group(name="cbackpack")
     @commands.bot_has_permissions(add_reactions=True)
     async def commands_cbackpack(
-        self, ctx: Context, *, query: BackpackFilterParser,
+        self, ctx: Context,
     ):
-        """This shows the contents of your backpack.
-
+        """Complex backpack management tools
 
         **--slot** - Accepts multiple slot (use quotes if there are spaces in a slot name)
         **--rarity** - Accepts multiple rarities (use quotes if there are spaces in a rarity name)
@@ -884,10 +883,16 @@ class Adventure(commands.Cog):
         ​ ​ ​ ​ **--lvl**
         ​ ​ ​ ​ **--deg**
 
+        Sub Commands: - These Take the same arguments above
         """
+
+    @commands_cbackpack.command(name="show")
+    async def commands_cbackpack_show(
+        self, ctx: Context, *, query: BackpackFilterParser,
+    ):
+        """This shows the contents of your backpack."""
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
-
         try:
             c = await Character.from_json(self.config, ctx.author, self._daily_bonus)
         except Exception as exc:
@@ -895,9 +900,187 @@ class Adventure(commands.Cog):
             return
         backpack_pages = await c.get_argparse_backpack(query)
         if backpack_pages:
+            controls = DEFAULT_CONTROLS.copy()
+
+            async def _backpack_info(
+                ctx: commands.Context,
+                pages: list,
+                controls: MutableMapping,
+                message: discord.Message,
+                page: int,
+                timeout: float,
+                emoji: str,
+            ):
+                if message:
+                    await ctx.send_help(self.commands_cbackpack)
+                    with contextlib.suppress(discord.HTTPException):
+                        await message.delete()
+                    return None
+
+            controls["\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"] = _backpack_info
             return await menu(ctx, backpack_pages, DEFAULT_CONTROLS)
         else:
             return await smart_embed(ctx, _("You have no items that match this query."),)
+
+    @commands_cbackpack.command(name="disassemble")
+    async def commands_cbackpack_disassemble(self, ctx: Context, *, query: BackpackFilterParser):
+        """
+        Disassemble a set item from your backpack.
+        This will provide a chance for a chest,
+        or the item might break while you are handling it...
+        """
+        if self.in_adventure(ctx):
+            return await smart_embed(
+                ctx, _("You tried to disassemble an item but the monster ahead of you commands your attention."),
+            )
+
+        async with self.get_lock(ctx.author):
+            try:
+                character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
+            except Exception as exc:
+                log.exception("Error with the new character sheet", exc_info=exc)
+                return
+            slots = await character.get_argparse_backpack_items(query)
+            if (total_items := sum(len(i) for s, i in slots)) > 2:
+
+                msg = await ctx.send(
+                    "Are you sure you want to disassemble {count} unique items and their duplicates?".format(
+                        count=humanize_number(total_items)
+                    )
+                )
+                start_adding_reactions(msg, ReactionPredicate.YES_OR_NO_EMOJIS)
+                pred = ReactionPredicate.yes_or_no(msg, ctx.author)
+                try:
+                    await ctx.bot.wait_for("reaction_add", check=pred, timeout=60)
+                except asyncio.TimeoutError:
+                    await self._clear_react(msg)
+                    return
+
+                if not pred.result:
+                    await ctx.send("Not disassembling those items.")
+                    return
+        failed = 0
+        success = 0
+        disassembled = set()
+
+        async for slot_name, slot_group in AsyncIter(slots, steps=100):
+            async for item_name, item in AsyncIter(slot_group, steps=100):
+                try:
+                    item = character.backpack[item.name]
+                except KeyError:
+                    continue
+                if item.name in disassembled:
+                    continue
+                if item.rarity in ["forged"]:
+                    failed += 1
+                    continue
+                index = min(RARITIES.index(item.rarity), 4)
+                disassembled.add(item.name)
+                owned = item.owned
+                async for _loop_counter in AsyncIter(range(0, owned), steps=100):
+                    if character.heroclass["name"] != "Tinkerer":
+                        roll = random.randint(0, 5)
+                        chests = 1
+                    else:
+                        roll = random.randint(0, 3)
+                        chests = random.randint(1, 2)
+                    if roll != 0:
+                        item.owned -= 1
+                        if item.owned <= 0 and item.name in character.backpack:
+                            del character.backpack[item.name]
+                        failed += 1
+                    else:
+                        item.owned -= 1
+                        if item.owned <= 0 and item.name in character.backpack:
+                            del character.backpack[item.name]
+                        character.treasure[index] += chests
+                        success += 1
+        if (not failed) and (not success):
+            return await smart_embed(ctx, _("No items matched your query.").format(),)
+        else:
+
+            await self.config.user(ctx.author).set(await character.to_json(self.config))
+            return await smart_embed(
+                ctx,
+                _("Your attempt at disassembling multiple items {succ} were successful and {fail} failed.").format(
+                    succ=humanize_number(success), fail=humanize_number(failed)
+                ),
+            )
+
+    @commands_cbackpack.command(name="sell", cooldown_after_parsing=True)
+    @commands.cooldown(rate=3, per=60, type=commands.BucketType.user)
+    async def commands_cbackpack_sell(self, ctx: Context, *, query: BackpackFilterParser):
+        """Sell an item from your backpack."""
+
+        if self.in_adventure(ctx):
+            return await smart_embed(
+                ctx, _("You tried to go sell your items but the monster ahead is not allowing you to leave."),
+            )
+
+        async with self.get_lock(ctx.author):
+            try:
+                character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
+            except Exception as exc:
+                log.exception("Error with the new character sheet", exc_info=exc)
+                return
+            slots = await character.get_argparse_backpack_items(query)
+            if (total_items := sum(len(i) for s, i in slots)) > 2:
+                msg = await ctx.send(
+                    "Are you sure you want to sell {count} items in your inventory that match this query?".format(
+                        count=humanize_number(total_items)
+                    )
+                )
+                start_adding_reactions(msg, ReactionPredicate.YES_OR_NO_EMOJIS)
+                pred = ReactionPredicate.yes_or_no(msg, ctx.author)
+                try:
+                    await ctx.bot.wait_for("reaction_add", check=pred, timeout=60)
+                except asyncio.TimeoutError:
+                    await self._clear_react(msg)
+                    return
+
+                if not pred.result:
+                    await ctx.send("Not selling those items.")
+                    return
+            total_price = 0
+            msg = ""
+            async with ctx.typing():
+                async for slot_name, slot_group in AsyncIter(slots, steps=100):
+                    async for item_name, item in AsyncIter(slot_group, steps=100):
+                        old_owned = item.owned
+                        if item.rarity in ["forged"]:
+                            continue
+                        item_price = 0
+                        async for _loop_counter in AsyncIter(range(0, old_owned), steps=100):
+                            item.owned -= 1
+                            item_price += self._sell(character, item)
+                            if item.owned <= 0 and item.name in character.backpack:
+                                del character.backpack[item.name]
+                        msg += _("{old_item} sold for {price}.\n").format(
+                            old_item=str(old_owned) + " " + str(item), price=humanize_number(item_price),
+                        )
+                        total_price += item_price
+                        item_price = max(item_price, 0)
+                        if item_price > 0:
+                            try:
+                                await bank.deposit_credits(ctx.author, item_price)
+                            except BalanceTooHigh as e:
+                                await bank.set_balance(ctx.author, e.max_balance)
+                character.last_known_currency = await bank.get_balance(ctx.author)
+                character.last_currency_check = time.time()
+                await self.config.user(ctx.author).set(await character.to_json(self.config))
+            if total_price == 0:
+                return await smart_embed(ctx, _("No items matched your query.").format(),)
+            if msg:
+                msg_list = []
+                new_msg = _("{author} sold {number} items and their duplicates for {price}.\n\n{items}").format(
+                    author=self.escape(ctx.author.display_name),
+                    number=humanize_number(total_items),
+                    price=humanize_number(total_price),
+                    items=msg,
+                )
+                for page in pagify(new_msg, shorten_by=10, page_length=1900):
+                    msg_list.append(box(page, lang="css"))
+                await menu(ctx, msg_list, DEFAULT_CONTROLS)
 
     @commands.group(name="backpack", autohelp=False)
     @commands.bot_has_permissions(add_reactions=True)
@@ -1228,14 +1411,11 @@ class Adventure(commands.Cog):
                         item_price += self._sell(c, item)
                         if item.owned <= 0:
                             del c.backpack[item.name]
-                        if not count % 10:
-                            await asyncio.sleep(0.1)
                         count += 1
                     msg += _("{old_item} sold for {price}.\n").format(
                         old_item=str(old_owned) + " " + str(item), price=humanize_number(item_price),
                     )
                     total_price += item_price
-                    await asyncio.sleep(0.1)
                     item_price = max(item_price, 0)
                     if item_price > 0:
                         try:

@@ -934,8 +934,7 @@ class Character(Item):
             if clean and not slot_group:
                 continue
             current_equipped = getattr(self, slot_name if slot != "two handed" else "left", None)
-            async for item in AsyncIter(slot_group, steps=100):
-                item = item[1]
+            async for item_name, item in AsyncIter(slot_group, steps=100):
                 if forging and (item.rarity in ["forged", "set"] or item in consumed_list):
                     continue
                 if forging and item.rarity == "ascended":
@@ -1159,8 +1158,7 @@ class Character(Item):
         async for slot_name, slot_group in AsyncIter(bkpk, steps=100):
             slot_name_org = slot_group[0][1].slot
             current_equipped = getattr(self, slot_name if slot_name != "two handed" else "left", None)
-            async for item in AsyncIter(slot_group, steps=100):
-                item = item[1]
+            async for item_name, item in AsyncIter(slot_group, steps=100):
                 if len(str(table)) > 1500:
                     table.rows.sort("Slot")
                     tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
@@ -1205,6 +1203,40 @@ class Character(Item):
             table.rows.sort("Slot")
             tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
         return tables
+
+    async def get_argparse_backpack_items(self, query: MutableMapping[str, Any]) -> List[Item]:
+        delta = query.pop("delta", False)
+        equippable = query.pop("equippable", False)
+        sets = query.pop("set", [])
+        rarities = query.pop("rarity", [])
+        slots = query.pop("slot", [])
+        strength = query.pop("strength", {})
+        intelligence = query.pop("intelligence", {})
+        charisma = query.pop("charisma", {})
+        luck = query.pop("luck", {})
+        dexterity = query.pop("dexterity", {})
+        level = query.pop("level", {})
+        degrade = query.pop("degrade", {})
+        ignore_case = query.pop("icase", False)
+        match = query.pop("match", None)
+
+        bkpk = await self.get_sorted_backpack_arg_parse(
+            self.backpack,
+            slots=slots,
+            rarities=rarities,
+            sets=sets,
+            equippable=equippable,
+            strength=strength,
+            intelligence=intelligence,
+            charisma=charisma,
+            luck=luck,
+            dexterity=dexterity,
+            level=level,
+            degrade=degrade,
+            match=match,
+            ignore_case=ignore_case,
+        )
+        return bkpk
 
     def get_equipped_delta(self, equiped: Item, to_compare: Item, stat_name: str) -> str:
         if (equiped and len(equiped.slot) == 2) and (to_compare and len(to_compare.slot) == 2):
@@ -2077,7 +2109,8 @@ class NoExitParser(argparse.ArgumentParser):
 class BackpackFilterParser(commands.Converter):
     async def convert(self, ctx: commands.Context, argument: str) -> Mapping[str, Any]:
         argument = argument.replace("—", "--")
-
+        # if argument.startswith("disassemble") or argument.startswith("sell"):
+        #     raise commands.ArgumentParsingError()
         command, *arguments = argument.split(" -- ")
         if arguments:
             argument = " -- ".join(arguments)
