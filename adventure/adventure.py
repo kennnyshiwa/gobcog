@@ -926,7 +926,8 @@ class Adventure(commands.Cog):
     @commands_cbackpack.command(name="disassemble")
     async def commands_cbackpack_disassemble(self, ctx: Context, *, query: BackpackFilterParser):
         """
-        Disassemble a set item from your backpack.
+        Disassemble items from your backpack.
+
         This will provide a chance for a chest,
         or the item might break while you are handling it...
         """
@@ -1011,7 +1012,7 @@ class Adventure(commands.Cog):
     @commands_cbackpack.command(name="sell", cooldown_after_parsing=True)
     @commands.cooldown(rate=3, per=60, type=commands.BucketType.user)
     async def commands_cbackpack_sell(self, ctx: Context, *, query: BackpackFilterParser):
-        """Sell an item from your backpack."""
+        """Sell items from your backpack."""
 
         if self.in_adventure(ctx):
             return await smart_embed(
@@ -1239,7 +1240,8 @@ class Adventure(commands.Cog):
     @_backpack.command(name="disassemble")
     async def backpack_disassemble(self, ctx: Context, *, backpack_items: ItemsConverter):
         """
-        Disassemble a set item from your backpack.
+        Disassemble items from your backpack.
+
         This will provide a chance for a chest,
         or the item might break while you are handling it...
         """
