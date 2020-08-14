@@ -2982,8 +2982,8 @@ class Adventure(commands.Cog):
                 if len(forgeables_items) <= 1:
                     return await smart_embed(
                         ctx,
-                        _("**{}**, you need at least two forgeable items in your backpack to forge.").format(
-                            self.escape(ctx.author.display_name)
+                        _("**{}**, you need at least two forgeable items in your backpack to forge.{}").format(
+                            self.escape(ctx.author.display_name), ascended_forge_msg
                         ),
                     )
                 pages = await c.get_backpack(forging=True, clean=True)
