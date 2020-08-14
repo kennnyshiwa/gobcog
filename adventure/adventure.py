@@ -865,17 +865,17 @@ class Adventure(commands.Cog):
     async def commands_cbackpack(
         self, ctx: Context,
     ):
-        """Complex backpack management tools
+        """Complex backpack management tools.
 
-        **--slot** - Accepts multiple slot (use quotes if there are spaces in a slot name)
-        **--rarity** - Accepts multiple rarities (use quotes if there are spaces in a rarity name)
-        **--set** - Accepts multiple sets (use quotes if there are spaces in the set name)
-        **--equip** - If used will only show equippable items
-        **--diff** - If used will shows stat delta compared to what you currently have equipped
-        **--match** - Accepts a string, no quotes are needed. will attempt to match items to this string.
-        ​ ​ ​ ​**--icase** - If `--match` is used  and this is used then matches will not be case sensitive.
+        **--slot** - Accepts multiple slots (use quotes if there are spaces in a slot name).
+        **--rarity** - Accepts multiple rarities (use quotes if there are spaces in a rarity name).
+        **--set** - Accepts multiple sets (use quotes if there are spaces in the set name).
+        **--equip** - If used will only show equippable items.
+        **--diff** - If used will show the stat delta compared to what you currently have equipped.
+        **--match** - Accepts a string, no quotes are needed. Will attempt to match items to this string.
+        ​ ​ ​  ​**--icase** - If `--match` and `--icase` are used, matches will not be case sensitive.
         For the following arguments:
-        ​ ​ These accept 1 or 2 numbers, if 1 is passed, it is treated as an equal match, if 2 then it is a range
+         ​ These arguments accept 1 or 2 numbers. If 1 is passed it is treated as an equal match, if 2 then it is a range.
         ​ ​ ​ ​ **--str**
         ​ ​ ​ ​ **--int**
         ​ ​ ​ ​ **--cha**
@@ -884,7 +884,7 @@ class Adventure(commands.Cog):
         ​ ​ ​ ​ **--lvl**
         ​ ​ ​ ​ **--deg** (Only works on `[p]cbackpack show`)
 
-        Sub Commands: - These Take the same arguments above
+        Subcommands: These take the same arguments listed above.
         """
 
     @commands_cbackpack.command(name="show")
