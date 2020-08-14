@@ -2109,8 +2109,6 @@ class NoExitParser(argparse.ArgumentParser):
 class BackpackFilterParser(commands.Converter):
     async def convert(self, ctx: commands.Context, argument: str) -> Mapping[str, Any]:
         argument = argument.replace("—", "--")
-        # if argument.startswith("disassemble") or argument.startswith("sell"):
-        #     raise commands.ArgumentParsingError()
         command, *arguments = argument.split(" -- ")
         if arguments:
             argument = " -- ".join(arguments)

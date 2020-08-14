@@ -933,7 +933,7 @@ class Adventure(commands.Cog):
             return await smart_embed(
                 ctx, _("You tried to disassemble an item but the monster ahead of you commands your attention."),
             )
-
+        query.pop("degrade", None)  # Disallow selling by degrade levels
         async with self.get_lock(ctx.author):
             try:
                 character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
@@ -1016,7 +1016,7 @@ class Adventure(commands.Cog):
             return await smart_embed(
                 ctx, _("You tried to go sell your items but the monster ahead is not allowing you to leave."),
             )
-
+        query.pop("degrade", None)  # Disallow selling by degrade levels
         async with self.get_lock(ctx.author):
             try:
                 character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
