@@ -3762,7 +3762,7 @@ class Adventure(commands.Cog):
                 )
             if c.is_backpack_full(is_dev=self.is_dev(ctx.author)):
                 await ctx.send(
-                    _("**{author}**, Your backpack is currently full.").format(
+                    _("**{author}**, your backpack is currently full.").format(
                         author=self.escape(ctx.author.display_name)
                     )
                 )
