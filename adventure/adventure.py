@@ -1234,7 +1234,7 @@ class Adventure(commands.Cog):
                 character = await character.equip_item(piece, from_backpack=True)
             await self.config.user(ctx.author).set(await character.to_json(self.config))
             await smart_embed(
-                ctx, _("I've equipped all piece of `{set_name}` that you are able to equip.").format(set_name=set_name),
+                ctx, _("I've equipped all pieces of `{set_name}` that you are able to equip.").format(set_name=set_name),
             )
 
     @_backpack.command(name="disassemble")
