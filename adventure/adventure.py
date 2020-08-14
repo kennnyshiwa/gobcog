@@ -3179,7 +3179,16 @@ class Adventure(commands.Cog):
         item1 = consumed[0]
         item2 = consumed[1]
 
-        roll = max(random.randint(1, 20) + (character.total_int // 50) + (character.luck // 20), 0)
+        roll = max(
+            (
+                random.randint(1, 20)
+                + int(
+                    (character.total_int + character.luck)
+                    / (character.total_stats - (character.total_int + character.luck))
+                )
+            ),
+            0,
+        )
         if roll == 1:
             modifier = 0.4
         elif 1 < roll <= 6:
