@@ -1245,7 +1245,7 @@ class Adventure(commands.Cog):
         This will provide a chance for a chest,
         or the item might break while you are handling it...
         """
-        assert isinstance(backpack_items[0], Item)
+        assert isinstance(backpack_items[1][0], Item)
         if self.in_adventure(ctx):
             return await smart_embed(
                 ctx, _("You tried to disassemble an item but the monster ahead of you commands your attention."),
