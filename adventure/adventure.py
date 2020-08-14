@@ -1200,11 +1200,18 @@ class Adventure(commands.Cog):
                 c = await c.equip_item(equip, True, self.is_dev(ctx.author))  # FIXME:
                 await self.config.user(ctx.author).set(await c.to_json(self.config))
 
-    @_backpack.command(name="eset")
+    @_backpack.command(name="eset", cooldown_after_parsing=True)
+    @commands.cooldown(rate=1, per=600, type=commands.BucketType.user)
     async def backpack_eset(self, ctx: Context, *, set_name: str):
         """Equip all parts of a set that you own."""
+        if self.in_adventure(ctx):
+            ctx.command.reset_cooldown(ctx)
+            return await smart_embed(
+                ctx, _("You tried to magically equip multiple items at once, but the monster ahead nearly killed you."),
+            )
         set_list = humanize_list(sorted([f"`{i}`" for i in self.SET_BONUSES.keys()], key=str.lower))
         if set_name is None:
+            ctx.command.reset_cooldown(ctx)
             return await smart_embed(
                 ctx, _("Use this command with one of the following set names: \n{sets}").format(sets=set_list),
             )
@@ -1213,10 +1220,12 @@ class Adventure(commands.Cog):
                 character = await Character.from_json(self.config, ctx.author, self._daily_bonus)
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
+                ctx.command.reset_cooldown(ctx)
                 return
 
             pieces = await character.get_set_count(return_items=True, set_name=set_name.title())
             if not pieces:
+                ctx.command.reset_cooldown(ctx)
                 return await smart_embed(
                     ctx, _("Your have no pieces of `{set_name}` to equip.").format(set_name=set_name),
                 )
