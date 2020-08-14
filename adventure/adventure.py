@@ -5295,8 +5295,9 @@ class Adventure(commands.Cog):
                     await self.config.user(user).set(await c.to_json(self.config))
         if ctx.message.id in self._reward_message:
             extramsg = self._reward_message.pop(ctx.message.id)
-            for msg in pagify(extramsg, page_length=1900):
-                await smart_embed(ctx, msg, success=True)
+            if extramsg:
+                for msg in pagify(extramsg, page_length=1900):
+                    await smart_embed(ctx, msg, success=True)
         while ctx.guild.id in self._sessions:
             del self._sessions[ctx.guild.id]
 
