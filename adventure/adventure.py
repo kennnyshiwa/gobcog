@@ -7512,7 +7512,7 @@ class Adventure(commands.Cog):
                 newcp += petcp
                 usercp += petcp
                 self._rewards[user.id]["cp"] = usercp
-                reward_message += "{mention} gained {xp} XP and {coin} {currency}\n".format(
+                reward_message += "{mention} gained {xp} XP and {coin} {currency}.\n".format(
                     mention=user.mention if can_embed else f"**{user.display_name}**",
                     xp=humanize_number(int(userxp)),
                     coin=humanize_number(int(usercp)),
