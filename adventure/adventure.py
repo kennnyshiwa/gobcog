@@ -1228,7 +1228,7 @@ class Adventure(commands.Cog):
             if not pieces:
                 ctx.command.reset_cooldown(ctx)
                 return await smart_embed(
-                    ctx, _("Your have no pieces of `{set_name}` to equip.").format(set_name=set_name),
+                    ctx, _("You have no pieces of `{set_name}` that you can equip.").format(set_name=set_name),
                 )
             for piece in pieces:
                 character = await character.equip_item(piece, from_backpack=True)
