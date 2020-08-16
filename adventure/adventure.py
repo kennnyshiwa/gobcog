@@ -3799,7 +3799,7 @@ class Adventure(commands.Cog):
                         c.treasure[redux] -= number
                         await self.config.user(ctx.author).set(await c.to_json(self.config))
                         items = await self._open_chests(ctx, box_type, number, character=c)
-                        msg = _("{}, you've opened the following items:\n").format(self.escape(ctx.author.display_name))
+                        msg = _("{}, you've opened the following items:\n\n").format(self.escape(ctx.author.display_name))
                         msg_len = len(msg)
                         table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
                         table.set_style(BeautifulTable.STYLE_RST)
