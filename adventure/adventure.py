@@ -1012,7 +1012,10 @@ class Adventure(commands.Cog):
     @commands_cbackpack.command(name="sell", cooldown_after_parsing=True)
     @commands.cooldown(rate=3, per=60, type=commands.BucketType.user)
     async def commands_cbackpack_sell(self, ctx: Context, *, query: BackpackFilterParser):
-        """Sell items from your backpack."""
+        """Sell items from your backpack.
+
+        Forged, Set and Event items cannot be sold using this command.
+        """
 
         if self.in_adventure(ctx):
             return await smart_embed(
@@ -1025,7 +1028,7 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 return
-            slots = await character.get_argparse_backpack_items(query)
+            slots = await character.get_argparse_backpack_items(query, rarity_exclude=["forged", "set", "event"])
             if (total_items := sum(len(i) for s, i in slots)) > 2:
                 msg = await ctx.send(
                     "Are you sure you want to sell {count} items in your inventory that match this query?".format(
@@ -1049,8 +1052,6 @@ class Adventure(commands.Cog):
                 async for slot_name, slot_group in AsyncIter(slots, steps=100):
                     async for item_name, item in AsyncIter(slot_group, steps=100):
                         old_owned = item.owned
-                        if item.rarity in ["forged"]:
-                            continue
                         item_price = 0
                         async for _loop_counter in AsyncIter(range(0, old_owned), steps=100):
                             item.owned -= 1
@@ -1234,7 +1235,8 @@ class Adventure(commands.Cog):
                 character = await character.equip_item(piece, from_backpack=True)
             await self.config.user(ctx.author).set(await character.to_json(self.config))
             await smart_embed(
-                ctx, _("I've equipped all pieces of `{set_name}` that you are able to equip.").format(set_name=set_name),
+                ctx,
+                _("I've equipped all pieces of `{set_name}` that you are able to equip.").format(set_name=set_name),
             )
 
     @_backpack.command(name="disassemble")
@@ -3799,7 +3801,9 @@ class Adventure(commands.Cog):
                         c.treasure[redux] -= number
                         await self.config.user(ctx.author).set(await c.to_json(self.config))
                         items = await self._open_chests(ctx, box_type, number, character=c)
-                        msg = _("{}, you've opened the following items:\n\n").format(self.escape(ctx.author.display_name))
+                        msg = _("{}, you've opened the following items:\n\n").format(
+                            self.escape(ctx.author.display_name)
+                        )
                         msg_len = len(msg)
                         table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
                         table.set_style(BeautifulTable.STYLE_RST)

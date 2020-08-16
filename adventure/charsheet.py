@@ -1020,6 +1020,7 @@ class Character(Item):
         degrade: MutableMapping[str, Any],
         ignore_case: bool,
         match: Optional[str],
+        rarity_exclude: List[str] = None,
     ):
         tmp = {}
 
@@ -1030,6 +1031,8 @@ class Character(Item):
             item = backpack[item_name]
             item_slots = item.slot
             slot_name = item_slots[0]
+            if rarity_exclude is not None and item.rarity in rarity_exclude:
+                continue
 
             if len(item_slots) > 1:
                 slot_name = "two handed"
@@ -1209,7 +1212,9 @@ class Character(Item):
             tables.append(box(msg + str(table) + f"\nPage {len(tables) + 1}", lang="css"))
         return tables
 
-    async def get_argparse_backpack_items(self, query: MutableMapping[str, Any]) -> List[Item]:
+    async def get_argparse_backpack_items(
+        self, query: MutableMapping[str, Any], rarity_exclude: List[str] = None
+    ) -> List[Item]:
         delta = query.pop("delta", False)
         equippable = query.pop("equippable", False)
         sets = query.pop("set", [])
@@ -1240,6 +1245,7 @@ class Character(Item):
             degrade=degrade,
             match=match,
             ignore_case=ignore_case,
+            rarity_exclude=rarity_exclude,
         )
         return bkpk
 
