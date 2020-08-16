@@ -4438,7 +4438,7 @@ class Adventure(commands.Cog):
             )
         else:
             if ctx.guild.id not in self._sessions:
-                return await smart_embed(ctx, _("There is no active adventures."),)
+                return await smart_embed(ctx, _("There are no active adventures."),)
             if not self.in_adventure(ctx):
                 return await smart_embed(
                     ctx,
@@ -4774,7 +4774,7 @@ class Adventure(commands.Cog):
                 if not await bank.can_spend(ctx.author, offering):
                     return await smart_embed(
                         ctx,
-                        _("{author.mention} You don't have enough {name}.").format(
+                        _("{author.mention}, you don't have enough {name}.").format(
                             author=ctx.author, name=await bank.get_currency_name(ctx.guild)
                         ),
                     )
