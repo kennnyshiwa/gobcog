@@ -4515,6 +4515,7 @@ class Adventure(commands.Cog):
                                 if session.transcended
                                 else f"{self.emojis.skills.psychic}",
                             )
+                            self._sessions[ctx.guild.id].exposed = True
                         elif roll >= 0.95:
                             hp = (
                                 session.monsters[session.challenge]["hp"]
@@ -4536,6 +4537,7 @@ class Adventure(commands.Cog):
                                 dipl_symbol=self.emojis.dipl,
                                 dipl=humanize_number(ceil(dipl)),
                             )
+                            self._sessions[ctx.guild.id].exposed = True
                         elif roll >= 0.90:
                             hp = (
                                 session.monsters[session.challenge]["hp"]
@@ -4548,12 +4550,15 @@ class Adventure(commands.Cog):
                                 hp_symbol=self.emojis.hp,
                                 hp=humanize_number(ceil(hp)),
                             )
+                            self._sessions[ctx.guild.id].exposed = True
                         elif roll > 0.75:
                             msg += _("This monster is **a{attr} {challenge}**.\n").format(
                                 challenge=session.challenge, attr=session.attribute,
                             )
+                            self._sessions[ctx.guild.id].exposed = True
                         elif roll > 0.5:
                             msg += _("This monster is **a {challenge}**.\n").format(challenge=session.challenge,)
+                            self._sessions[ctx.guild.id].exposed = True
                         if roll >= 0.4:
                             if pdef >= 1.5:
                                 msg += _("Swords bounce off this monster as it's skin is **almost impenetrable!**\n")
@@ -5225,7 +5230,8 @@ class Adventure(commands.Cog):
         if ctx.guild.id in self._sessions:
             adventure_obj = self._sessions[ctx.guild.id]
             link = adventure_obj.message.jump_url
-            challenge = adventure_obj.challenge if adventure_obj.easy_mode else _("Unknown")
+
+            challenge = adventure_obj.challenge if (adventure_obj.easy_mode or adventure_obj.exposed) else _("Unknown")
             return await smart_embed(
                 ctx,
                 _(
