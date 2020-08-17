@@ -4503,7 +4503,7 @@ class Adventure(commands.Cog):
                                 * session.monster_stats
                             )
                             msg += _(
-                                "This monster is **a{attr} {challenge}** ({hp_symbol} {hp}/{dipl_symbol} {dipl}){trans}\n"
+                                "This monster is **a{attr} {challenge}** ({hp_symbol} {hp}/{dipl_symbol} {dipl}){trans}.\n"
                             ).format(
                                 challenge=session.challenge,
                                 attr=session.attribute,
@@ -4527,7 +4527,7 @@ class Adventure(commands.Cog):
                                 * session.monster_stats
                             )
                             msg += _(
-                                "This monster is **a{attr} {challenge}** ({hp_symbol} {hp}/{dipl_symbol} {dipl})\n"
+                                "This monster is **a{attr} {challenge}** ({hp_symbol} {hp}/{dipl_symbol} {dipl}).\n"
                             ).format(
                                 challenge=session.challenge,
                                 attr=session.attribute,
@@ -4542,18 +4542,18 @@ class Adventure(commands.Cog):
                                 * self.ATTRIBS[session.attribute][0]
                                 * session.monster_stats
                             )
-                            msg += _("This monster is **a{attr} {challenge}** ({hp_symbol} {hp})\n").format(
+                            msg += _("This monster is **a{attr} {challenge}** ({hp_symbol} {hp}).\n").format(
                                 challenge=session.challenge,
                                 attr=session.attribute,
                                 hp_symbol=self.emojis.hp,
                                 hp=humanize_number(ceil(hp)),
                             )
                         elif roll > 0.75:
-                            msg += _("This monster is **a{attr} {challenge}**\n").format(
+                            msg += _("This monster is **a{attr} {challenge}**.\n").format(
                                 challenge=session.challenge, attr=session.attribute,
                             )
                         elif roll > 0.5:
-                            msg += _("This monster is **a {challenge}**\n").format(challenge=session.challenge,)
+                            msg += _("This monster is **a {challenge}**.\n").format(challenge=session.challenge,)
                         if roll >= 0.4:
                             if pdef >= 1.5:
                                 msg += _("Swords bounce off this monster as it's skin is **almost impenetrable!**\n")
