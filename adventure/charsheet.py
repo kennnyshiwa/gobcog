@@ -681,7 +681,7 @@ class Character(Item):
         else:
             class_desc = _("Hero.")
 
-        daymult = self.daily_bonus.get(str(datetime.today().weekday()), 0)
+        daymult = self.daily_bonus.get(str(datetime.today().isoweekday()), 0)
         statmult = self.gear_set_bonus.get("statmult") - 1
         xpmult = (self.gear_set_bonus.get("xpmult") + daymult) - 1
         cpmult = (self.gear_set_bonus.get("cpmult") + daymult) - 1

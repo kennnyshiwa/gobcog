@@ -4008,7 +4008,7 @@ class Adventure(commands.Cog):
                 roll = -2
             versus = random.randint(10, 60)
             xp_mod = random.randint(1, 10)
-            daymult = self._daily_bonus.get(str(datetime.today().weekday() + 1), 0)
+            daymult = self._daily_bonus.get(str(datetime.today().isoweekday()), 0)
             xp_won = int((offering / xp_mod))
             xp_to_max = int((character.maxlevel + 1) ** 3.5)
             ten_percent = xp_to_max * 0.1
@@ -7531,7 +7531,7 @@ class Adventure(commands.Cog):
     async def _reward(self, ctx: commands.Context, userlist, amount, modif, special):
         if modif == 0:
             modif = 0.5
-        daymult = self._daily_bonus.get(str(datetime.today().weekday()), 0)
+        daymult = self._daily_bonus.get(str(datetime.today().isoweekday()), 0)
         xp = max(1, round(amount))
         cp = max(1, round(amount))
         newxp = 0
