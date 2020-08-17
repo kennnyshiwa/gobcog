@@ -5529,7 +5529,7 @@ class Adventure(commands.Cog):
             elif attribute == " possessed":
                 self.bot.dispatch("adventure_possessed", ctx)
         else:
-            timer = 60 * 4
+            timer = 60 * 3
             no_monster = random.randint(0, 100) == 25
         self._sessions[ctx.guild.id] = GameSession(
             challenge=new_challenge if not no_monster else None,
@@ -5661,7 +5661,7 @@ class Adventure(commands.Cog):
         else:
             embed = discord.Embed(colour=discord.Colour.blurple())
             use_embeds = await self.config.guild(ctx.guild).embed() and ctx.channel.permissions_for(ctx.me).embed_links
-            timeout = 60 * 4
+            timeout = 60 * 3
             obscured_text = _(
                 "What will you do and will other heroes help your cause?\n"
                 "Heroes have {time} minutes to participate via reaction:"
