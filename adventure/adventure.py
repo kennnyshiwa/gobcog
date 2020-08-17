@@ -4187,7 +4187,9 @@ class Adventure(commands.Cog):
                 if c.heroclass["name"] != "Ranger":
                     return await ctx.send(
                         box(
-                            _("**{}**, you need to be a Ranger to do this.").format(self.escape(ctx.author.display_name)),
+                            _("**{}**, you need to be a Ranger to do this.").format(
+                                self.escape(ctx.author.display_name)
+                            ),
                             lang="css",
                         )
                     )
@@ -4447,10 +4449,7 @@ class Adventure(commands.Cog):
                 return await smart_embed(ctx, _("There are no active adventures."),)
             if not self.in_adventure(ctx):
                 return await smart_embed(
-                    ctx,
-                    _(
-                        "You tried to expose the enemy's weaknesses, but you aren't in an adventure."
-                    ),
+                    ctx, _("You tried to expose the enemy's weaknesses, but you aren't in an adventure."),
                 )
             if c.heroclass["ability"]:
                 return await smart_embed(

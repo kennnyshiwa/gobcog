@@ -269,7 +269,9 @@ class NVScoreboardSource(WeeklyScoreboardSource):
                 f"{username}"
             )
             players.append(data)
-        msg = "Adventure Negaverse Scoreboard\n```md\n{}``` ```md\n{}``````md\n{}```".format(header, "\n".join(players), f"Page {menu.current_page + 1}/{self.get_max_pages()}")
+        msg = "Adventure Negaverse Scoreboard\n```md\n{}``` ```md\n{}``````md\n{}```".format(
+            header, "\n".join(players), f"Page {menu.current_page + 1}/{self.get_max_pages()}"
+        )
         return msg
 
 
