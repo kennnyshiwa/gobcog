@@ -4427,6 +4427,7 @@ class Adventure(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def insight(self, ctx: Context):
         """[Psychic Class Only]
         This allows a Psychic to expose the current enemy's weakeness to the party.
@@ -4435,6 +4436,7 @@ class Adventure(commands.Cog):
             c = await Character.from_json(self.config, ctx.author, self._daily_bonus)
         except Exception:
             log.exception("Error with the new character sheet")
+            ctx.command.reset_cooldown(ctx)
             return
         if c.heroclass["name"] != "Psychic":
             return await smart_embed(
@@ -4447,8 +4449,7 @@ class Adventure(commands.Cog):
                 return await smart_embed(
                     ctx,
                     _(
-                        "You tried to expose the enemy's weaknesses, then you realised you were "
-                        "by yourself, alone in a dark alley and the enemy was just your shadow."
+                        "You tried to expose the enemy's weaknesses, but you aren't in an adventure."
                     ),
                 )
             if c.heroclass["ability"]:
