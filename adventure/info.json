@@ -21,6 +21,6 @@
 	"type": "COG",
 	"requirements": [
 		"python-dateutil",
-		"tabulate"
+		"beautifultable"
 	]
 }

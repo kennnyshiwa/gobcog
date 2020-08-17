@@ -581,7 +581,7 @@ async def get_currency_name(guild: discord.Guild = None, _forced: bool = False) 
     """
     if _forced or (cog := _bot.get_cog("Adventure")) is None or not cog._separate_economy:
         return await bank.get_currency_name(guild=guild)
-    return _("gold")
+    return _("gold coins")
 
 
 async def set_currency_name(name: str, guild: discord.Guild = None) -> str:
