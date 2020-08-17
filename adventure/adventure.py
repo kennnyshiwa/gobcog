@@ -4008,7 +4008,7 @@ class Adventure(commands.Cog):
                 roll = -2
             versus = random.randint(10, 60)
             xp_mod = random.randint(1, 10)
-            daymult = self._daily_bonus.get(str(datetime.today().weekday()), 0)
+            daymult = self._daily_bonus.get(str(datetime.today().weekday() + 1), 0)
             xp_won = int((offering / xp_mod))
             xp_to_max = int((character.maxlevel + 1) ** 3.5)
             ten_percent = xp_to_max * 0.1
