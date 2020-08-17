@@ -3979,8 +3979,8 @@ class Adventure(commands.Cog):
                 await nv_msg.edit(content=entry_msg)
                 await self._clear_react(nv_msg)
                 await bank.withdraw_credits(ctx.author, offering)
-
-            negachar = _("Nega-{c}").format(c=self.escape(random.choice(ctx.message.guild.members).display_name))
+            nega_member = random.choice(ctx.message.guild.members)
+            negachar = _("Nega-{c}").format(c=self.escape(nega_member.display_name))
 
             nega_msg = await ctx.send(
                 _("**{author}** enters the negaverse and meets **{negachar}**.").format(
@@ -3996,6 +3996,8 @@ class Adventure(commands.Cog):
                 ctx.command.reset_cooldown(ctx)
                 return
             roll = random.randint(max(1, min_roll * 2), 50) if admin_roll == -1 else admin_roll
+            if self.is_dev(nega_member):
+                roll = -2
             versus = random.randint(10, 60)
             xp_mod = random.randint(1, 10)
             daymult = self._daily_bonus.get(str(datetime.today().weekday()), 0)
@@ -4005,7 +4007,35 @@ class Adventure(commands.Cog):
             xp_won = ten_percent if xp_won > ten_percent else xp_won
             xp_won = int(xp_won * (min(max(random.randint(0, character.rebirths), 1), 50) / 100 + 1))
             xp_won = int(xp_won * (character.gear_set_bonus.get("xpmult", 1) + daymult))
-            if roll < 10:
+            if roll == -2:
+                looted = ""
+                curr_balance = character.bal
+                await bank.set_balance(ctx.author, 0)
+                offering_value += curr_balance
+                loss_string = _("all of their")
+                loss_state = True
+                items = await character.looted(how_many=max(int(10 - roll) // 2, 1))
+                if items:
+                    item_string = "\n".join([f"{v} {i}" for v, i in items])
+                    looted = box(f"{item_string}", lang="css")
+                    await self.config.user(ctx.author).set(await character.to_json(self.config))
+                loss_msg = _(
+                    ", losing {loss} {currency_name} as **{negachar}** rifled through their belongings."
+                ).format(loss=loss_string, currency_name=currency_name, negachar=negachar)
+                if looted:
+                    loss_msg += _(" **{negachar}** also stole the following items:\n\n{items}").format(
+                        items=looted, negachar=negachar
+                    )
+                await nega_msg.edit(
+                    content=_("{content}\n**{author}** fumbled and died to **{negachar}'s** savagery{loss_msg}").format(
+                        content=nega_msg.content,
+                        author=self.escape(ctx.author.display_name),
+                        negachar=negachar,
+                        loss_msg=loss_msg,
+                    )
+                )
+                ctx.command.reset_cooldown(ctx)
+            elif roll < 10:
                 loss = round(bal // 3)
                 looted = ""
                 curr_balance = character.bal
