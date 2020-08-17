@@ -8068,12 +8068,12 @@ class Adventure(commands.Cog):
             await smart_embed(
                 ctx,
                 _(
-                    "You receive a letter by post from the town's courier!"
-                    "{author.mention}, you've gained some interest on your {currency}. "
+                    "You receive a letter by post from the town's courier! "
+                    "{author}, you've gained some interest on your {currency}. "
                     "You've been paid +{amount} {currency}!\n\n"
                     "You currently have {new_balance} {currency}."
                 ).format(
-                    author=author,
+                    author=author.mention,
                     currency=adventure_credits_name,
                     amount=humanize_number(amount),  # Make customizable?
                     new_balance=humanize_number(await bank.get_balance(author)),
