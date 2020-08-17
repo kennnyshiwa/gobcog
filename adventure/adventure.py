@@ -2393,7 +2393,7 @@ class Adventure(commands.Cog):
             if not cartname:
                 cartname = await self.config.cart_name()
             return await smart_embed(ctx, _("{} doesn't have the energy to return that often.").format(cartname))
-        await self.config.guild(ctx.guild).cart_timeout.set(time_delta.seconds)
+        await self.config.guild(ctx.guild).cart_timeout.set(time_delta.total_seconds())
         await ctx.tick()
 
     @adventureset.command(name="clear")
