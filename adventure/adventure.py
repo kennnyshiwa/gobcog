@@ -3985,9 +3985,10 @@ class Adventure(commands.Cog):
                 await bank.withdraw_credits(ctx.author, offering)
             if nega_set:
                 nega_member = nega
+                negachar = _("The Almighty Nega-{c}").format(c=self.escape(nega_member.display_name))
             else:
                 nega_member = random.choice(ctx.message.guild.members)
-            negachar = _("Nega-{c}").format(c=self.escape(nega_member.display_name))
+                negachar = _("Nega-{c}").format(c=self.escape(nega_member.display_name))
 
             nega_msg = await ctx.send(
                 _("**{author}** enters the negaverse and meets **{negachar}**.").format(
