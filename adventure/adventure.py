@@ -19,7 +19,7 @@ from discord.ext.commands import CheckFailure
 from discord.ext.commands.errors import BadArgument
 from redbot.core import Config, commands
 from redbot.core.bot import Red
-from redbot.core.commands import Context, check, get_dict_converter
+from redbot.core.commands import check, get_dict_converter
 from redbot.core.data_manager import bundled_data_path, cog_data_path
 from redbot.core.errors import BalanceTooHigh
 from redbot.core.i18n import Translator, cog_i18n
@@ -143,7 +143,7 @@ class AdventureResults:
         self._num_raids = num_raids
         self._last_raids: MutableMapping[int, List] = {}
 
-    def add_result(self, ctx: Context, main_action, amount, num_ppl, success):
+    def add_result(self, ctx: commands.Context, main_action, amount, num_ppl, success):
         """Add result to this object.
         :main_action: Main damage action taken by the adventurers
             (highest amount dealt). Should be either "attack" or
@@ -163,7 +163,7 @@ class AdventureResults:
             raid_dict[var] = locals()[var]
         self._last_raids[ctx.guild.id].append(raid_dict)
 
-    def get_stat_range(self, ctx: Context):
+    def get_stat_range(self, ctx: commands.Context):
         """Return reasonable stat range for monster pool to have based
         on last few raids' damage.
 
@@ -408,7 +408,7 @@ class Adventure(commands.Cog):
         self._init_task = self.bot.loop.create_task(self.initialize())
         self._ready_event = asyncio.Event()
 
-    async def cog_before_invoke(self, ctx: Context):
+    async def cog_before_invoke(self, ctx: commands.Context):
         await self._ready_event.wait()
         if ctx.author.id in self.locks and self.locks[ctx.author.id].locked():
             raise CheckFailure(f"There's an active lock for this user ({ctx.author.id})")
@@ -426,7 +426,7 @@ class Adventure(commands.Cog):
             _config = self.config
             theme = await self.config.theme()
             self._separate_economy = await self.config.separate_economy()
-            if "default" == theme:
+            if theme in {"default"}:
                 get_path = bundled_data_path
             else:
                 get_path = cog_data_path
@@ -699,7 +699,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
-    async def makecart(self, ctx: Context):
+    async def makecart(self, ctx: commands.Context):
         """[Dev] Force a cart to appear."""
         if not await no_dev_prompt(ctx):
             return
@@ -779,7 +779,7 @@ class Adventure(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def genitems(self, ctx: Context, rarity: str, slot: str, num: int = 1):
+    async def genitems(self, ctx: commands.Context, rarity: str, slot: str, num: int = 1):
         """[Dev] Generate random items."""
         if not await no_dev_prompt(ctx):
             return
@@ -806,7 +806,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
-    async def copyuser(self, ctx: Context, user_id: int):
+    async def copyuser(self, ctx: commands.Context, user_id: int):
         """[Owner] Copy another members data to yourself.
 
         Note this overrides your current data.
@@ -819,7 +819,7 @@ class Adventure(commands.Cog):
     @commands.bot_has_permissions(add_reactions=True)
     async def commands_equipable_backpack(
         self,
-        ctx: Context,
+        ctx: commands.Context,
         show_diff: Optional[bool] = False,
         rarity: Optional[RarityConverter] = None,
         *,
@@ -863,7 +863,7 @@ class Adventure(commands.Cog):
     @commands.group(name="cbackpack")
     @commands.bot_has_permissions(add_reactions=True)
     async def commands_cbackpack(
-        self, ctx: Context,
+        self, ctx: commands.Context,
     ):
         """Complex backpack management tools.
 
@@ -889,7 +889,7 @@ class Adventure(commands.Cog):
 
     @commands_cbackpack.command(name="show")
     async def commands_cbackpack_show(
-        self, ctx: Context, *, query: BackpackFilterParser,
+        self, ctx: commands.Context, *, query: BackpackFilterParser,
     ):
         """This shows the contents of your backpack."""
         if not await self.allow_in_dm(ctx):
@@ -924,7 +924,7 @@ class Adventure(commands.Cog):
             return await smart_embed(ctx, _("You have no items that match this query."),)
 
     @commands_cbackpack.command(name="disassemble")
-    async def commands_cbackpack_disassemble(self, ctx: Context, *, query: BackpackFilterParser):
+    async def commands_cbackpack_disassemble(self, ctx: commands.Context, *, query: BackpackFilterParser):
         """
         Disassemble items from your backpack.
 
@@ -1011,7 +1011,7 @@ class Adventure(commands.Cog):
 
     @commands_cbackpack.command(name="sell", cooldown_after_parsing=True)
     @commands.cooldown(rate=3, per=60, type=commands.BucketType.user)
-    async def commands_cbackpack_sell(self, ctx: Context, *, query: BackpackFilterParser):
+    async def commands_cbackpack_sell(self, ctx: commands.Context, *, query: BackpackFilterParser):
         """Sell items from your backpack.
 
         Forged, Set and Event items cannot be sold using this command.
@@ -1089,7 +1089,7 @@ class Adventure(commands.Cog):
     @commands.bot_has_permissions(add_reactions=True)
     async def _backpack(
         self,
-        ctx: Context,
+        ctx: commands.Context,
         show_diff: Optional[bool] = False,
         rarity: Optional[RarityConverter] = None,
         *,
@@ -1154,7 +1154,7 @@ class Adventure(commands.Cog):
             return await menu(ctx, msgs, controls)
 
     @_backpack.command(name="equip")
-    async def backpack_equip(self, ctx: Context, *, equip_item: EquipableItemConverter):
+    async def backpack_equip(self, ctx: commands.Context, *, equip_item: EquipableItemConverter):
         """Equip an item from your backpack."""
         assert isinstance(equip_item, Item)
         if self.in_adventure(ctx):
@@ -1204,7 +1204,7 @@ class Adventure(commands.Cog):
 
     @_backpack.command(name="eset", cooldown_after_parsing=True)
     @commands.cooldown(rate=1, per=600, type=commands.BucketType.user)
-    async def backpack_eset(self, ctx: Context, *, set_name: str):
+    async def backpack_eset(self, ctx: commands.Context, *, set_name: str):
         """Equip all parts of a set that you own."""
         if self.in_adventure(ctx):
             ctx.command.reset_cooldown(ctx)
@@ -1240,7 +1240,7 @@ class Adventure(commands.Cog):
             )
 
     @_backpack.command(name="disassemble")
-    async def backpack_disassemble(self, ctx: Context, *, backpack_items: ItemsConverter):
+    async def backpack_disassemble(self, ctx: commands.Context, *, backpack_items: ItemsConverter):
         """
         Disassemble items from your backpack.
 
@@ -1347,7 +1347,7 @@ class Adventure(commands.Cog):
 
     @_backpack.command(name="sellall")
     async def backpack_sellall(
-        self, ctx: Context, rarity: Optional[RarityConverter] = None, *, slot: Optional[SlotConverter] = None,
+        self, ctx: commands.Context, rarity: Optional[RarityConverter] = None, *, slot: Optional[SlotConverter] = None,
     ):
         """Sell all items in your backpack. Optionally specify rarity or slot."""
         assert isinstance(rarity, str) or rarity is None
@@ -1450,7 +1450,7 @@ class Adventure(commands.Cog):
 
     @_backpack.command(name="sell", cooldown_after_parsing=True)
     @commands.cooldown(rate=3, per=60, type=commands.BucketType.user)
-    async def backpack_sell(self, ctx: Context, *, item: ItemConverter):
+    async def backpack_sell(self, ctx: commands.Context, *, item: ItemConverter):
         """Sell an item from your backpack."""
 
         if self.in_adventure(ctx):
@@ -1610,7 +1610,7 @@ class Adventure(commands.Cog):
 
     @_backpack.command(name="trade")
     async def backpack_trade(
-        self, ctx: Context, buyer: discord.Member, asking: Optional[int] = 1000, *, item: ItemConverter,
+        self, ctx: commands.Context, buyer: discord.Member, asking: Optional[int] = 1000, *, item: ItemConverter,
     ):
         """Trade an item from your backpack to another user."""
         if ctx.author == buyer:
@@ -1781,7 +1781,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
-    async def rebirth(self, ctx: Context):
+    async def rebirth(self, ctx: commands.Context):
         """Resets your character level and increases your rebirths by 1."""
         if self.in_adventure(ctx):
             return await smart_embed(ctx, _("You tried to rebirth but the monster ahead is commanding your attention."))
@@ -1884,12 +1884,16 @@ class Adventure(commands.Cog):
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
     async def devrebirth(
-        self, ctx: Context, rebirth_level: int = 1, character_level: int = 1, user: discord.Member = None,
+        self,
+        ctx: commands.Context,
+        rebirth_level: int = 1,
+        character_level: int = 1,
+        users: commands.Greedy[discord.User] = None,
     ):
-        """[Dev] Set a users rebirth level."""
+        """[Dev] Set multiple users rebirths and level."""
         if not await no_dev_prompt(ctx):
             return
-        target = user or ctx.author
+        targets = users or [ctx.author]
         if not self.is_dev(ctx.author):
             if rebirth_level > 100:
                 await ctx.send("Rebirth is too high.")
@@ -1899,64 +1903,63 @@ class Adventure(commands.Cog):
                 await ctx.send("Level is too high.")
                 await ctx.send_help()
                 return
-
-        async with self.get_lock(target):
-            try:
-                c = await Character.from_json(self.config, target, self._daily_bonus)
-            except Exception as exc:
-                log.exception("Error with the new character sheet", exc_info=exc)
-                return
-
-            bal = await bank.get_balance(target)
-            if bal >= 1000:
-                withdraw = bal - 1000
-                await bank.withdraw_credits(target, withdraw)
-            else:
-                withdraw = bal
-                await bank.set_balance(target, 0)
-
-            await ctx.send(
-                content=(
-                    box(
-                        _("{c}, congratulations on your rebirth.\nYou paid {bal}.").format(
-                            c=self.escape(target.display_name), bal=humanize_number(withdraw)
-                        ),
-                        lang="css",
+        for target in targets:
+            async with self.get_lock(target):
+                try:
+                    c = await Character.from_json(self.config, target, self._daily_bonus)
+                except Exception as exc:
+                    log.exception("Error with the new character sheet", exc_info=exc)
+                    continue
+                bal = await bank.get_balance(target)
+                if bal >= 1000:
+                    withdraw = bal - 1000
+                    await bank.withdraw_credits(target, withdraw)
+                else:
+                    withdraw = bal
+                    await bank.set_balance(target, 0)
+                character_data = await c.rebirth(dev_val=rebirth_level)
+                await self.config.user(target).set(character_data)
+                await ctx.send(
+                    content=(
+                        box(
+                            _("{c}, congratulations on your rebirth.\nYou paid {bal}.").format(
+                                c=self.escape(target.display_name), bal=humanize_number(withdraw)
+                            ),
+                            lang="css",
+                        )
                     )
                 )
-            )
-            character_data = await c.rebirth(dev_val=rebirth_level)
-            await self.config.user(target).set(character_data)
-        await self._add_rewards(ctx, target, int((character_level) ** 3.5) + 1, 0, False)
+            await self._add_rewards(ctx, target, int((character_level) ** 3.5) + 1, 0, False)
         await ctx.tick()
 
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
-    async def devreset(self, ctx: commands.Context, user: discord.Member = None):
-        """[Dev] Reset the skill cooldown for this user."""
+    async def devreset(self, ctx: commands.Context, users: commands.Greedy[discord.User]):
+        """[Dev] Reset the skill cooldown for multiple users."""
         if not await no_dev_prompt(ctx):
             return
-        target = user or ctx.author
-        async with self.get_lock(target):
-            try:
-                c = await Character.from_json(self.config, target, self._daily_bonus)
-            except Exception as exc:
-                log.exception("Error with the new character sheet", exc_info=exc)
-                return
-            c.heroclass["ability"] = False
-            c.heroclass["cooldown"] = 0
-            if "catch_cooldown" in c.heroclass:
-                c.heroclass["catch_cooldown"] = 0
-            await self.config.user(target).set(await c.to_json(self.config))
+        targets = users or [ctx.author]
+        for target in targets:
+            async with self.get_lock(target):
+                try:
+                    c = await Character.from_json(self.config, target, self._daily_bonus)
+                except Exception as exc:
+                    log.exception("Error with the new character sheet", exc_info=exc)
+                    return
+                c.heroclass["ability"] = False
+                c.heroclass["cooldown"] = 0
+                if "catch_cooldown" in c.heroclass:
+                    c.heroclass["catch_cooldown"] = 0
+                await self.config.user(target).set(await c.to_json(self.config))
         await ctx.tick()
 
     @commands.group(aliases=["loadouts"])
-    async def loadout(self, ctx: Context):
+    async def loadout(self, ctx: commands.Context):
         """Set up gear sets or loadouts."""
 
     @loadout.command(name="save", aliases=["update"])
-    async def save_loadout(self, ctx: Context, name: str):
+    async def save_loadout(self, ctx: commands.Context, name: str):
         """Save your current equipment as a loadout."""
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
@@ -1978,7 +1981,7 @@ class Adventure(commands.Cog):
             )
 
     @loadout.command(name="delete", aliases=["del", "rem", "remove"])
-    async def remove_loadout(self, ctx: Context, name: str):
+    async def remove_loadout(self, ctx: commands.Context, name: str):
         """Delete a saved loadout."""
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
@@ -2008,7 +2011,7 @@ class Adventure(commands.Cog):
 
     @loadout.command(name="show")
     @commands.bot_has_permissions(add_reactions=True)
-    async def show_loadout(self, ctx: Context, name: str = None):
+    async def show_loadout(self, ctx: commands.Context, name: str = None):
         """Show saved loadouts."""
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
@@ -2048,7 +2051,7 @@ class Adventure(commands.Cog):
 
     @loadout.command(name="equip", aliases=["load"], cooldown_after_parsing=True)
     @commands.cooldown(rate=1, per=600, type=commands.BucketType.user)
-    async def equip_loadout(self, ctx: Context, name: str):
+    async def equip_loadout(self, ctx: commands.Context, name: str):
         """Equip a saved loadout."""
         if self.in_adventure(ctx):
             ctx.command.reset_cooldown(ctx)
@@ -2108,12 +2111,12 @@ class Adventure(commands.Cog):
 
     @commands.group()
     @commands.guild_only()
-    async def adventureset(self, ctx: Context):
+    async def adventureset(self, ctx: commands.Context):
         """Setup various adventure settings."""
 
     @adventureset.command()
     @check_global_setting_admin()
-    async def rebirthcost(self, ctx: Context, percentage: float):
+    async def rebirthcost(self, ctx: commands.Context, percentage: float):
         """[Admin] Set what percentage of the user balance to charge for rebirths.
 
         Unless the user's balance is under 1k, users that rebirth will be left with the base of 1k credits plus the remaining credit percentage after the rebirth charge.
@@ -2134,7 +2137,7 @@ class Adventure(commands.Cog):
 
     @adventureset.command()
     @commands.admin_or_permissions(administrator=True)
-    async def cartroom(self, ctx: Context, room: discord.TextChannel = None):
+    async def cartroom(self, ctx: commands.Context, room: discord.TextChannel = None):
         """[Admin] Lock carts to a specific text channel."""
         if room is None:
             await self.config.guild(ctx.guild).cartroom.set(None)
@@ -2146,21 +2149,22 @@ class Adventure(commands.Cog):
     @adventureset.group(name="locks")
     @commands.bot_has_permissions(add_reactions=True)
     @commands.admin_or_permissions(administrator=True)
-    async def adventureset_locks(self, ctx: Context):
+    async def adventureset_locks(self, ctx: commands.Context):
         """[Admin] Reset Adventure locks."""
 
     @adventureset_locks.command(name="user")
     @commands.is_owner()
-    async def adventureset_locks_user(self, ctx: Context, user: discord.User):
-        """[Owner] Reset a guild member's user lock."""
-        lock = self.get_lock(user)
-        with contextlib.suppress(Exception):
-            lock.release()
+    async def adventureset_locks_user(self, ctx: commands.Context, users: commands.Greedy[discord.User]):
+        """[Owner] Reset a multiple adventurers lock."""
+        for user in users:
+            lock = self.get_lock(user)
+            with contextlib.suppress(Exception):
+                lock.release()
         await ctx.tick()
 
     @adventureset.command(name="dailybonus")
     @commands.is_owner()
-    async def adventureset_daily_bonus(self, ctx: Context, day: DayConverter, percentage: PercentageConverter):
+    async def adventureset_daily_bonus(self, ctx: commands.Context, day: DayConverter, percentage: PercentageConverter):
         """[Owner] Set the daily xp and currency bonus.
 
         **percentage** must be between 0% and 100%.
@@ -2175,7 +2179,7 @@ class Adventure(commands.Cog):
 
     @commands.guild_only()
     @adventureset_locks.command(name="adventure")
-    async def adventureset_locks_adventure(self, ctx: Context):
+    async def adventureset_locks_adventure(self, ctx: commands.Context):
         """[Admin] Reset the adventure game lock for the server."""
         while ctx.guild.id in self._sessions:
             del self._sessions[ctx.guild.id]
@@ -2194,7 +2198,7 @@ class Adventure(commands.Cog):
 
     @adventureset.command()
     @commands.is_owner()
-    async def restrict(self, ctx: Context):
+    async def restrict(self, ctx: commands.Context):
         """[Owner] Set whether or not adventurers are restricted to one adventure at a time."""
         toggle = await self.config.restrict()
         await self.config.restrict.set(not toggle)
@@ -2202,7 +2206,7 @@ class Adventure(commands.Cog):
 
     @adventureset.command()
     @commands.is_owner()
-    async def easymode(self, ctx: Context):
+    async def easymode(self, ctx: commands.Context):
         """[Owner] Set whether or not Adventure will be in easy mode.
 
         Easy mode gives less rewards, but monster information is shown.
@@ -2213,7 +2217,7 @@ class Adventure(commands.Cog):
 
     @adventureset.command()
     @commands.is_owner()
-    async def sepcurrency(self, ctx: Context):
+    async def sepcurrency(self, ctx: commands.Context):
         """[Owner] Toggle whether the currency should be separated from main bot currency."""
         toggle = await self.config.separate_economy()
         await self.config.separate_economy.set(not toggle)
@@ -2223,15 +2227,15 @@ class Adventure(commands.Cog):
         )
 
     @adventureset.group(name="economy")
-    @commands.admin_or_permissions(administrator=True)
+    @check_global_setting_admin()
     @commands.guild_only()
     @has_separated_economy()
-    async def commands_adventureset_economy(self, ctx: Context):
+    async def commands_adventureset_economy(self, ctx: commands.Context):
         """[Admin] Manages the adventure economy."""
 
     @commands_adventureset_economy.command(name="tax", usage="<gold,tax ...>")
     @commands.is_owner()
-    async def commands_adventureset_economy_tax(self, ctx: Context, *, taxes: TaxesConverter):
+    async def commands_adventureset_economy_tax(self, ctx: commands.Context, *, taxes: TaxesConverter):
         """[Owner] Set the tax thresholds.
 
         **gold** must be positive
@@ -2258,7 +2262,7 @@ class Adventure(commands.Cog):
 
     @commands.is_owner()
     @commands_adventureset_economy.command(name="rate")
-    async def commands_adventureset_economy_conversion_rate(self, ctx: Context, rate_in: int, rate_out: int):
+    async def commands_adventureset_economy_conversion_rate(self, ctx: commands.Context, rate_in: int, rate_out: int):
         """[Owner] Set how much 1 bank credit is worth in adventure.
 
         **rate_in**: Is how much gold you will get for 1 bank credit. Default is 10
@@ -2279,7 +2283,7 @@ class Adventure(commands.Cog):
         )
 
     @commands_adventureset_economy.command(name="maxwithdraw")
-    async def commands_adventureset_economy_maxwithdraw(self, ctx: Context, *, amount: int):
+    async def commands_adventureset_economy_maxwithdraw(self, ctx: commands.Context, *, amount: int):
         """[Admin] Set how much players are allowed to withdraw."""
         if amount < 0:
             return await smart_embed(ctx, _("You are evil ... please DM me your phone number we need to hangout."))
@@ -2295,7 +2299,7 @@ class Adventure(commands.Cog):
         )
 
     @commands_adventureset_economy.command(name="withdraw")
-    async def commands_adventureset_economy_withdraw(self, ctx: Context):
+    async def commands_adventureset_economy_withdraw(self, ctx: commands.Context):
         """[Admin] Toggle whether users are allowed to withdraw from adventure currency to main currency."""
 
         if await bank.is_global(_forced=True):
@@ -2315,7 +2319,7 @@ class Adventure(commands.Cog):
     @adventureset.command(name="advcooldown", hidden=True)
     @commands.admin_or_permissions(administrator=True)
     @commands.guild_only()
-    async def advcooldown(self, ctx: Context, *, time_in_seconds: int):
+    async def advcooldown(self, ctx: commands.Context, *, time_in_seconds: int):
         """[Admin] Changes the cooldown/gather time after an adventure.
 
         Default is 120 seconds.
@@ -2329,27 +2333,27 @@ class Adventure(commands.Cog):
         )
 
     @adventureset.command()
-    async def version(self, ctx: Context):
+    async def version(self, ctx: commands.Context):
         """Display the version of adventure being used."""
         await ctx.send(box(_("Adventure version: {}").format(self.__version__)))
 
     @adventureset.command()
     @commands.admin_or_permissions(administrator=True)
-    async def god(self, ctx: Context, *, name):
+    async def god(self, ctx: commands.Context, *, name):
         """[Admin] Set the server's name of the god."""
         await self.config.guild(ctx.guild).god_name.set(name)
         await ctx.tick()
 
     @adventureset.command()
     @commands.is_owner()
-    async def globalgod(self, ctx: Context, *, name):
+    async def globalgod(self, ctx: commands.Context, *, name):
         """[Owner] Set the default name of the god."""
         await self.config.god_name.set(name)
         await ctx.tick()
 
     @adventureset.command(aliases=["embed"])
     @commands.admin_or_permissions(administrator=True)
-    async def embeds(self, ctx: Context):
+    async def embeds(self, ctx: commands.Context):
         """[Admin] Set whether or not to use embeds for the adventure game."""
         toggle = await self.config.guild(ctx.guild).embed()
         await self.config.guild(ctx.guild).embed.set(not toggle)
@@ -2357,7 +2361,7 @@ class Adventure(commands.Cog):
 
     @adventureset.command(aliases=["chests"])
     @commands.is_owner()
-    async def cartchests(self, ctx: Context):
+    async def cartchests(self, ctx: commands.Context):
         """[Admin] Set whether or not to sell chests in the cart."""
         toggle = await self.config.enable_chests()
         await self.config.enable_chests.set(not toggle)
@@ -2365,14 +2369,14 @@ class Adventure(commands.Cog):
 
     @adventureset.command()
     @commands.admin_or_permissions(administrator=True)
-    async def cartname(self, ctx: Context, *, name):
+    async def cartname(self, ctx: commands.Context, *, name):
         """[Admin] Set the server's name of the cart."""
         await self.config.guild(ctx.guild).cart_name.set(name)
         await ctx.tick()
 
     @adventureset.command()
     @commands.admin_or_permissions(administrator=True)
-    async def carttime(self, ctx: Context, *, time: str):
+    async def carttime(self, ctx: commands.Context, *, time: str):
         """
         [Admin] Set the cooldown of the cart.
         Time can be in seconds, minutes, hours, or days.
@@ -2392,14 +2396,15 @@ class Adventure(commands.Cog):
 
     @adventureset.command(name="clear")
     @commands.is_owner()
-    async def clear_user(self, ctx: Context, *, user: discord.User):
-        """[Owner] Lets you clear a users entire character sheet."""
-        await self.config.user(user).clear()
-        await smart_embed(ctx, _("{user}'s character sheet has been erased.").format(user=user))
+    async def clear_user(self, ctx: commands.Context, *, users: commands.Greedy[discord.User]):
+        """[Owner] Lets you clear multiple users character sheets."""
+        for user in users:
+            await self.config.user(user).clear()
+            await smart_embed(ctx, _("{user}'s character sheet has been erased.").format(user=user))
 
     @adventureset.command(name="remove")
     @commands.is_owner()
-    async def remove_item(self, ctx: Context, user: discord.Member, *, full_item_name: str):
+    async def remove_item(self, ctx: commands.Context, user: discord.User, *, full_item_name: str):
         """[Owner] Lets you remove an item from a user.
 
         Use the full name of the item including the rarity characters like . or []  or {}.
@@ -2434,14 +2439,14 @@ class Adventure(commands.Cog):
 
     @adventureset.command()
     @commands.is_owner()
-    async def globalcartname(self, ctx: Context, *, name):
+    async def globalcartname(self, ctx: commands.Context, *, name):
         """[Owner] Set the default name of the cart."""
         await self.config.cart_name.set(name)
         await ctx.tick()
 
     @adventureset.command()
     @commands.is_owner()
-    async def theme(self, ctx: Context, *, theme):
+    async def theme(self, ctx: commands.Context, *, theme):
         """[Owner] Change the theme for adventure."""
         if theme == "default":
             await self.config.theme.set("default")
@@ -2481,16 +2486,16 @@ class Adventure(commands.Cog):
     @commands.group()
     @commands.guild_only()
     @commands.admin_or_permissions(administrator=True)
-    async def themeset(self, ctx: Context):
+    async def themeset(self, ctx: commands.Context):
         """[Admin] Modify themes."""
 
     @commands.is_owner()
     @themeset.group(name="add")
-    async def themeset_add(self, ctx: Context):
+    async def themeset_add(self, ctx: commands.Context):
         """[Owner] Add/Update objects in the specified theme."""
 
     @themeset_add.command(name="monster")
-    async def themeset_add_monster(self, ctx: Context, *, theme_data: ThemeSetMonterConverter):
+    async def themeset_add_monster(self, ctx: commands.Context, *, theme_data: ThemeSetMonterConverter):
         """[Owner] Add/Update a monster object in the specified theme.
 
         Usage: `[p]themeset add monster theme++name++hp++dipl++pdef++mdef++cdef++boss++image`
@@ -2527,7 +2532,7 @@ class Adventure(commands.Cog):
         await ctx.send(embed=embed)
 
     @themeset_add.command(name="pet")
-    async def themeset_add_pet(self, ctx: Context, *, pet_data: ThemeSetPetConverter):
+    async def themeset_add_pet(self, ctx: commands.Context, *, pet_data: ThemeSetPetConverter):
         """[Owner] Add/Update a pet object in the specified theme.
 
         Usage: `[p]themeset add pet theme++name++bonus_multiplier++required_cha++crit_chance++always_crit`
@@ -2565,11 +2570,11 @@ class Adventure(commands.Cog):
 
     @commands.is_owner()
     @themeset.group(name="delete", aliases=["del", "rem", "remove"])
-    async def themeset_delete(self, ctx: Context):
+    async def themeset_delete(self, ctx: commands.Context):
         """[Owner] Remove objects in the specified theme."""
 
     @themeset_delete.command(name="monster")
-    async def themeset_delete_monster(self, ctx: Context, theme: str, *, monster: str):
+    async def themeset_delete_monster(self, ctx: commands.Context, theme: str, *, monster: str):
         """[Owner] Remove a monster object in the specified theme."""
         if theme != "default" and theme not in os.listdir(cog_data_path(self)):
             await smart_embed(ctx, _("That theme pack does not exist!"))
@@ -2590,7 +2595,7 @@ class Adventure(commands.Cog):
         await smart_embed(ctx, text)
 
     @themeset_delete.command(name="pet")
-    async def themeset_delete_pet(self, ctx: Context, theme: str, *, pet: str):
+    async def themeset_delete_pet(self, ctx: commands.Context, theme: str, *, pet: str):
         """[Owner] Remove a pet object in the specified theme."""
         if theme != "default" and theme not in os.listdir(cog_data_path(self)):
             await smart_embed(ctx, _("That theme pack does not exist!"))
@@ -2611,11 +2616,11 @@ class Adventure(commands.Cog):
         await smart_embed(ctx, text)
 
     @themeset.group(name="list", aliases=["show"])
-    async def themeset_list(self, ctx: Context):
+    async def themeset_list(self, ctx: commands.Context):
         """[Admin] Show custom objects in the specified theme."""
 
     @themeset_list.command(name="monster")
-    async def themeset_list_monster(self, ctx: Context, *, theme: str):
+    async def themeset_list_monster(self, ctx: commands.Context, *, theme: str):
         """[Admin] Show monster objects in the specified theme."""
         if theme != "default" and theme not in os.listdir(cog_data_path(self)):
             await smart_embed(ctx, _("That theme pack does not exist!"))
@@ -2644,7 +2649,7 @@ class Adventure(commands.Cog):
             await menu(ctx, embed_list, DEFAULT_CONTROLS)
 
     @themeset_list.command(name="pet")
-    async def themeset_list_pet(self, ctx: Context, *, theme: str):
+    async def themeset_list_pet(self, ctx: commands.Context, *, theme: str):
         """[Admin] Show pet objects in the specified theme."""
         if theme != "default" and theme not in os.listdir(cog_data_path(self)):
             await smart_embed(ctx, _("That theme pack does not exist!"))
@@ -2671,7 +2676,7 @@ class Adventure(commands.Cog):
     @adventureset.command()
     @commands.admin_or_permissions(administrator=True)
     @commands.guild_only()
-    async def cart(self, ctx: Context, *, channel: discord.TextChannel = None):
+    async def cart(self, ctx: commands.Context, *, channel: discord.TextChannel = None):
         """[Admin] Add or remove a text channel that the Trader cart can appear in.
 
         If the channel is already in the list, it will be removed.
@@ -2705,7 +2710,7 @@ class Adventure(commands.Cog):
     @commands.guild_only()
     @commands.command()
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.guild)
-    async def adventuresettings(self, ctx: Context):
+    async def adventuresettings(self, ctx: commands.Context):
         """Display current settings."""
         global_data = await self.config.all()
         guild_data = await self.config.guild(ctx.guild).all()
@@ -2771,7 +2776,7 @@ class Adventure(commands.Cog):
 
     @commands.command()
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.guild)
-    async def convert(self, ctx: Context, box_rarity: str, amount: int = 1):
+    async def convert(self, ctx: commands.Context, box_rarity: str, amount: int = 1):
         """Convert normal, rare or epic chests.
 
         Trade 25 normal chests for 1 rare chest.
@@ -2938,7 +2943,7 @@ class Adventure(commands.Cog):
                 )
 
     @commands.command()
-    async def equip(self, ctx: Context, *, item: EquipableItemConverter):
+    async def equip(self, ctx: commands.Context, *, item: EquipableItemConverter):
         """This equips an item from your backpack."""
         if self.in_adventure(ctx):
             return await smart_embed(
@@ -3176,7 +3181,7 @@ class Adventure(commands.Cog):
                     )
                     await ctx.send(forged_item)
 
-    async def _to_forge(self, ctx: Context, consumed, character):
+    async def _to_forge(self, ctx: commands.Context, consumed, character):
         item1 = consumed[0]
         item2 = consumed[1]
 
@@ -3318,12 +3323,12 @@ class Adventure(commands.Cog):
     @commands.group()
     @commands.guild_only()
     @commands.admin_or_permissions(manage_guild=True)
-    async def give(self, ctx: Context):
+    async def give(self, ctx: commands.Context):
         """[Admin] Commands to add things to players' inventories."""
 
     @give.command(name="item")
     @commands.is_owner()
-    async def _give_item(self, ctx: Context, user: discord.Member, item_name: str, *, stats: Stats):
+    async def _give_item(self, ctx: commands.Context, user: discord.User, item_name: str, *, stats: Stats):
         """[Owner] Adds a custom item to a specified member.
 
         Item names containing spaces must be enclosed in double quotes. `[p]give item @locastan
@@ -3366,11 +3371,12 @@ class Adventure(commands.Cog):
 
     @give.command(name="loot")
     @commands.is_owner()
-    async def _give_loot(self, ctx: Context, loot_type: str, user: discord.Member = None, number: int = 1):
-        """[Owner] Give treasure chest(s) to a specified member."""
+    async def _give_loot(
+        self, ctx: commands.Context, loot_type: str, users: commands.Greedy[discord.User] = None, number: int = 1
+    ):
+        """[Owner] Give treasure chest(s) to all specified users."""
 
-        if user is None:
-            user = ctx.author
+        users = users or [ctx.author]
         loot_types = ["normal", "rare", "epic", "legendary", "ascended", "set"]
         if loot_type not in loot_types:
             return await smart_embed(
@@ -3382,48 +3388,49 @@ class Adventure(commands.Cog):
             )
         if loot_type in ["legendary", "set", "ascended"] and not await ctx.bot.is_owner(ctx.author):
             return await smart_embed(ctx, _("You are not worthy to award legendary loot."))
-        async with self.get_lock(user):
-            try:
-                c = await Character.from_json(self.config, user, self._daily_bonus)
-            except Exception as exc:
-                log.exception("Error with the new character sheet", exc_info=exc)
-                return
-            if loot_type == "rare":
-                c.treasure[1] += number
-            elif loot_type == "epic":
-                c.treasure[2] += number
-            elif loot_type == "legendary":
-                c.treasure[3] += number
-            elif loot_type == "ascended":
-                c.treasure[4] += number
-            elif loot_type == "set":
-                c.treasure[5] += number
-            else:
-                c.treasure[0] += number
-            await self.config.user(user).set(await c.to_json(self.config))
-            await ctx.send(
-                box(
-                    _(
-                        "{author} now owns {normal} normal, "
-                        "{rare} rare, {epic} epic, "
-                        "{leg} legendary, {asc} ascended and {set} set treasure chests."
-                    ).format(
-                        author=self.escape(user.display_name),
-                        normal=str(c.treasure[0]),
-                        rare=str(c.treasure[1]),
-                        epic=str(c.treasure[2]),
-                        leg=str(c.treasure[3]),
-                        asc=str(c.treasure[4]),
-                        set=str(c.treasure[5]),
-                    ),
-                    lang="css",
+        for user in users:
+            async with self.get_lock(user):
+                try:
+                    c = await Character.from_json(self.config, user, self._daily_bonus)
+                except Exception as exc:
+                    log.exception("Error with the new character sheet", exc_info=exc)
+                    return
+                if loot_type == "rare":
+                    c.treasure[1] += number
+                elif loot_type == "epic":
+                    c.treasure[2] += number
+                elif loot_type == "legendary":
+                    c.treasure[3] += number
+                elif loot_type == "ascended":
+                    c.treasure[4] += number
+                elif loot_type == "set":
+                    c.treasure[5] += number
+                else:
+                    c.treasure[0] += number
+                await self.config.user(user).set(await c.to_json(self.config))
+                await ctx.send(
+                    box(
+                        _(
+                            "{author} now owns {normal} normal, "
+                            "{rare} rare, {epic} epic, "
+                            "{leg} legendary, {asc} ascended and {set} set treasure chests."
+                        ).format(
+                            author=self.escape(user.display_name),
+                            normal=str(c.treasure[0]),
+                            rare=str(c.treasure[1]),
+                            epic=str(c.treasure[2]),
+                            leg=str(c.treasure[3]),
+                            asc=str(c.treasure[4]),
+                            set=str(c.treasure[5]),
+                        ),
+                        lang="css",
+                    )
                 )
-            )
 
     @commands.command(cooldown_after_parsing=True)
     @commands.bot_has_permissions(add_reactions=True)
     @commands.cooldown(rate=1, per=7200, type=commands.BucketType.user)
-    async def heroclass(self, ctx: Context, clz: str = None, action: str = None):
+    async def heroclass(self, ctx: commands.Context, clz: str = None, action: str = None):
         """Allows you to select a class if you are level 10 or above.
 
         For information on class use: `[p]heroclass classname info`.
@@ -3724,7 +3731,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
     @commands.cooldown(rate=1, per=4, type=commands.BucketType.user)
-    async def loot(self, ctx: Context, box_type: str = None, number: int = 1):
+    async def loot(self, ctx: commands.Context, box_type: str = None, number: int = 1):
         """This opens one of your precious treasure chests.
 
         Use the box rarity type with the command: normal, rare, epic, legendary, ascended or set.
@@ -3873,7 +3880,7 @@ class Adventure(commands.Cog):
     @commands.command(name="negaverse", aliases=["nv"], cooldown_after_parsing=True)
     @commands.cooldown(rate=1, per=3600, type=commands.BucketType.user)
     @commands.guild_only()
-    async def _negaverse(self, ctx: Context, offering: int = None, roll: int = -1):
+    async def _negaverse(self, ctx: commands.Context, offering: int = None, roll: int = -1):
         """This will send you to fight a nega-member!"""
         if self.in_adventure(ctx):
             ctx.command.reset_cooldown(ctx)
@@ -3888,7 +3895,7 @@ class Adventure(commands.Cog):
             return await smart_embed(
                 ctx,
                 _(
-                    "**{author}**, you need to specify how much "
+                    "**{author}**, you need to specify how many "
                     "{currency_name} you are willing to offer to the gods for your success."
                 ).format(author=self.escape(ctx.author.display_name), currency_name=currency_name),
             )
@@ -4167,7 +4174,7 @@ class Adventure(commands.Cog):
 
     @commands.group(autohelp=False)
     @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
-    async def pet(self, ctx: Context):
+    async def pet(self, ctx: commands.Context):
         """[Ranger Class Only]
 
         This allows a Ranger to tame or set free a pet or send it foraging.
@@ -4307,7 +4314,7 @@ class Adventure(commands.Cog):
 
     @pet.command(name="forage")
     @commands.bot_has_permissions(add_reactions=True)
-    async def _forage(self, ctx: Context):
+    async def _forage(self, ctx: commands.Context):
         """Use your pet to forage for items!"""
         if self.in_adventure(ctx):
             return await smart_embed(ctx, _("You're too distracted with the monster you are facing."))
@@ -4350,7 +4357,7 @@ class Adventure(commands.Cog):
                 )
 
     @pet.command(name="free")
-    async def _free(self, ctx: Context):
+    async def _free(self, ctx: commands.Context):
         """Free your pet :cry:"""
         if self.in_adventure(ctx):
             return await smart_embed(ctx, _("You're too distracted with the monster you are facing."))
@@ -4380,7 +4387,7 @@ class Adventure(commands.Cog):
                 return await ctx.send(box(_("You don't have a pet."), lang="css"))
 
     @commands.command()
-    async def bless(self, ctx: Context):
+    async def bless(self, ctx: commands.Context):
         """[Cleric Class Only]
 
         This allows a praying Cleric to add substantial bonuses for heroes fighting the battle.
@@ -4430,7 +4437,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.guild_only()
     @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
-    async def insight(self, ctx: Context):
+    async def insight(self, ctx: commands.Context):
         """[Psychic Class Only]
         This allows a Psychic to expose the current enemy's weakeness to the party.
         """
@@ -4611,7 +4618,7 @@ class Adventure(commands.Cog):
                 )
 
     @commands.command()
-    async def rage(self, ctx: Context):
+    async def rage(self, ctx: commands.Context):
         """[Berserker Class Only]
 
         This allows a Berserker to add substantial attack bonuses for one battle.
@@ -4659,7 +4666,7 @@ class Adventure(commands.Cog):
                     )
 
     @commands.command()
-    async def focus(self, ctx: Context):
+    async def focus(self, ctx: commands.Context):
         """[Wizard Class Only]
 
         This allows a Wizard to add substantial magic bonuses for one battle.
@@ -4707,7 +4714,7 @@ class Adventure(commands.Cog):
                     )
 
     @commands.command()
-    async def music(self, ctx: Context):
+    async def music(self, ctx: commands.Context):
         """[Bard Class Only]
 
         This allows a Bard to add substantial diplomacy bonuses for one battle.
@@ -4753,7 +4760,7 @@ class Adventure(commands.Cog):
 
     @commands.command()
     @commands.cooldown(rate=1, per=2, type=commands.BucketType.user)
-    async def skill(self, ctx: Context, spend: str = None, amount: int = 1):
+    async def skill(self, ctx: commands.Context, spend: str = None, amount: int = 1):
         """This allows you to spend skillpoints.
 
         `[p]skill attack/charisma/intelligence`
@@ -4877,7 +4884,7 @@ class Adventure(commands.Cog):
 
     @commands.command(name="setinfo")
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
-    async def set_show(self, ctx: Context, *, set_name: str = None):
+    async def set_show(self, ctx: commands.Context, *, set_name: str = None):
         """Show set bonuses for the specified set."""
 
         set_list = humanize_list(sorted([f"`{i}`" for i in self.SET_BONUSES.keys()], key=str.lower))
@@ -4970,7 +4977,7 @@ class Adventure(commands.Cog):
 
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
-    async def stats(self, ctx: Context, *, user: discord.User = None):
+    async def stats(self, ctx: commands.Context, *, user: discord.User = None):
         """This draws up a character sheet of you or an optionally specified member."""
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
@@ -5113,7 +5120,7 @@ class Adventure(commands.Cog):
         return form_string
 
     @commands.command()
-    async def unequip(self, ctx: Context, *, item: EquipmentConverter):
+    async def unequip(self, ctx: commands.Context, *, item: EquipmentConverter):
         """This stashes a specified equipped item into your backpack.
 
         Use `[p]unequip name of item` or `[p]unequip slot`
@@ -5185,7 +5192,7 @@ class Adventure(commands.Cog):
     @commands.command(name="adventurestats")
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.is_owner()
-    async def _adventurestats(self, ctx: Context):
+    async def _adventurestats(self, ctx: commands.Context):
         """[Owner] Show all current adventures."""
         msg = "**Active Adventures**\n"
         embed_list = []
@@ -5209,7 +5216,7 @@ class Adventure(commands.Cog):
     @commands.command(name="devcooldown")
     @commands.bot_has_permissions(add_reactions=True)
     @commands.is_owner()
-    async def _devcooldown(self, ctx: Context):
+    async def _devcooldown(self, ctx: commands.Context):
         """[Dev] Resets the after-adventure cooldown in this server."""
         if not await no_dev_prompt(ctx):
             return
@@ -5220,7 +5227,7 @@ class Adventure(commands.Cog):
     @commands.command(name="adventure", aliases=["a"])
     @commands.bot_has_permissions(add_reactions=True)
     @commands.guild_only()
-    async def _adventure(self, ctx: Context, *, challenge=None):
+    async def _adventure(self, ctx: commands.Context, *, challenge=None):
         """This will send you on an adventure!
 
         You play by reacting with the offered emojis.
@@ -5350,7 +5357,7 @@ class Adventure(commands.Cog):
 
         await ctx.bot.on_command_error(ctx, error, unhandled_by_cog=not handled)
 
-    async def get_challenge(self, ctx: Context, monsters):
+    async def get_challenge(self, ctx: commands.Context, monsters):
         try:
             c = await Character.from_json(self.config, ctx.author, self._daily_bonus)
         except Exception as exc:
@@ -5382,7 +5389,7 @@ class Adventure(commands.Cog):
             choice = random.choice(possible_monsters)
         return choice
 
-    def _dynamic_monster_stats(self, ctx: Context, choice: MutableMapping):
+    def _dynamic_monster_stats(self, ctx: commands.Context, choice: MutableMapping):
         stat_range = self._adv_results.get_stat_range(ctx)
         win_percentage = stat_range.get("win_percent", 0.5)
         choice["cdef"] = choice.get("cdef", 1.0)
@@ -5498,7 +5505,7 @@ class Adventure(commands.Cog):
             monster_stats = 1 + max((c.rebirths // 10) - 1, 0) / 2
         return monsters, monster_stats, transcended
 
-    async def _simple(self, ctx: Context, adventure_msg, challenge: str = None, attribute: str = None):
+    async def _simple(self, ctx: commands.Context, adventure_msg, challenge: str = None, attribute: str = None):
         self.bot.dispatch("adventure", ctx)
         text = ""
         easy_mode = await self.config.easy_mode()
@@ -5564,7 +5571,7 @@ class Adventure(commands.Cog):
         participants = self._sessions[ctx.guild.id].participants
         return (rewards, participants)
 
-    async def _choice(self, ctx: Context, adventure_msg):
+    async def _choice(self, ctx: commands.Context, adventure_msg):
         session = self._sessions[ctx.guild.id]
         easy_mode = session.easy_mode
         if easy_mode:
@@ -5912,7 +5919,7 @@ class Adventure(commands.Cog):
             )
             self._current_traders[guild.id]["users"].remove(user)
 
-    async def _result(self, ctx: Context, message: discord.Message):
+    async def _result(self, ctx: commands.Context, message: discord.Message):
         if ctx.guild.id not in self._sessions:
             return
         calc_msg = await ctx.send(_("Calculating..."))
@@ -6959,7 +6966,7 @@ class Adventure(commands.Cog):
                 session.talk.remove(user)
         return (fumblelist, critlist, diplomacy, msg)
 
-    async def handle_basilisk(self, ctx: Context):
+    async def handle_basilisk(self, ctx: commands.Context):
         session = self._sessions[ctx.guild.id]
         fight_list = list(set(session.fight))
         talk_list = list(set(session.talk))
@@ -6995,7 +7002,7 @@ class Adventure(commands.Cog):
             failed = False
         return failed
 
-    async def _add_rewards(self, ctx: Context, user, exp, cp, special):
+    async def _add_rewards(self, ctx: commands.Context, user, exp, cp, special):
         lock = self.get_lock(user)
         if not lock.locked():
             await lock.acquire()
@@ -7075,7 +7082,7 @@ class Adventure(commands.Cog):
             with contextlib.suppress(Exception):
                 lock.release()
 
-    async def _adv_countdown(self, ctx: Context, seconds, title) -> asyncio.Task:
+    async def _adv_countdown(self, ctx: commands.Context, seconds, title) -> asyncio.Task:
         await self._data_check(ctx)
 
         async def adv_countdown():
@@ -7101,7 +7108,7 @@ class Adventure(commands.Cog):
 
         return ctx.bot.loop.create_task(adv_countdown())
 
-    async def _cart_countdown(self, ctx: Context, seconds, title, room=None) -> asyncio.Task:
+    async def _cart_countdown(self, ctx: commands.Context, seconds, title, room=None) -> asyncio.Task:
         room = room or ctx
         await self._data_check(ctx)
 
@@ -7132,7 +7139,7 @@ class Adventure(commands.Cog):
         with contextlib.suppress(discord.HTTPException):
             await msg.clear_reactions()
 
-    async def _data_check(self, ctx: Context):
+    async def _data_check(self, ctx: commands.Context):
         try:
             self._adventure_countdown[ctx.guild.id]
         except KeyError:
@@ -7244,7 +7251,7 @@ class Adventure(commands.Cog):
         return await self._genitem(rarity)
 
     async def _open_chests(
-        self, ctx: Context, chest_type: str, amount: int, character: Character,
+        self, ctx: commands.Context, chest_type: str, amount: int, character: Character,
     ):
         items = {}
         async for _loop_counter in AsyncIter(range(0, max(amount, 0)), steps=100):
@@ -7258,7 +7265,7 @@ class Adventure(commands.Cog):
         await self.config.user(ctx.author).set(await character.to_json(self.config))
         return items
 
-    async def _open_chest(self, ctx: Context, user, chest_type, character):
+    async def _open_chest(self, ctx: commands.Context, user, chest_type, character):
         if hasattr(user, "display_name"):
             chest_msg = _("{} is opening a treasure chest. What riches lay inside?").format(
                 self.escape(user.display_name)
@@ -7481,7 +7488,7 @@ class Adventure(commands.Cog):
             out = "{:01d}:{:02d}:{:02d}".format(h, m, s)
         return (out, finish, remaining)
 
-    async def _reward(self, ctx: Context, userlist, amount, modif, special):
+    async def _reward(self, ctx: commands.Context, userlist, amount, modif, special):
         if modif == 0:
             modif = 0.5
         daymult = self._daily_bonus.get(str(datetime.today().weekday()), 0)
@@ -7617,7 +7624,7 @@ class Adventure(commands.Cog):
 
         return max(price, base[0])
 
-    async def _trader(self, ctx: Context, bypass=False):
+    async def _trader(self, ctx: commands.Context, bypass=False):
         em_list = ReactionPredicate.NUMBER_EMOJIS
 
         cart = await self.config.cart_name()
@@ -7808,7 +7815,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.guild_only()
-    async def aleaderboard(self, ctx: Context, show_global: bool = False):
+    async def aleaderboard(self, ctx: commands.Context, show_global: bool = False):
         """Print the leaderboard."""
         guild = ctx.guild
         rebirth_sorted = await self.get_leaderboard(guild=guild if not show_global else None)
@@ -7935,7 +7942,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.guild_only()
-    async def scoreboard(self, ctx: Context, show_global: bool = False):
+    async def scoreboard(self, ctx: commands.Context, show_global: bool = False):
         """Print the scoreboard."""
 
         rebirth_sorted = await self.get_global_scoreboard(guild=ctx.guild if not show_global else None, keyword="wins")
@@ -7954,7 +7961,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.guild_only()
-    async def nvsb(self, ctx: Context, show_global: bool = False):
+    async def nvsb(self, ctx: commands.Context, show_global: bool = False):
         """Print the negaverse scoreboard."""
         guild = ctx.guild
         rebirth_sorted = await self.get_global_negaverse_scoreboard(guild=guild if not show_global else None)
@@ -7971,7 +7978,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.guild_only()
-    async def wscoreboard(self, ctx: Context, show_global: bool = False):
+    async def wscoreboard(self, ctx: commands.Context, show_global: bool = False):
         """Print the weekly scoreboard."""
 
         stats = "adventures"
