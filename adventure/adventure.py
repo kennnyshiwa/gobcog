@@ -4187,7 +4187,7 @@ class Adventure(commands.Cog):
                 if c.heroclass["name"] != "Ranger":
                     return await ctx.send(
                         box(
-                            _("{}, you need to be a Ranger to do this.").format(self.escape(ctx.author.display_name)),
+                            _("**{}**, you need to be a Ranger to do this.").format(self.escape(ctx.author.display_name)),
                             lang="css",
                         )
                     )
@@ -4361,7 +4361,7 @@ class Adventure(commands.Cog):
             if c.heroclass["name"] != "Ranger":
                 return await ctx.send(
                     box(
-                        _("{}, you need to be a Ranger to do this.").format(self.escape(ctx.author.display_name)),
+                        _("**{}**, you need to be a Ranger to do this.").format(self.escape(ctx.author.display_name)),
                         lang="css",
                     )
                 )
@@ -4440,7 +4440,7 @@ class Adventure(commands.Cog):
             return
         if c.heroclass["name"] != "Psychic":
             return await smart_embed(
-                ctx, _("{}, you need to be a Psychic to do this.").format(self.escape(ctx.author.display_name)),
+                ctx, _("**{}**, you need to be a Psychic to do this.").format(self.escape(ctx.author.display_name)),
             )
         else:
             if ctx.guild.id not in self._sessions:
@@ -4454,7 +4454,7 @@ class Adventure(commands.Cog):
                 )
             if c.heroclass["ability"]:
                 return await smart_embed(
-                    ctx, _("{}, ability already in use.").format(self.escape(ctx.author.display_name)),
+                    ctx, _("**{}**, ability already in use.").format(self.escape(ctx.author.display_name)),
                 )
             cooldown_time = max(300, (900 - max((c.luck + c.total_cha) * 2, 0)))
             if "cooldown" not in c.heroclass:
@@ -4717,12 +4717,12 @@ class Adventure(commands.Cog):
             if c.heroclass["name"] != "Bard":
                 ctx.command.reset_cooldown(ctx)
                 return await smart_embed(
-                    ctx, _("{}, you need to be a Bard to do this.").format(self.escape(ctx.author.display_name)),
+                    ctx, _("**{}**, you need to be a Bard to do this.").format(self.escape(ctx.author.display_name)),
                 )
             else:
                 if c.heroclass["ability"]:
                     return await smart_embed(
-                        ctx, _("{}, ability already in use.").format(self.escape(ctx.author.display_name)),
+                        ctx, _("**{}**, ability already in use.").format(self.escape(ctx.author.display_name)),
                     )
                 cooldown_time = max(300, (1200 - max((c.luck + c.total_cha) * 2, 0)))
                 if "cooldown" not in c.heroclass:
