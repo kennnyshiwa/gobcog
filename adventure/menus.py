@@ -119,7 +119,7 @@ class WeeklyScoreboardSource(menus.ListPageSource):
                     username = user_id
                 else:
                     username = user.name
-
+            username = escape(str(username), formatting=True)
             if user_id == author.id:
                 # Highlight the author's position
                 username = f"<<{username}>>"
@@ -189,7 +189,7 @@ class ScoreboardSource(WeeklyScoreboardSource):
                     username = user_id
                 else:
                     username = user.name
-
+            username = escape(str(username), formatting=True)
             if user_id == author.id:
                 # Highlight the author's position
                 username = f"<<{username}>>"
@@ -250,6 +250,7 @@ class NVScoreboardSource(WeeklyScoreboardSource):
                 else:
                     username = user.name
 
+            username = escape(str(username), formatting=True)
             if user_id == author.id:
                 # Highlight the author's position
                 username = f"<<{username}>>"

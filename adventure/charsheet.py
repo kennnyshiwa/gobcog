@@ -1350,7 +1350,7 @@ class Character(Item):
             "charm": char.charm.to_json() if char.charm else {},
         }
 
-    def get_current_equipment(self) -> List[Item]:
+    def get_current_equipment(self, return_place_holder: bool = False) -> List[Item]:
         """returns a list of Items currently equipped."""
         equipped = []
         for slot in ORDER:
@@ -1359,6 +1359,8 @@ class Character(Item):
             item = getattr(self, slot)
             if item:
                 equipped.append(item)
+            elif return_place_holder:
+                equipped.append(get_place_holder(slot))
         return equipped
 
     async def unequip_item(self, item: Item):
@@ -2224,3 +2226,18 @@ def process_argparse_stat(data: Mapping, stat: str) -> Mapping:
                     temp[stat]["max"] = min(float("inf"), *d["<"])
                     temp[stat]["min"] = max(float("-inf"), *d[">"])
     return temp
+
+
+def get_place_holder(slot_name) -> Item:
+    return Item(
+        name="Empty Slot",
+        slot=[slot_name] if slot_name != "two handed" else ["left", "right"],
+        rarity="N/A",
+        att=0,
+        int=0,
+        cha=0,
+        dex=0,
+        luck=0,
+        owned=0,
+        parts=0,
+    )
