@@ -1972,6 +1972,19 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 return
+            if name in c.loadouts:
+                msg = await ctx.send("Are you sure you want to update your existing loadout: `{}`?".format(name))
+                start_adding_reactions(msg, ReactionPredicate.YES_OR_NO_EMOJIS)
+                pred = ReactionPredicate.yes_or_no(msg, ctx.author)
+                try:
+                    await ctx.bot.wait_for("reaction_add", check=pred, timeout=60)
+                except asyncio.TimeoutError:
+                    await self._clear_react(msg)
+                    return
+
+                if not pred.result:
+                    await ctx.send("I will not updated loadout: `{}`.".format(name))
+                    return
             loadout = await Character.save_loadout(c)
             c.loadouts[name] = loadout
             await self.config.user(ctx.author).set(await c.to_json(self.config))
@@ -4992,7 +5005,9 @@ class Adventure(commands.Cog):
                 xpmult=xpmult,
                 cpmult=cpmult,
             )
-            stats_msg = _("{set_name}\n{part_val} Part Bonus\n\n").format(set_name=title_cased_set_name, part_val=parts)
+            stats_msg = _("{set_name} - {part_val} Part Bonus\n\n").format(
+                set_name=title_cased_set_name, part_val=parts
+            )
             stats_msg += breakdown
             stats_msg += "Multiple complete set bonuses stack."
             msg_list.append(box(stats_msg, lang="ini"))
