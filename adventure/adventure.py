@@ -3882,7 +3882,9 @@ class Adventure(commands.Cog):
     @commands.command(name="negaverse", aliases=["nv"], cooldown_after_parsing=True)
     @commands.cooldown(rate=1, per=3600, type=commands.BucketType.user)
     @commands.guild_only()
-    async def _negaverse(self, ctx: commands.Context, offering: int = None, roll: int = -1):
+    async def _negaverse(
+        self, ctx: commands.Context, offering: int = None, roll: Optional[int] = -1, nega: discord.User = None
+    ):
         """This will send you to fight a nega-member!"""
         if self.in_adventure(ctx):
             ctx.command.reset_cooldown(ctx)
@@ -3907,11 +3909,13 @@ class Adventure(commands.Cog):
         if offering > bal:
             offering = int(bal)
         admin_roll = -1
-        if roll >= 0 and await self.bot.is_owner(ctx.author):
+        nega_set = False
+        if (roll >= 0 or nega) and await self.bot.is_owner(ctx.author):
             if not self.is_dev(ctx.author):
                 if not await no_dev_prompt(ctx):
                     ctx.command.reset_cooldown(ctx)
                     return
+            nega_set = True
             admin_roll = roll
         offering_value = 0
         winning_state = False
@@ -3979,7 +3983,10 @@ class Adventure(commands.Cog):
                 await nv_msg.edit(content=entry_msg)
                 await self._clear_react(nv_msg)
                 await bank.withdraw_credits(ctx.author, offering)
-            nega_member = random.choice(ctx.message.guild.members)
+            if nega_set:
+                nega_member = nega
+            else:
+                nega_member = random.choice(ctx.message.guild.members)
             negachar = _("Nega-{c}").format(c=self.escape(nega_member.display_name))
 
             nega_msg = await ctx.send(
@@ -4016,7 +4023,7 @@ class Adventure(commands.Cog):
                 loss_state = True
                 items = await character.looted(how_many=max(int(10 - roll) // 2, 1))
                 if items:
-                    item_string = "\n".join([f"{v} {i}" for v, i in items])
+                    item_string = "\n".join([f"{v} x{i}" for v, i in items])
                     looted = box(f"{item_string}", lang="css")
                     await self.config.user(ctx.author).set(await character.to_json(self.config))
                 loss_msg = _(
