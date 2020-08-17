@@ -1895,6 +1895,8 @@ class Adventure(commands.Cog):
                 else:
                     withdraw = int(bal * (rebirth_cost / 100.0))
                     await bank.set_balance(ctx.author, 0)
+                if unbelievaboat := self.bot.get_cog("Unbelievaboat"):
+                    await unbelievaboat.walletset(ctx.author, 0)
 
                 await open_msg.edit(
                     content=(
@@ -1945,7 +1947,8 @@ class Adventure(commands.Cog):
                 else:
                     withdraw = bal
                     await bank.set_balance(target, 0)
-                await self.bot.get_cog("Unbelievaboat").walletset(ctx.author, 0)
+                if unbelievaboat := self.bot.get_cog("Unbelievaboat"):
+                    await unbelievaboat.walletset(target, 0)
                 character_data = await c.rebirth(dev_val=rebirth_level)
                 await self.config.user(target).set(character_data)
                 await ctx.send(
@@ -2158,7 +2161,7 @@ class Adventure(commands.Cog):
 
     @adventureset.command()
     @commands.is_owner()
-    async def rebirthcost(self, ctx: Context, percentage: float):
+    async def rebirthcost(self, ctx: commands.Context, percentage: float):
         """[Owner] Set what percentage of the user balance to charge for rebirths.
 
         Unless the user's balance is under 1k, users that rebirth will be left with the base of 1k credits plus the remaining credit percentage after the rebirth charge.
@@ -3403,7 +3406,7 @@ class Adventure(commands.Cog):
     @commands.guild_only()
     @commands.is_owner()
     @commands.command()
-    async def updatepatreon(self, ctx: Context):
+    async def updatepatreon(self, ctx: commands.Context):
         """Sync users with Patreon"""
         if not ctx.guild or ctx.guild.id != 489162733791739950:
             return await smart_embed(ctx, ("This command must be run in the BB-8 Support Server"))
@@ -3424,7 +3427,7 @@ class Adventure(commands.Cog):
 
     @commands.guild_only()
     @commands.command()
-    async def patreon(self, ctx: Context, item_name: str = None, *, stats: str = None):
+    async def patreon(self, ctx: commands.Context, item_name: str = None, *, stats: str = None):
         """Patron reward
 
         Keep in mind only one item can be created per week that you have an active subscription.
@@ -3467,7 +3470,7 @@ class Adventure(commands.Cog):
             )
 
     async def actually_give_patreon(
-        self, ctx: Context, user: discord.Member, item_name: str, stats: str, patron_stats: MutableMapping,
+        self, ctx: commands.Context, user: discord.Member, item_name: str, stats: str, patron_stats: MutableMapping,
     ):
         item_stats = await PatreonStats().convert(ctx, stats)
         # DO YOUR CHECKS HERE
@@ -8243,7 +8246,7 @@ class Adventure(commands.Cog):
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.guild_only()
-    async def nvsb(self, ctx: Context, show_global: bool = False):
+    async def nvsb(self, ctx: commands.Context, show_global: bool = False):
         """Print the negaverse scoreboard."""
         guild = ctx.guild
         rebirth_sorted = await self.get_global_negaverse_scoreboard(guild=guild if not show_global else None)
