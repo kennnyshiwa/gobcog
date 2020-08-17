@@ -942,7 +942,7 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 return
-            slots = await character.get_argparse_backpack_items(query)
+            slots = await character.get_argparse_backpack_items(query, rarity_exclude=["forged"])
             if (total_items := sum(len(i) for s, i in slots)) > 2:
 
                 msg = await ctx.send(
@@ -1028,7 +1028,7 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 return
-            slots = await character.get_argparse_backpack_items(query, rarity_exclude=["forged", "set", "event"])
+            slots = await character.get_argparse_backpack_items(query, rarity_exclude=["forged"])
             if (total_items := sum(len(i) for s, i in slots)) > 2:
                 msg = await ctx.send(
                     "Are you sure you want to sell {count} items in your inventory that match this query?".format(
@@ -1287,6 +1287,8 @@ class Adventure(commands.Cog):
                     continue
                 if item.name in disassembled:
                     continue
+                if item.rarity in ["forged"]:
+                    continue
                 index = min(RARITIES.index(item.rarity), 4)
                 if op == "single":
                     if character.heroclass["name"] != "Tinkerer":
@@ -1362,7 +1364,7 @@ class Adventure(commands.Cog):
                 return await smart_embed(
                     ctx, _("{} is not a valid rarity, select one of {}").format(rarity, humanize_list(RARITIES)),
                 )
-            if rarity.lower() in ["set", "forged"]:
+            if rarity.lower() in ["forged"]:
                 return await smart_embed(ctx, _("You cannot sell `{rarity}` rarity items.").format(rarity=rarity))
         if slot:
             slot = slot.lower()
@@ -1407,7 +1409,7 @@ class Adventure(commands.Cog):
                 return
             total_price = 0
             async with ctx.typing():
-                items = [i for n, i in c.backpack.items() if i.rarity not in ["forged", "set"]]
+                items = [i for n, i in c.backpack.items() if i.rarity not in ["forged"]]
                 count = 0
                 async for item in AsyncIter(items, steps=100):
                     if rarity and item.rarity != rarity:
@@ -1457,7 +1459,7 @@ class Adventure(commands.Cog):
             return await smart_embed(
                 ctx, _("You tried to go sell your items but the monster ahead is not allowing you to leave."),
             )
-        if item.rarity == "forged":
+        if item.rarity in ["forged"]:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(
                 box(
