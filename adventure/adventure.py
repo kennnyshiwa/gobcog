@@ -3727,7 +3727,7 @@ class Adventure(commands.Cog):
     async def loot(self, ctx: Context, box_type: str = None, number: int = 1):
         """This opens one of your precious treasure chests.
 
-        Use the box rarity type with the command: normal, rare, epic, legendary or set.
+        Use the box rarity type with the command: normal, rare, epic, legendary, ascended or set.
         """
         if (not self.is_dev(ctx.author) and number > 100) or number < 1:
             return await smart_embed(ctx, _("Nice try :smirk:."))
@@ -4965,7 +4965,7 @@ class Adventure(commands.Cog):
 
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
-    async def stats(self, ctx: Context, *, user: discord.Member = None):
+    async def stats(self, ctx: Context, *, user: discord.User = None):
         """This draws up a character sheet of you or an optionally specified member."""
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
@@ -8311,7 +8311,7 @@ class Adventure(commands.Cog):
                     "Unique Pieces",
                     "Unique Owned",
                 ]
-            table.rows.append((k, f"{v[0]}", f"{v[1]}" if v[1] == v[0] else f"[{v[1]}]"))
+            table.rows.append((k, f"{v[0]}", f" {v[1]}" if v[1] == v[0] else f"[{v[1]}]"))
         table.rows.sort("Name", reverse=False)
         msgs.append(box(str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
         await menu(ctx, msgs, DEFAULT_CONTROLS)
