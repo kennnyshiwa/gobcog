@@ -7529,7 +7529,7 @@ class Adventure(commands.Cog):
                 )
 
             else:
-                reward_message += "{mention} gained {xp} XP and {coin} {currency}\n".format(
+                reward_message += "{mention} gained {xp} XP and {coin} {currency}.\n".format(
                     mention=user.mention,
                     xp=humanize_number(int(userxp)),
                     coin=humanize_number(int(usercp)),
