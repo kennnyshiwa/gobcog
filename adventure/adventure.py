@@ -4436,11 +4436,9 @@ class Adventure(commands.Cog):
                     log.exception("Error with the new character sheet", exc_info=exc)
                     return
                 if c.heroclass["name"] != "Ranger":
-                    return await ctx.send(
-                        box(
-                            _("{}, you need to be a Ranger to do this.").format(self.escape(ctx.author.display_name)),
-                            lang="css",
-                        )
+                    return await smart_embed(
+                        ctx, _("**{}**, you need to be a Ranger to do this.").format(
+                            self.escape(ctx.author.display_name)),
                     )
                 if c.heroclass["pet"]:
                     ctx.command.reset_cooldown(ctx)
@@ -4569,11 +4567,9 @@ class Adventure(commands.Cog):
             if c.heroclass["name"] != "Ranger":
                 return
             if not c.heroclass["pet"]:
-                return await ctx.send(
-                    box(
-                        _("{}, you need to have a pet to do this.").format(self.escape(ctx.author.display_name)),
-                        lang="css",
-                    )
+                return await smart_embed(
+                    ctx, _("**{}**, you need to have a pet to do this.").format(
+                        self.escape(ctx.author.display_name)),
                 )
             if c.is_backpack_full(is_dev=self.is_dev(ctx.author)):
                 await ctx.send(
@@ -4610,20 +4606,16 @@ class Adventure(commands.Cog):
                 log.exception("Error with the new character sheet", exc_info=exc)
                 return
             if c.heroclass["name"] != "Ranger":
-                return await ctx.send(
-                    box(
-                        _("**{}**, you need to be a Ranger to do this.").format(self.escape(ctx.author.display_name)),
-                        lang="css",
-                    )
+                return await smart_embed(
+                    ctx, _("**{}**, you need to be a Ranger to do this.").format(
+                        self.escape(ctx.author.display_name)),
                 )
             if c.heroclass["pet"]:
                 c.heroclass["pet"] = {}
                 await self.config.user(ctx.author).set(await c.to_json(self.config))
-                return await ctx.send(
-                    box(
-                        _("{} released their pet into the wild.").format(self.escape(ctx.author.display_name)),
-                        lang="css",
-                    )
+                return await smart_embed(
+                    ctx, _("**{}** released their pet into the wild..").format(
+                        self.escape(ctx.author.display_name)),
                 )
             else:
                 return await ctx.send(box(_("You don't have a pet."), lang="css"))
