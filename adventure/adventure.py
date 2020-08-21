@@ -3060,6 +3060,14 @@ class Adventure(commands.Cog):
                 if not pages:
                     return await smart_embed(
                         ctx,
+                        _("**{}**, you need at least two forgeable items in your backpack to forge.{}").format(
+                            self.escape(ctx.author.display_name), ascended_forge_msg
+                        ),
+                    )
+                pages = await c.get_backpack(forging=True, clean=True)
+                if not pages:
+                    return await smart_embed(
+                        ctx,
                         _("**{}**, you need at least two forgeable items in your backpack to forge.").format(
                             self.escape(ctx.author.display_name)
                         ),
@@ -3090,6 +3098,11 @@ class Adventure(commands.Cog):
 
                         if not item:
                             wrong_item = _("**{c}**, I could not find that item - check your spelling.").format(
+                                c=self.escape(ctx.author.display_name)
+                            )
+                            await smart_embed(ctx, wrong_item)
+                        elif not can_equip(c, item):
+                            wrong_item = _("**{c}**, this item is too high level for you to reforge it.").format(
                                 c=self.escape(ctx.author.display_name)
                             )
                             await smart_embed(ctx, wrong_item)
@@ -5992,6 +6005,11 @@ class Adventure(commands.Cog):
                 return
         else:
             return
+        if (guild := getattr(user, "guild", None)) is not None:
+            if await self.bot.cog_disabled_in_guild(self, guild):
+                return
+        else:
+            return
         if not await self.has_perm(user):
             return
         if guild.id in self._sessions:
@@ -8172,53 +8190,6 @@ class Adventure(commands.Cog):
         else:
             return sorted_acc[:positions]
 
-    async def get_global_negaverse_scoreboard(self, positions: int = None, guild: discord.Guild = None) -> List[tuple]:
-        """Gets the bank's leaderboard.
-
-        Parameters
-        ----------
-        positions : `int`
-            The number of positions to get
-        guild : discord.Guild
-            The guild to get the leaderboard of. If this
-            is provided, get only guild members on the leaderboard
-
-        Returns
-        -------
-        `list` of `tuple`
-            The sorted leaderboard in the form of :code:`(user_id, raw_account)`
-
-        Raises
-        ------
-        TypeError
-            If the bank is guild-specific and no guild was specified
-        """
-        raw_accounts = await self.config.all_users()
-        if guild is not None:
-            tmp = raw_accounts.copy()
-            for acc in tmp:
-                if not guild.get_member(acc):
-                    del raw_accounts[acc]
-        raw_accounts_new = {}
-        async for (k, v) in AsyncIter(raw_accounts.items(), steps=200):
-            user_data = {}
-            for (vk, vi) in v.items():
-                if vk in ["nega"]:
-                    for (s, sv) in vi.items():
-                        user_data.update(vi)
-
-            if user_data:
-                user_data = {k: user_data}
-            raw_accounts_new.update(user_data)
-
-        sorted_acc = sorted(
-            raw_accounts_new.items(), key=lambda x: (x[1].get("wins", 0), x[1].get("loses", 0)), reverse=True,
-        )
-        if positions is None:
-            return sorted_acc
-        else:
-            return sorted_acc[:positions]
-
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True, embed_links=True)
     @commands.guild_only()
@@ -8234,23 +8205,6 @@ class Adventure(commands.Cog):
                 timeout=60,
                 cog=self,
                 show_global=show_global,
-            ).start(ctx=ctx)
-        else:
-            await smart_embed(ctx, _("There are no adventurers in the server."))
-
-    @commands.command()
-    @commands.bot_has_permissions(add_reactions=True, embed_links=True)
-    @commands.guild_only()
-    async def nvsb(self, ctx: commands.Context, show_global: bool = False):
-        """Print the negaverse scoreboard."""
-        guild = ctx.guild
-        rebirth_sorted = await self.get_global_negaverse_scoreboard(guild=guild if not show_global else None)
-        if rebirth_sorted:
-            await BaseMenu(
-                source=NVScoreboardSource(entries=rebirth_sorted),
-                delete_message_after=True,
-                clear_reactions_after=True,
-                timeout=60,
             ).start(ctx=ctx)
         else:
             await smart_embed(ctx, _("There are no adventurers in the server."))

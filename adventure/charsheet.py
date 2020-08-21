@@ -983,8 +983,8 @@ class Character(Item):
             if clean and not slot_group:
                 continue
             current_equipped = getattr(self, slot_name if slot != "two handed" else "left", None)
-            async for item in AsyncIter(slot_group):
-                if forging and (item[1].rarity in ["forged", "set", "patreon"] or item[1] in consumed_list):
+            async for item_name, item in AsyncIter(slot_group, steps=100):
+                if forging and (item.rarity in ["forged", "set", "patreon"] or item in consumed_list):
                     continue
                 if forging and item.rarity == "ascended":
                     if self.rebirths < 30:
