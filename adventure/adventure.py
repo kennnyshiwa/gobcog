@@ -244,7 +244,7 @@ class Adventure(commands.Cog):
             user_id
         ).clear()  # This will only ever touch the separate currency, leaving bot economy to be handled by core.
 
-    __version__ = "3.4.0"
+    __version__ = "3.4.1"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -254,19 +254,19 @@ class Adventure(commands.Cog):
         self.emojis = SimpleNamespace()
         self.emojis.fumble = "\N{EXCLAMATION QUESTION MARK}\N{VARIATION SELECTOR-16}"
         self.emojis.level_up = "\N{BLACK UP-POINTING DOUBLE TRIANGLE}"
-        self.emojis.rebirth = "\N{BABY SYMBOL}\N{VARIATION SELECTOR-16}"
+        self.emojis.rebirth = "\N{BABY SYMBOL}"
         self.emojis.attack = "\N{DAGGER KNIFE}\N{VARIATION SELECTOR-16}"
         self.emojis.magic = "\N{SPARKLES}"
         self.emojis.talk = "\N{LEFT SPEECH BUBBLE}\N{VARIATION SELECTOR-16}"
         self.emojis.pray = "\N{PERSON WITH FOLDED HANDS}"
         self.emojis.run = "\N{RUNNER}\N{ZERO WIDTH JOINER}\N{MALE SIGN}\N{VARIATION SELECTOR-16}"
         self.emojis.crit = "\N{COLLISION SYMBOL}"
-        self.emojis.magic_crit = "\N{HIGH VOLTAGE SIGN}\N{VARIATION SELECTOR-16}"
+        self.emojis.magic_crit = "\N{HIGH VOLTAGE SIGN}"
         self.emojis.berserk = "\N{RIGHT ANGER BUBBLE}\N{VARIATION SELECTOR-16}"
         self.emojis.dice = "\N{GAME DIE}"
-        self.emojis.yes = "\N{HEAVY CHECK MARK}\N{VARIATION SELECTOR-16}"
+        self.emojis.yes = "\N{HEAVY CHECK MARK}"
         self.emojis.no = "\N{NEGATIVE SQUARED CROSS MARK}"
-        self.emojis.sell = "\N{MONEY BAG}\N{VARIATION SELECTOR-16}"
+        self.emojis.sell = "\N{MONEY BAG}"
         self.emojis.skills = SimpleNamespace()
         self.emojis.skills.bless = "\N{SCROLL}"
         self.emojis.skills.psychic = "\N{SIX POINTED STAR WITH MIDDLE DOT}"
