@@ -444,6 +444,32 @@ class BaseMenu(menus.MenuPages, inherit_buttons=False):
             return True
         return max_pages == 1
 
+    def _skip_single_arrows_has_external_emojis_perm(self):
+        if self._skip_single_arrows():
+            return True
+        return self._has_external_emojis_perms()
+
+    def _skip_single_arrows_has_not_external_emojis_perm(self):
+        if self._skip_single_arrows():
+            return True
+        return self._has_not_external_emojis_perm()
+
+    def _skip_double_arrows_has_external_emojis_perm(self):
+        if self._skip_double_triangle_buttons():
+            return True
+        return self._has_external_emojis_perms()
+
+    def _skip_double_arrows_has_not_external_emojis_perm(self):
+        if self._skip_double_triangle_buttons():
+            return True
+        return self._has_not_external_emojis_perm()
+
+    def _has_external_emojis_perms(self):
+        return self.ctx.channel.permissions_for(self.ctx.me).external_emojis
+
+    def _has_not_external_emojis_perm(self):
+        return not self._has_external_emojis_perms()
+
     def _skip_double_triangle_buttons(self):
         max_pages = self._source.get_max_pages()
         if max_pages is None:
@@ -453,42 +479,73 @@ class BaseMenu(menus.MenuPages, inherit_buttons=False):
     @menus.button(
         "\N{BLACK LEFT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}",
         position=menus.First(1),
-        skip_if=_skip_single_arrows,
+        skip_if=_skip_single_arrows_has_external_emojis_perm,
     )
     async def go_to_previous_page(self, payload):
         """go to the previous page"""
         await self.show_checked_page(self.current_page - 1)
 
     @menus.button(
+        "<:stardestroyer:647175085592936458>", skip_if=_skip_single_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_previous_page_custom(self, payload):
+        """go to the previous page"""
+        await self.show_checked_page(self.current_page - 1)
+
+    @menus.button(
         "\N{BLACK RIGHT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}",
-        position=menus.Last(0),
-        skip_if=_skip_single_arrows,
+        skip_if=_skip_single_arrows_has_external_emojis_perm,
     )
     async def go_to_next_page(self, payload):
         """go to the next page"""
         await self.show_checked_page(self.current_page + 1)
 
     @menus.button(
+        "<:stardestroyerr:647178261394358325>", skip_if=_skip_single_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_next_page_custom(self, payload):
+        """go to the next page"""
+        await self.show_checked_page(self.current_page + 1)
+
+    @menus.button(
         "\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
-        position=menus.First(0),
-        skip_if=_skip_double_triangle_buttons,
+        skip_if=_skip_double_arrows_has_external_emojis_perm,
     )
     async def go_to_first_page(self, payload):
         """go to the first page"""
         await self.show_page(0)
 
     @menus.button(
+        "<:awing:700844627942441041>", skip_if=_skip_double_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_first_page_custom(self, payload):
+        """go to the first page"""
+        await self.show_page(0)
+
+    @menus.button(
         "\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
-        position=menus.Last(1),
-        skip_if=_skip_double_triangle_buttons,
+        skip_if=_skip_double_arrows_has_external_emojis_perm,
     )
     async def go_to_last_page(self, payload):
         """go to the last page"""
         # The call here is safe because it's guarded by skip_if
         await self.show_page(self._source.get_max_pages() - 1)
 
-    @menus.button("\N{CROSS MARK}")
+    @menus.button(
+        "<:awingright:733513022517149798>", skip_if=_skip_double_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_last_page_custom(self, payload):
+        """go to the last page"""
+        # The call here is safe because it's guarded by skip_if
+        await self.show_page(self._source.get_max_pages() - 1)
+
+    @menus.button("\N{CROSS MARK}", skip_if=_has_external_emojis_perms)
     async def stop_pages(self, payload: discord.RawReactionActionEvent) -> None:
+        """stops the pagination session."""
+        self.stop()
+
+    @menus.button("<:crossedsabers:632685164408995870>", skip_if=_has_not_external_emojis_perm)
+    async def stop_pages_custom(self, payload: discord.RawReactionActionEvent) -> None:
         """stops the pagination session."""
         self.stop()
 
@@ -523,6 +580,32 @@ class ScoreBoardMenu(BaseMenu, inherit_buttons=False):
         if max_pages is None:
             return True
         return max_pages == 1
+
+    def _skip_single_arrows_has_external_emojis_perm(self):
+        if self._skip_single_arrows():
+            return True
+        return self._has_external_emojis_perms()
+
+    def _skip_single_arrows_has_not_external_emojis_perm(self):
+        if self._skip_single_arrows():
+            return True
+        return self._has_not_external_emojis_perm()
+
+    def _skip_double_arrows_has_external_emojis_perm(self):
+        if self._skip_double_triangle_buttons():
+            return True
+        return self._has_external_emojis_perms()
+
+    def _skip_double_arrows_has_not_external_emojis_perm(self):
+        if self._skip_double_triangle_buttons():
+            return True
+        return self._has_not_external_emojis_perm()
+
+    def _has_external_emojis_perms(self):
+        return self.ctx.channel.permissions_for(self.ctx.me).external_emojis
+
+    def _has_not_external_emojis_perm(self):
+        return not self._has_external_emojis_perms()
 
     def _skip_double_triangle_buttons(self):
         max_pages = self._source.get_max_pages()
@@ -612,40 +695,76 @@ class ScoreBoardMenu(BaseMenu, inherit_buttons=False):
         await self.change_source(source=ScoreboardSource(entries=rebirth_sorted, stat=self._current))
 
     @menus.button(
-        "\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
-        skip_if=_skip_double_triangle_buttons,
-    )
-    async def go_to_first_page(self, payload):
-        """go to the first page"""
-        await self.show_page(0)
-
-    @menus.button(
-        "\N{BLACK LEFT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}", skip_if=_skip_single_arrows,
+        "\N{BLACK LEFT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}",
+        skip_if=_skip_single_arrows_has_external_emojis_perm,
     )
     async def go_to_previous_page(self, payload):
         """go to the previous page"""
         await self.show_checked_page(self.current_page - 1)
 
-    @menus.button("\N{CROSS MARK}")
-    async def stop_pages(self, payload: discord.RawReactionActionEvent) -> None:
-        """stops the pagination session."""
-        self.stop()
+    @menus.button(
+        "<:stardestroyer:647175085592936458>", skip_if=_skip_single_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_previous_page_custom(self, payload):
+        """go to the previous page"""
+        await self.show_checked_page(self.current_page - 1)
 
     @menus.button(
-        "\N{BLACK RIGHT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}", skip_if=_skip_single_arrows,
+        "\N{BLACK RIGHT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}",
+        skip_if=_skip_single_arrows_has_external_emojis_perm,
     )
     async def go_to_next_page(self, payload):
         """go to the next page"""
         await self.show_checked_page(self.current_page + 1)
 
     @menus.button(
+        "<:stardestroyerr:647178261394358325>", skip_if=_skip_single_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_next_page_custom(self, payload):
+        """go to the next page"""
+        await self.show_checked_page(self.current_page + 1)
+
+    @menus.button(
+        "\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
+        skip_if=_skip_double_arrows_has_external_emojis_perm,
+    )
+    async def go_to_first_page(self, payload):
+        """go to the first page"""
+        await self.show_page(0)
+
+    @menus.button(
+        "<:awing:700844627942441041>", skip_if=_skip_double_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_first_page_custom(self, payload):
+        """go to the first page"""
+        await self.show_page(0)
+
+    @menus.button(
         "\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
-        skip_if=_skip_double_triangle_buttons,
+        skip_if=_skip_double_arrows_has_external_emojis_perm,
     )
     async def go_to_last_page(self, payload):
         """go to the last page"""
         # The call here is safe because it's guarded by skip_if
         await self.show_page(self._source.get_max_pages() - 1)
+
+    @menus.button(
+        "<:awingright:733513022517149798>", skip_if=_skip_double_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_last_page_custom(self, payload):
+        """go to the last page"""
+        # The call here is safe because it's guarded by skip_if
+        await self.show_page(self._source.get_max_pages() - 1)
+
+    @menus.button("\N{CROSS MARK}", skip_if=_has_external_emojis_perms)
+    async def stop_pages(self, payload: discord.RawReactionActionEvent) -> None:
+        """stops the pagination session."""
+        self.stop()
+
+    @menus.button("<:crossedsabers:632685164408995870>", skip_if=_has_not_external_emojis_perm)
+    async def stop_pages_custom(self, payload: discord.RawReactionActionEvent) -> None:
+        """stops the pagination session."""
+        self.stop()
 
 
 class LeaderboardMenu(BaseMenu, inherit_buttons=False):
@@ -679,9 +798,34 @@ class LeaderboardMenu(BaseMenu, inherit_buttons=False):
             return True
         return max_pages == 1
 
+    def _skip_single_arrows_has_external_emojis_perm(self):
+        if self._skip_single_arrows():
+            return True
+        return self._has_external_emojis_perms()
+
+    def _skip_single_arrows_has_not_external_emojis_perm(self):
+        if self._skip_single_arrows():
+            return True
+        return self._has_not_external_emojis_perm()
+
+    def _skip_double_arrows_has_external_emojis_perm(self):
+        if self._skip_double_triangle_buttons():
+            return True
+        return self._has_external_emojis_perms()
+
+    def _skip_double_arrows_has_not_external_emojis_perm(self):
+        if self._skip_double_triangle_buttons():
+            return True
+        return self._has_not_external_emojis_perm()
+
+    def _has_external_emojis_perms(self):
+        return self.ctx.channel.permissions_for(self.ctx.me).external_emojis
+
+    def _has_not_external_emojis_perm(self):
+        return not self._has_external_emojis_perms()
+
     def _skip_double_triangle_buttons(self):
         max_pages = self._source.get_max_pages()
-
         if max_pages is None:
             return True
         return max_pages <= 2
@@ -708,40 +852,76 @@ class LeaderboardMenu(BaseMenu, inherit_buttons=False):
         await self.change_source(source=EconomySource(entries=bank_sorted))
 
     @menus.button(
-        "\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
-        skip_if=_skip_double_triangle_buttons,
-    )
-    async def go_to_first_page(self, payload):
-        """go to the first page"""
-        await self.show_page(0)
-
-    @menus.button(
-        "\N{BLACK LEFT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}", skip_if=_skip_single_arrows,
+        "\N{BLACK LEFT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}",
+        skip_if=_skip_single_arrows_has_external_emojis_perm,
     )
     async def go_to_previous_page(self, payload):
         """go to the previous page"""
         await self.show_checked_page(self.current_page - 1)
 
-    @menus.button("\N{CROSS MARK}")
-    async def stop_pages(self, payload: discord.RawReactionActionEvent) -> None:
-        """stops the pagination session."""
-        self.stop()
+    @menus.button(
+        "<:stardestroyer:647175085592936458>", skip_if=_skip_single_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_previous_page_custom(self, payload):
+        """go to the previous page"""
+        await self.show_checked_page(self.current_page - 1)
 
     @menus.button(
-        "\N{BLACK RIGHT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}", skip_if=_skip_single_arrows,
+        "\N{BLACK RIGHT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}",
+        skip_if=_skip_single_arrows_has_external_emojis_perm,
     )
     async def go_to_next_page(self, payload):
         """go to the next page"""
         await self.show_checked_page(self.current_page + 1)
 
     @menus.button(
+        "<:stardestroyerr:647178261394358325>", skip_if=_skip_single_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_next_page_custom(self, payload):
+        """go to the next page"""
+        await self.show_checked_page(self.current_page + 1)
+
+    @menus.button(
+        "\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
+        skip_if=_skip_double_arrows_has_external_emojis_perm,
+    )
+    async def go_to_first_page(self, payload):
+        """go to the first page"""
+        await self.show_page(0)
+
+    @menus.button(
+        "<:awing:700844627942441041>", skip_if=_skip_double_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_first_page_custom(self, payload):
+        """go to the first page"""
+        await self.show_page(0)
+
+    @menus.button(
         "\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
-        skip_if=_skip_double_triangle_buttons,
+        skip_if=_skip_double_arrows_has_external_emojis_perm,
     )
     async def go_to_last_page(self, payload):
         """go to the last page"""
         # The call here is safe because it's guarded by skip_if
         await self.show_page(self._source.get_max_pages() - 1)
+
+    @menus.button(
+        "<:awingright:733513022517149798>", skip_if=_skip_double_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_last_page_custom(self, payload):
+        """go to the last page"""
+        # The call here is safe because it's guarded by skip_if
+        await self.show_page(self._source.get_max_pages() - 1)
+
+    @menus.button("\N{CROSS MARK}", skip_if=_has_external_emojis_perms)
+    async def stop_pages(self, payload: discord.RawReactionActionEvent) -> None:
+        """stops the pagination session."""
+        self.stop()
+
+    @menus.button("<:crossedsabers:632685164408995870>", skip_if=_has_not_external_emojis_perm)
+    async def stop_pages_custom(self, payload: discord.RawReactionActionEvent) -> None:
+        """stops the pagination session."""
+        self.stop()
 
 
 class BackpackMenu(menus.MenuPages, inherit_buttons=False):
@@ -819,6 +999,32 @@ class BackpackMenu(menus.MenuPages, inherit_buttons=False):
             return True
         return max_pages == 1
 
+    def _skip_single_arrows_has_external_emojis_perm(self):
+        if self._skip_single_arrows():
+            return True
+        return self._has_external_emojis_perms()
+
+    def _skip_single_arrows_has_not_external_emojis_perm(self):
+        if self._skip_single_arrows():
+            return True
+        return self._has_not_external_emojis_perm()
+
+    def _skip_double_arrows_has_external_emojis_perm(self):
+        if self._skip_double_triangle_buttons():
+            return True
+        return self._has_external_emojis_perms()
+
+    def _skip_double_arrows_has_not_external_emojis_perm(self):
+        if self._skip_double_triangle_buttons():
+            return True
+        return self._has_not_external_emojis_perm()
+
+    def _has_external_emojis_perms(self):
+        return self.ctx.channel.permissions_for(self.ctx.me).external_emojis
+
+    def _has_not_external_emojis_perm(self):
+        return not self._has_external_emojis_perms()
+
     def _skip_double_triangle_buttons(self):
         max_pages = self._source.get_max_pages()
         if max_pages is None:
@@ -827,43 +1033,73 @@ class BackpackMenu(menus.MenuPages, inherit_buttons=False):
 
     @menus.button(
         "\N{BLACK LEFT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}",
-        position=menus.First(1),
-        skip_if=_skip_single_arrows,
+        skip_if=_skip_single_arrows_has_external_emojis_perm,
     )
     async def go_to_previous_page(self, payload):
         """go to the previous page"""
         await self.show_checked_page(self.current_page - 1)
 
     @menus.button(
+        "<:stardestroyer:647175085592936458>", skip_if=_skip_single_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_previous_page_custom(self, payload):
+        """go to the previous page"""
+        await self.show_checked_page(self.current_page - 1)
+
+    @menus.button(
         "\N{BLACK RIGHT-POINTING TRIANGLE}\N{VARIATION SELECTOR-16}",
-        position=menus.Last(0),
-        skip_if=_skip_single_arrows,
+        skip_if=_skip_single_arrows_has_external_emojis_perm,
     )
     async def go_to_next_page(self, payload):
         """go to the next page"""
         await self.show_checked_page(self.current_page + 1)
 
     @menus.button(
+        "<:stardestroyerr:647178261394358325>", skip_if=_skip_single_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_next_page_custom(self, payload):
+        """go to the next page"""
+        await self.show_checked_page(self.current_page + 1)
+
+    @menus.button(
         "\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
-        position=menus.First(0),
-        skip_if=_skip_double_triangle_buttons,
+        skip_if=_skip_double_arrows_has_external_emojis_perm,
     )
     async def go_to_first_page(self, payload):
         """go to the first page"""
         await self.show_page(0)
 
     @menus.button(
+        "<:awing:700844627942441041>", skip_if=_skip_double_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_first_page_custom(self, payload):
+        """go to the first page"""
+        await self.show_page(0)
+
+    @menus.button(
         "\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}\N{VARIATION SELECTOR-16}",
-        position=menus.Last(1),
-        skip_if=_skip_double_triangle_buttons,
+        skip_if=_skip_double_arrows_has_external_emojis_perm,
     )
     async def go_to_last_page(self, payload):
         """go to the last page"""
         # The call here is safe because it's guarded by skip_if
         await self.show_page(self._source.get_max_pages() - 1)
 
-    @menus.button("\N{CROSS MARK}")
+    @menus.button(
+        "<:awingright:733513022517149798>", skip_if=_skip_double_arrows_has_not_external_emojis_perm,
+    )
+    async def go_to_last_page_custom(self, payload):
+        """go to the last page"""
+        # The call here is safe because it's guarded by skip_if
+        await self.show_page(self._source.get_max_pages() - 1)
+
+    @menus.button("\N{CROSS MARK}", skip_if=_has_external_emojis_perms)
     async def stop_pages(self, payload: discord.RawReactionActionEvent) -> None:
+        """stops the pagination session."""
+        self.stop()
+
+    @menus.button("<:crossedsabers:632685164408995870>", skip_if=_has_not_external_emojis_perm)
+    async def stop_pages_custom(self, payload: discord.RawReactionActionEvent) -> None:
         """stops the pagination session."""
         self.stop()
 
