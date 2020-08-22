@@ -244,7 +244,7 @@ class Adventure(commands.Cog):
             user_id
         ).clear()  # This will only ever touch the separate currency, leaving bot economy to be handled by core.
 
-    __version__ = "3.4.1"
+    __version__ = "3.4.2"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -1885,7 +1885,8 @@ class Adventure(commands.Cog):
                     await open_msg.edit(
                         content=box(
                             _("{c} decided not to rebirth.").format(c=self.escape(ctx.author.display_name)), lang="css",
-                        )
+                        ),
+                        embed=None,
                     )
                     return await self._clear_react(open_msg)
 
@@ -1895,7 +1896,11 @@ class Adventure(commands.Cog):
                     log.exception("Error with the new character sheet", exc_info=exc)
                     return
                 if c.lvl < c.maxlevel:
-                    return await smart_embed(ctx, _("You need to be level `{c.maxlevel}` to rebirth.").format(c=c))
+                    await open_msg.edit(
+                        content=box(_("You need to be level `{c}` to rebirth.").format(c=c.maxlevel), lang="css",),
+                        embed=None,
+                    )
+                    return
                 bal = await bank.get_balance(ctx.author)
                 if bal >= 1000:
                     withdraw = int((bal - 1000) * (rebirth_cost / 100.0))
@@ -1913,8 +1918,9 @@ class Adventure(commands.Cog):
                                 c=self.escape(ctx.author.display_name), bal=humanize_number(withdraw),
                             ),
                             lang="css",
-                        )
-                    )
+                        ),
+                    ),
+                    embed=None,
                 )
                 await self.config.user(ctx.author).set(await c.rebirth())
 
@@ -2798,8 +2804,55 @@ class Adventure(commands.Cog):
         adventure_in_embed = _("Allow embeds") if guild_data["embed"] else _("No embeds")
         time_after_adventure = parse_timedelta(f"{guild_data['cooldown_timer_manual']} seconds")
 
+        separate_economy = global_data["separate_economy"]
+        economy_string = _("\n# Economy Settings\n")
+        economy_string += _("[Separated Currency]:                   {state}\n").format(
+            state=_("Enabled") if separate_economy else _("Disabled")
+        )
+
+        if separate_economy:
+            main_currency_name = await bank.get_currency_name(ctx.guild, _forced=True)
+            adv_currency_name = await bank.get_currency_name(ctx.guild)
+            if await bank.is_global(_forced=True):
+                withdraw_state = global_data["disallow_withdraw"]
+                max_allowed_withdraw = global_data["max_allowed_withdraw"]
+
+            else:
+                withdraw_state = guild_data["disallow_withdraw"]
+                max_allowed_withdraw = guild_data["max_allowed_withdraw"]
+            economy_string += _("[Withdraw to Bank]:                     {state}\n").format(
+                state=_("Allowed") if withdraw_state else _("Disallowed")
+            )
+            if withdraw_state:
+                economy_string += _("[Max withdraw allowed]:                 {state}\n").format(
+                    state=humanize_number(max_allowed_withdraw)
+                )
+            to_conversion_rate = global_data["to_conversion_rate"]
+            from_conversion_rate = global_data["from_conversion_rate"]
+
+            economy_string += _(
+                "[Bank to Adventure conversion rate]:    1 {main_name} will be worth {ratio} {adventure_name}\n"
+            ).format(main_name=main_currency_name, ratio=1 * to_conversion_rate, adventure_name=adv_currency_name,)
+            economy_string += _(
+                "[Adventure to bank conversion rate]:    {ratio} {adventure_name} will be worth 1 {main_name}\n"
+            ).format(main_name=main_currency_name, ratio=from_conversion_rate, adventure_name=adv_currency_name,)
+
+        daily_bonus = global_data["daily_bonus"]
+        daily_bonus_string = "\n# Daily Bonuses\n"
+        daily_bonus_string += _("[Monday]:                               {v:.2%}\n").format(v=daily_bonus.get("1", 0))
+        daily_bonus_string += _("[Tuesday]:                              {v:.2%}\n").format(v=daily_bonus.get("2", 0))
+        daily_bonus_string += _("[Wednesday]:                            {v:.2%}\n").format(v=daily_bonus.get("3", 0))
+        daily_bonus_string += _("[Thursday]:                             {v:.2%}\n").format(v=daily_bonus.get("4", 0))
+        daily_bonus_string += _("[Friday]:                               {v:.2%}\n").format(v=daily_bonus.get("5", 0))
+        daily_bonus_string += _("[Saturday]:                             {v:.2%}\n").format(v=daily_bonus.get("6", 0))
+        daily_bonus_string += _("[Sunday]:                               {v:.2%}\n").format(v=daily_bonus.get("7", 0))
+
+        easy_mode = global_data["easy_mode"]
         msg = _("Adventure Settings\n\n")
         msg += _("# Main Settings\n")
+        msg += _("[Easy Mode]:                            {state}\n").format(
+            state=_("Enabled") if easy_mode else _("Disabled")
+        )
         msg += _("[Theme]:                                {theme}\n").format(theme=theme)
         msg += _("[God name]:                             {god_name}\n").format(god_name=god_name)
         msg += _("[Base rebirth cost]:                    {rebirth_cost}\n").format(rebirth_cost=rebirth_cost)
@@ -2824,6 +2877,8 @@ class Adventure(commands.Cog):
         msg += _("[Lootboxes in carts]:                   {lootbox_in_carts}\n").format(
             lootbox_in_carts=lootbox_in_carts
         )
+        msg += economy_string
+        msg += daily_bonus_string
 
         await ctx.send(box(msg, lang="ini"))
 
@@ -5219,7 +5274,7 @@ class Adventure(commands.Cog):
             log.exception("Error with the new character sheet")
             return
         items = c.get_current_equipment(return_place_holder=True)
-        msg = _("{}'s Character Sheet\n\n").format(self.escape(ctx.author.display_name))
+        msg = _("{}'s Character Sheet\n\n").format(self.escape(user.display_name))
         msg_len = len(msg)
         items_names = set()
         table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
