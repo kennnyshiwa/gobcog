@@ -1859,7 +1859,8 @@ class Adventure(commands.Cog):
                     await open_msg.edit(
                         content=box(
                             _("{c} decided not to rebirth.").format(c=self.escape(ctx.author.display_name)), lang="css",
-                        )
+                        ),
+                        embed=None,
                     )
                     return await self._clear_react(open_msg)
 
@@ -1869,7 +1870,11 @@ class Adventure(commands.Cog):
                     log.exception("Error with the new character sheet", exc_info=exc)
                     return
                 if c.lvl < c.maxlevel:
-                    return await smart_embed(ctx, _("You need to be level `{c.maxlevel}` to rebirth.").format(c=c))
+                    await open_msg.edit(
+                        content=box(_("You need to be level `{c}` to rebirth.").format(c=c.maxlevel), lang="css",),
+                        embed=None,
+                    )
+                    return
                 bal = await bank.get_balance(ctx.author)
                 if bal >= 1000:
                     withdraw = int((bal - 1000) * (rebirth_cost / 100.0))
@@ -1885,8 +1890,9 @@ class Adventure(commands.Cog):
                                 c=self.escape(ctx.author.display_name), bal=humanize_number(withdraw),
                             ),
                             lang="css",
-                        )
-                    )
+                        ),
+                    ),
+                    embed=None,
                 )
                 await self.config.user(ctx.author).set(await c.rebirth())
 
