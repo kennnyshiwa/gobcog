@@ -1992,7 +1992,7 @@ class Adventure(commands.Cog):
                     c = await Character.from_json(self.config, target, self._daily_bonus)
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
-                    return
+                    continue
                 c.heroclass["ability"] = False
                 c.heroclass["cooldown"] = 0
                 if "catch_cooldown" in c.heroclass:
@@ -3667,7 +3667,7 @@ class Adventure(commands.Cog):
                     c = await Character.from_json(self.config, user, self._daily_bonus)
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
-                    return
+                    continue
                 if loot_type == "rare":
                     c.treasure[1] += number
                 elif loot_type == "epic":
@@ -6452,19 +6452,16 @@ class Adventure(commands.Cog):
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
                     continue
-                multiplier = 0.2 if c.rebirths >= 5 else 0.01
-                if c.dex != 0:
-                    if c.dex < 0:
-                        dex = min(1 / abs(c.dex), 1)
-                    else:
-                        dex = max(abs(c.dex), 3)
-                    multiplier = multiplier / dex
-                loss = round(c.bal * multiplier)
-                if loss > c.bal:
-                    loss = c.bal
-                balance = c.bal
-                loss = min(min(loss, balance), 1000000000)
                 if c.bal > 0:
+                    multiplier = 1 / 3 if c.rebirths >= 5 else 0.01
+                    if c._dex < 0:
+                        dex = min(1 / abs(c._dex), 1)
+                    else:
+                        dex = max(c._dex // 10, 1)
+                    multiplier = multiplier / dex
+                    loss = round(c.bal * multiplier)
+                    if loss > c.bal:
+                        loss = c.bal
                     if user not in [u for u, t in repair_list]:
                         repair_list.append([user, loss])
                         if c.bal > loss:
@@ -6502,19 +6499,16 @@ class Adventure(commands.Cog):
                 except Exception as exc:
                     log.exception("Error with the new character sheet", exc_info=exc)
                     continue
-                multiplier = 0.2 if c.rebirths >= 5 else 0.01
-                if c.dex != 0:
-                    if c.dex < 0:
-                        dex = min(1 / abs(c.dex), 1)
-                    else:
-                        dex = max(abs(c.dex), 3)
-                    multiplier = multiplier / dex
-                loss = round(c.bal * multiplier)
-                if loss > c.bal:
-                    loss = c.bal
-                balance = c.bal
-                loss = min(min(loss, balance), 1000000000)
                 if c.bal > 0:
+                    multiplier = 1 / 3 if c.rebirths >= 5 else 0.01
+                    if c._dex < 0:
+                        dex = min(1 / abs(c._dex), 1)
+                    else:
+                        dex = max(c._dex // 10, 1)
+                    multiplier = multiplier / dex
+                    loss = round(c.bal * multiplier)
+                    if loss > c.bal:
+                        loss = c.bal
                     if user not in [u for u, t in repair_list]:
                         repair_list.append([user, loss])
                         if c.bal > loss:
@@ -6577,19 +6571,16 @@ class Adventure(commands.Cog):
                     except Exception as exc:
                         log.exception("Error with the new character sheet", exc_info=exc)
                         continue
-                    multiplier = 0.2 if c.rebirths >= 5 else 0.01
-                    if c.dex != 0:
-                        if c.dex < 0:
-                            dex = min(1 / abs(c.dex), 1)
-                        else:
-                            dex = max(abs(c.dex), 3)
-                        multiplier = multiplier / dex
-                    loss = round(c.bal * multiplier)
-                    if loss > c.bal:
-                        loss = c.bal
-                    balance = c.bal
-                    loss = min(min(loss, balance), 1000000000)
                     if c.bal > 0:
+                        multiplier = 1 / 3 if c.rebirths >= 5 else 0.01
+                        if c._dex < 0:
+                            dex = min(1 / abs(c._dex), 1)
+                        else:
+                            dex = max(c._dex // 10, 1)
+                        multiplier = multiplier / dex
+                        loss = round(c.bal * multiplier)
+                        if loss > c.bal:
+                            loss = c.bal
                         if user not in [u for u, t in repair_list]:
                             repair_list.append([user, loss])
                             if c.bal > loss:
@@ -6737,19 +6728,16 @@ class Adventure(commands.Cog):
                     except Exception as exc:
                         log.exception("Error with the new character sheet", exc_info=exc)
                         continue
-                    multiplier = 0.2 if c.rebirths >= 5 else 0.01
-                    if c.dex != 0:
-                        if c.dex < 0:
-                            dex = min(1 / abs(c.dex), 1)
-                        else:
-                            dex = max(abs(c.dex), 3)
-                        multiplier = multiplier / dex
-                    loss = round(c.bal * multiplier)
-                    if loss > c.bal:
-                        loss = c.bal
-                    balance = c.bal
-                    loss = min(min(loss, balance), 1000000000)
                     if c.bal > 0:
+                        multiplier = 1 / 3 if c.rebirths >= 5 else 0.01
+                        if c._dex < 0:
+                            dex = min(1 / abs(c._dex), 1)
+                        else:
+                            dex = max(c._dex // 10, 1)
+                        multiplier = multiplier / dex
+                        loss = round(c.bal * multiplier)
+                        if loss > c.bal:
+                            loss = c.bal
                         if user not in [u for u, t in repair_list]:
                             repair_list.append([user, loss])
                             if c.bal > loss:
@@ -6764,19 +6752,16 @@ class Adventure(commands.Cog):
                         except Exception as exc:
                             log.exception("Error with the new character sheet", exc_info=exc)
                             continue
-                        multiplier = 0.2
-                        if c.dex != 0:
-                            if c.dex < 0:
-                                dex = min(1 / abs(c.dex), 1)
-                            else:
-                                dex = max(abs(c.dex), 3)
-                            multiplier = multiplier / dex
-                        loss = round(c.bal * multiplier)
-                        if loss > c.bal:
-                            loss = c.bal
-                        balance = c.bal
-                        loss = min(min(loss, balance), 1000000000)
                         if c.bal > 0:
+                            multiplier = 1 / 3
+                            if c._dex < 0:
+                                dex = min(1 / abs(c._dex), 1)
+                            else:
+                                dex = max(c._dex // 10, 1)
+                            multiplier = multiplier / dex
+                            loss = round(c.bal * multiplier)
+                            if loss > c.bal:
+                                loss = c.bal
                             if user not in [u for u, t in repair_list]:
                                 repair_list.append([user, loss])
                                 if user not in [u for u, t in repair_list]:
@@ -6879,7 +6864,7 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 continue
-            crit_mod = max(max(c.dex, c.luck) + (c.total_att // 20), 1)  # Thanks GoaFan77
+            crit_mod = max(max(c.dex, c.luck // 2) + (c.total_att // 20), 0)  # Thanks GoaFan77
             mod = 0
             max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
             if crit_mod != 0:
@@ -6954,7 +6939,7 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 continue
-            crit_mod = max(max(c.dex, c.luck) + (c.total_int // 20), 0)
+            crit_mod = max(max(c.dex, c.luck // 2) + (c.total_int // 20), 0)
             mod = 0
             max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
             if crit_mod != 0:
@@ -7058,7 +7043,7 @@ class Adventure(commands.Cog):
                 continue
             rebirths = c.rebirths * (2 if c.heroclass["name"] == "Cleric" else 1)
             if c.heroclass["name"] == "Cleric":
-                crit_mod = max(max(c.dex, c.luck) + (c.total_int // 20), 0)
+                crit_mod = max(max(c.dex, c.luck // 2) + (c.total_int // 20), 0)
                 mod = 0
                 max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
                 if crit_mod != 0:
@@ -7210,7 +7195,7 @@ class Adventure(commands.Cog):
             except Exception as exc:
                 log.exception("Error with the new character sheet", exc_info=exc)
                 continue
-            crit_mod = max(max(c.dex, c.luck) + (c.total_int // 50) + (c.total_cha // 20), 1)
+            crit_mod = max(max(c.dex, c.luck // 2) + (c.total_int // 50) + (c.total_cha // 20), 0)
             mod = 0
             max_roll = 100 if c.rebirths >= 30 else 50 if c.rebirths >= 15 else 20
             if crit_mod != 0:
