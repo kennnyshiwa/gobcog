@@ -924,7 +924,7 @@ class LeaderboardMenu(BaseMenu, inherit_buttons=False):
         self.stop()
 
 
-class BackpackMenu(menus.MenuPages, inherit_buttons=False):
+class BackpackMenu(BaseMenu, inherit_buttons=False):
     def __init__(
         self,
         source: menus.PageSource,
