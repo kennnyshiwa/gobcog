@@ -5023,7 +5023,7 @@ class Adventure(commands.Cog):
             log.exception("Error with the new character sheet")
             return
         items = c.get_current_equipment(return_place_holder=True)
-        msg = _("{}'s Character Sheet\n\n").format(self.escape(ctx.author.display_name))
+        msg = _("{}'s Character Sheet\n\n").format(self.escape(user.display_name))
         msg_len = len(msg)
         items_names = set()
         table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
