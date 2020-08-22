@@ -2774,8 +2774,57 @@ class Adventure(commands.Cog):
         adventure_in_embed = _("Allow embeds") if guild_data["embed"] else _("No embeds")
         time_after_adventure = parse_timedelta(f"{guild_data['cooldown_timer_manual']} seconds")
 
+        separate_economy = global_data["separate_economy"]
+        economy_string = _("\n# Economy Settings\n")
+        economy_string += _("[Separated Currency]:                   {state}\n").format(
+            state=_("Enabled") if separate_economy else _("Disabled")
+        )
+
+        if separate_economy:
+            main_currency_name = await bank.get_currency_name(ctx.guild, _forced=True)
+            adv_currency_name = await bank.get_currency_name(ctx.guild)
+            if await bank.is_global(_forced=True):
+                withdraw_state = global_data["disallow_withdraw"]
+                max_allowed_withdraw = global_data["max_allowed_withdraw"]
+
+            else:
+                withdraw_state = guild_data["disallow_withdraw"]
+                max_allowed_withdraw = guild_data["max_allowed_withdraw"]
+            economy_string += _("[Withdraw to Bank]:                     {state}\n").format(
+                state=_("Allowed") if withdraw_state else _("Disallowed")
+            )
+            if withdraw_state:
+                economy_string += _("[Max withdraw allowed]:                 {state}\n").format(
+                    state=humanize_number(max_allowed_withdraw)
+                )
+            to_conversion_rate = global_data["to_conversion_rate"]
+            from_conversion_rate = global_data["from_conversion_rate"]
+
+            economy_string += _(
+                "[Bank to Adventure conversion rate]:    1 {main_name} will be worth {ratio} {adventure_name}\n"
+            ).format(main_name=main_currency_name, ratio=1 * to_conversion_rate, adventure_name=adv_currency_name,)
+            economy_string += _(
+                "[Adventure to bank conversion rate]:    {ratio} {adventure_name} will be worth 1 {main_name}\n"
+            ).format(main_name=main_currency_name, ratio=from_conversion_rate, adventure_name=adv_currency_name,)
+
+            economy_string += _("[Theme]:                                {state}\n").format(state=theme)
+
+        daily_bonus = global_data["daily_bonus"]
+        daily_bonus_string = "\n# Daily Bonuses\n"
+        daily_bonus_string += _("[Monday]:                               {v:.2%}\n").format(v=daily_bonus.get("1", 0))
+        daily_bonus_string += _("[Tuesday]:                              {v:.2%}\n").format(v=daily_bonus.get("2", 0))
+        daily_bonus_string += _("[Wednesday]:                            {v:.2%}\n").format(v=daily_bonus.get("3", 0))
+        daily_bonus_string += _("[Thursday]:                             {v:.2%}\n").format(v=daily_bonus.get("4", 0))
+        daily_bonus_string += _("[Friday]:                               {v:.2%}\n").format(v=daily_bonus.get("5", 0))
+        daily_bonus_string += _("[Saturday]:                             {v:.2%}\n").format(v=daily_bonus.get("6", 0))
+        daily_bonus_string += _("[Sunday]:                               {v:.2%}\n").format(v=daily_bonus.get("7", 0))
+
+        easy_mode = global_data["easy_mode"]
         msg = _("Adventure Settings\n\n")
         msg += _("# Main Settings\n")
+        msg += _("[Easy Mode]:                            {state}\n").format(
+            state=_("Enabled") if easy_mode else _("Disabled")
+        )
         msg += _("[Theme]:                                {theme}\n").format(theme=theme)
         msg += _("[God name]:                             {god_name}\n").format(god_name=god_name)
         msg += _("[Base rebirth cost]:                    {rebirth_cost}\n").format(rebirth_cost=rebirth_cost)
@@ -2800,6 +2849,8 @@ class Adventure(commands.Cog):
         msg += _("[Lootboxes in carts]:                   {lootbox_in_carts}\n").format(
             lootbox_in_carts=lootbox_in_carts
         )
+        msg += economy_string
+        msg += daily_bonus_string
 
         await ctx.send(box(msg, lang="ini"))
 
