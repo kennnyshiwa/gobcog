@@ -66,6 +66,7 @@ from .menus import (
     NVScoreboardSource,
     ScoreBoardMenu,
     ScoreboardSource,
+    SimpleSource,
     WeeklyScoreboardSource,
 )
 
@@ -867,7 +868,13 @@ class Adventure(commands.Cog):
 
             backpack_pages = await c.get_backpack(rarity=rarity, slot=slot, show_delta=show_diff, equippable=True)
             if backpack_pages:
-                return await menu(ctx, backpack_pages, DEFAULT_CONTROLS)
+                await BaseMenu(
+                    source=SimpleSource(backpack_pages),
+                    delete_message_after=True,
+                    clear_reactions_after=True,
+                    timeout=60,
+                ).start(ctx=ctx)
+                return
             else:
                 return await smart_embed(ctx, _("You have no equippable items that match this query."),)
 
@@ -930,7 +937,7 @@ class Adventure(commands.Cog):
                     return None
 
             controls["\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}"] = _backpack_info
-            return await menu(ctx, backpack_pages, DEFAULT_CONTROLS)
+            return await menu(ctx, backpack_pages, controls)
         else:
             return await smart_embed(ctx, _("You have no items that match this query."),)
 
@@ -1094,7 +1101,9 @@ class Adventure(commands.Cog):
                 )
                 for page in pagify(new_msg, shorten_by=10, page_length=1900):
                     msg_list.append(box(page, lang="css"))
-                await menu(ctx, msg_list, DEFAULT_CONTROLS)
+                await BaseMenu(
+                    source=SimpleSource(msg_list), delete_message_after=True, clear_reactions_after=True, timeout=60,
+                ).start(ctx=ctx)
 
     @commands.group(name="backpack", autohelp=False)
     @commands.bot_has_permissions(add_reactions=True)
@@ -1463,7 +1472,9 @@ class Adventure(commands.Cog):
         )
         for page in pagify(new_msg, shorten_by=10, page_length=1900):
             msg_list.append(box(page, lang="css"))
-        await menu(ctx, msg_list, DEFAULT_CONTROLS)
+        await BaseMenu(
+            source=SimpleSource(msg_list), delete_message_after=True, clear_reactions_after=True, timeout=60,
+        ).start(ctx=ctx)
 
     @_backpack.command(name="sell", cooldown_after_parsing=True)
     @commands.cooldown(rate=3, per=60, type=commands.BucketType.user)
@@ -1630,10 +1641,9 @@ class Adventure(commands.Cog):
             character.last_currency_check = time.time()
             await self.config.user(ctx.author).set(await character.to_json(self.config))
             pages = [page for page in pagify(msg, delims=["\n"], page_length=1900)]
-            if len(pages) > 1:
-                await menu(ctx, pages, DEFAULT_CONTROLS)
-            else:
-                await ctx.send(pages[0])
+            await BaseMenu(
+                source=SimpleSource(pages), delete_message_after=True, clear_reactions_after=True, timeout=60,
+            ).start(ctx=ctx)
 
     @_backpack.command(name="trade")
     async def backpack_trade(
@@ -2705,7 +2715,9 @@ class Adventure(commands.Cog):
             embed.set_image(url=image)
             embed_list.append(embed)
         if embed_list:
-            await menu(ctx, embed_list, DEFAULT_CONTROLS)
+            await BaseMenu(
+                source=SimpleSource(embed_list), delete_message_after=True, clear_reactions_after=True, timeout=60,
+            ).start(ctx=ctx)
 
     @themeset_list.command(name="pet")
     async def themeset_list_pet(self, ctx: commands.Context, *, theme: str):
@@ -2730,7 +2742,9 @@ class Adventure(commands.Cog):
             embed = discord.Embed(title=pet, description=text)
             embed_list.append(embed)
         if embed_list:
-            await menu(ctx, embed_list, DEFAULT_CONTROLS)
+            await BaseMenu(
+                source=SimpleSource(embed_list), delete_message_after=True, clear_reactions_after=True, timeout=60,
+            ).start(ctx=ctx)
 
     @adventureset.command()
     @commands.admin_or_permissions(administrator=True)
@@ -3127,7 +3141,9 @@ class Adventure(commands.Cog):
                             self.escape(ctx.author.display_name)
                         ),
                     )
-                task = asyncio.create_task(menu(ctx, pages, DEFAULT_CONTROLS, timeout=180))
+                await BaseMenu(
+                    source=SimpleSource(pages), delete_message_after=True, clear_reactions_after=True, timeout=180,
+                ).start(ctx=ctx)
                 await smart_embed(
                     ctx,
                     _(
@@ -3143,7 +3159,6 @@ class Adventure(commands.Cog):
                         )
                         new_ctx = await self.bot.get_context(reply)
                         if reply.content.lower() in ["cancel", "exit"]:
-                            task.cancel()
                             return await smart_embed(ctx, _("Forging process has been cancelled."))
                         with contextlib.suppress(BadArgument):
                             item = None
@@ -3173,7 +3188,6 @@ class Adventure(commands.Cog):
                     timeout_msg = _("I don't have all day you know, **{}**.").format(
                         self.escape(ctx.author.display_name)
                     )
-                    task.cancel()
                     return await smart_embed(ctx, timeout_msg,)
                 if item.rarity in ["forged", "set", "patreon"]:
                     return await smart_embed(
@@ -3228,8 +3242,6 @@ class Adventure(commands.Cog):
                         self.escape(ctx.author.display_name)
                     )
                     return await smart_embed(ctx, timeout_msg)
-                finally:
-                    task.cancel()
                 if item.rarity in ["forged", "set", "patreon"]:
                     return await smart_embed(
                         ctx,
@@ -4148,7 +4160,9 @@ class Adventure(commands.Cog):
                     await self.config.user(ctx.author).set(await c.to_json(self.config))
                     await self._open_chest(ctx, ctx.author, box_type, character=c)  # returns item and msg
         if msgs:
-            await menu(ctx, msgs, DEFAULT_CONTROLS)
+            await BaseMenu(
+                source=SimpleSource(msgs), delete_message_after=True, clear_reactions_after=True, timeout=60,
+            ).start(ctx=ctx)
 
     @commands.command(name="negaverse", aliases=["nv"], cooldown_after_parsing=True)
     @commands.cooldown(rate=1, per=3600, type=commands.BucketType.user)
@@ -5256,7 +5270,9 @@ class Adventure(commands.Cog):
         backpack_contents = await c.get_backpack(set_name=title_cased_set_name, clean=True)
         if backpack_contents:
             msg_list.extend(backpack_contents)
-        await menu(ctx, pages=msg_list, controls=DEFAULT_CONTROLS)
+        await BaseMenu(
+            source=SimpleSource(msg_list), delete_message_after=True, clear_reactions_after=True, timeout=60,
+        ).start(ctx=ctx)
 
     @commands.command()
     @commands.bot_has_permissions(add_reactions=True)
@@ -5338,10 +5354,12 @@ class Adventure(commands.Cog):
             if index == total:
                 table.set_style(BeautifulTable.STYLE_RST)
                 msgs.append(box(msg + str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
-
-        await menu(
-            ctx, pages=[box(c, lang="css"), *msgs], controls=DEFAULT_CONTROLS,
-        )
+        await BaseMenu(
+            source=SimpleSource([box(c, lang="css"), *msgs]),
+            delete_message_after=True,
+            clear_reactions_after=True,
+            timeout=60,
+        ).start(ctx=ctx)
 
     async def _build_loadout_display(self, userdata, loadout=True, rebirths: int = None, index: int = None):
         table = BeautifulTable(default_alignment=ALIGN_LEFT, maxwidth=500)
@@ -5505,10 +5523,10 @@ class Adventure(commands.Cog):
         for page in pagify(msg, delims=["\n"], page_length=1000):
             embed = discord.Embed(description=page)
             embed_list.append(embed)
-        if len(embed_list) > 1:
-            await menu(ctx, embed_list, DEFAULT_CONTROLS)
-        else:
-            await ctx.send(embed=embed_list[0])
+
+        await BaseMenu(
+            source=SimpleSource(embed_list), delete_message_after=True, clear_reactions_after=True, timeout=60,
+        ).start(ctx=ctx)
 
     @commands.command(name="devcooldown")
     @commands.bot_has_permissions(add_reactions=True)
@@ -8621,4 +8639,6 @@ class Adventure(commands.Cog):
             table.rows.append((k, f"{v[0]}", f" {v[1]}" if v[1] == v[0] else f"[{v[1]}]"))
         table.rows.sort("Name", reverse=False)
         msgs.append(box(str(table) + f"\nPage {len(msgs) + 1}", lang="css"))
-        await menu(ctx, msgs, DEFAULT_CONTROLS)
+        await BaseMenu(
+            source=SimpleSource(msgs), delete_message_after=True, clear_reactions_after=True, timeout=60,
+        ).start(ctx=ctx)
