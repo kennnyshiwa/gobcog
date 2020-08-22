@@ -2807,8 +2807,6 @@ class Adventure(commands.Cog):
                 "[Adventure to bank conversion rate]:    {ratio} {adventure_name} will be worth 1 {main_name}\n"
             ).format(main_name=main_currency_name, ratio=from_conversion_rate, adventure_name=adv_currency_name,)
 
-            economy_string += _("[Theme]:                                {state}\n").format(state=theme)
-
         daily_bonus = global_data["daily_bonus"]
         daily_bonus_string = "\n# Daily Bonuses\n"
         daily_bonus_string += _("[Monday]:                               {v:.2%}\n").format(v=daily_bonus.get("1", 0))
