@@ -6464,13 +6464,13 @@ class Adventure(commands.Cog):
                 for (user, loss) in repair_list:
                     if user not in temp_repair:
                         loss_list.append(
-                            _("{user} used {loss} {currency_name}\n").format(
+                            _("\n{user} used {loss} {currency_name}").format(
                                 user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
                             )
                         )
                         temp_repair.append(user)
                 if loss_list:
-                    self._loss_message[ctx.message.id] = humanize_list(loss_list)
+                    self._loss_message[ctx.message.id] = humanize_list(loss_list).strip()
             return await smart_embed(ctx, result_msg)
         if session.miniboss and not slain and not persuaded:
             lost = True
@@ -6504,13 +6504,13 @@ class Adventure(commands.Cog):
                 for (user, loss) in repair_list:
                     if user not in temp_repair:
                         loss_list.append(
-                            _("{user} used {loss} {currency_name}\n").format(
+                            _("\n{user} used {loss} {currency_name}").format(
                                 user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
                             )
                         )
                         temp_repair.append(user)
                 if loss_list:
-                    self._loss_message[ctx.message.id] = humanize_list(loss_list)
+                    self._loss_message[ctx.message.id] = humanize_list(loss_list).strip()
             miniboss = session.challenge
             special = session.miniboss["special"]
             result_msg += _(
@@ -6577,13 +6577,13 @@ class Adventure(commands.Cog):
                     for (user, loss) in repair_list:
                         if user not in temp_repair:
                             loss_list.append(
-                                _("{user} used {loss} {currency_name}\n").format(
+                                _("\n{user} used {loss} {currency_name}").format(
                                     user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
                                 )
                             )
                             temp_repair.append(user)
                     if loss_list:
-                        self._loss_message[ctx.message.id] = humanize_list(loss_list)
+                        self._loss_message[ctx.message.id] = humanize_list(loss_list).strip()
                 options = [
                     _("No amount of diplomacy or valiant fighting could save you."),
                     _("This challenge was too much for one hero."),
@@ -6762,13 +6762,13 @@ class Adventure(commands.Cog):
                     for (user, loss) in repair_list:
                         if user not in temp_repair:
                             loss_list.append(
-                                _("{user} used {loss} {currency_name}\n").format(
+                                _("\n{user} used {loss} {currency_name}").format(
                                     user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
                                 )
                             )
                             temp_repair.append(user)
                     if loss_list:
-                        self._loss_message[ctx.message.id] = humanize_list(loss_list)
+                        self._loss_message[ctx.message.id] = humanize_list(loss_list).strip()
                 options = [
                     _("No amount of diplomacy or valiant fighting could save you."),
                     _("This challenge was too much for the group."),
