@@ -6519,6 +6519,7 @@ class Adventure(commands.Cog):
         amount = 1 * session.monster_stats
         amount *= (hp + dipl) if slain and persuaded else hp if slain else dipl
         amount += int(amount * (0.25 * people))
+        currency_name = await bank.get_currency_name(ctx.guild)
         if people == 1:
             if slain:
                 group = fighters_final_string if len(fight_list) == 1 else wizards_final_string
