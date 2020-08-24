@@ -5514,7 +5514,7 @@ class Adventure(commands.Cog):
         You play by reacting with the offered emojis.
         """
 
-        if ctx.guild.id in self._sessions:
+        if ctx.guild.id in self._sessions and self._sessions[ctx.guild.id].finished is False:
             adventure_obj = self._sessions[ctx.guild.id]
             link = adventure_obj.message.jump_url
 
@@ -5562,7 +5562,9 @@ class Adventure(commands.Cog):
         try:
             reward, participants = await self._simple(ctx, adventure_msg, challenge)
             await self.config.guild(ctx.guild).cooldown.set(time.time())
+            self._sessions[ctx.guild.id].finished = True
         except Exception as exc:
+            self._sessions[ctx.guild.id].finished = True
             await self.config.guild(ctx.guild).cooldown.set(0)
             log.exception("Something went wrong controlling the game", exc_info=exc)
             while ctx.guild.id in self._sessions:
@@ -5623,6 +5625,8 @@ class Adventure(commands.Cog):
             error,
             (commands.CheckFailure, commands.UserInputError, commands.DisabledCommand, commands.CommandOnCooldown,),
         ):
+            if ctx.guild.id in self._sessions:
+                self._sessions[ctx.guild.id].finished = True
             while ctx.guild.id in self._sessions:
                 del self._sessions[ctx.guild.id]
             handled = False
