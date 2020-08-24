@@ -316,6 +316,7 @@ class Adventure(commands.Cog):
         self._adventure_countdown = {}
         self._rewards = {}
         self._reward_message = {}
+        self._loss_message = {}
         self._trader_countdown = {}
         self._current_traders = {}
         self._curent_trader_stock = {}
@@ -5603,6 +5604,11 @@ class Adventure(commands.Cog):
             if extramsg:
                 for msg in pagify(extramsg, page_length=1900):
                     await smart_embed(ctx, msg, success=True)
+        if ctx.message.id in self._loss_message:
+            extramsg = self._loss_message.pop(ctx.message.id)
+            if extramsg:
+                for msg in pagify(extramsg, page_length=1900):
+                    await smart_embed(ctx, msg, success=False)
         while ctx.guild.id in self._sessions:
             del self._sessions[ctx.guild.id]
 
@@ -6458,16 +6464,13 @@ class Adventure(commands.Cog):
                 for (user, loss) in repair_list:
                     if user not in temp_repair:
                         loss_list.append(
-                            _("**{user}** used {loss} {currency_name}").format(
-                                user=self.escape(user.display_name),
-                                loss=humanize_number(loss),
-                                currency_name=currency_name,
+                            _("{user} used {loss} {currency_name}\n").format(
+                                user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
                             )
                         )
                         temp_repair.append(user)
-                result_msg += _("\n{loss_list} to repay a passing cleric that unfroze the group.").format(
-                    loss_list=humanize_list(loss_list)
-                )
+                if loss_list:
+                    self._loss_message[ctx.message.id] = humanize_list(loss_list)
             return await smart_embed(ctx, result_msg)
         if session.miniboss and not slain and not persuaded:
             lost = True
@@ -6501,17 +6504,18 @@ class Adventure(commands.Cog):
                 for (user, loss) in repair_list:
                     if user not in temp_repair:
                         loss_list.append(
-                            f"**{self.escape(user.display_name)}** used {humanize_number(loss)} {currency_name}"
+                            _("{user} used {loss} {currency_name}\n").format(
+                                user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
+                            )
                         )
                         temp_repair.append(user)
+                if loss_list:
+                    self._loss_message[ctx.message.id] = humanize_list(loss_list)
             miniboss = session.challenge
             special = session.miniboss["special"]
             result_msg += _(
-                "The **{miniboss}'s** "
-                "{special} was countered, but he still managed to kill you."
-                "\n{loss_l} to repay a passing "
-                "cleric that resurrected the group."
-            ).format(miniboss=miniboss, special=special, loss_l=humanize_list(loss_list))
+                "The **{miniboss}'s** " "{special} was countered, but he still managed to kill you."
+            ).format(miniboss=miniboss, special=special)
         amount = 1 * session.monster_stats
         amount *= (hp + dipl) if slain and persuaded else hp if slain else dipl
         amount += int(amount * (0.25 * people))
@@ -6573,14 +6577,17 @@ class Adventure(commands.Cog):
                     for (user, loss) in repair_list:
                         if user not in temp_repair:
                             loss_list.append(
-                                f"**{self.escape(user.display_name)}** used {humanize_number(loss)} {currency_name}"
+                                _("{user} used {loss} {currency_name}\n").format(
+                                    user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
+                                )
                             )
                             temp_repair.append(user)
-                repair_text = "" if not loss_list else f"{humanize_list(loss_list)} " + _("to repair their gear.")
+                    if loss_list:
+                        self._loss_message[ctx.message.id] = humanize_list(loss_list)
                 options = [
-                    _("No amount of diplomacy or valiant fighting could save you.\n{}").format(repair_text),
-                    _("This challenge was too much for one hero.\n{}").format(repair_text),
-                    _("You tried your best, but the group couldn't succeed at their attempt.\n{}").format(repair_text),
+                    _("No amount of diplomacy or valiant fighting could save you."),
+                    _("This challenge was too much for one hero."),
+                    _("You tried your best, but the group couldn't succeed at their attempt."),
                 ]
                 text = random.choice(options)
         else:
@@ -6755,18 +6762,17 @@ class Adventure(commands.Cog):
                     for (user, loss) in repair_list:
                         if user not in temp_repair:
                             loss_list.append(
-                                _("**{user}** used {loss} {currency_name}").format(
-                                    user=self.escape(user.display_name),
-                                    loss=humanize_number(loss),
-                                    currency_name=currency_name,
+                                _("{user} used {loss} {currency_name}\n").format(
+                                    user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
                                 )
                             )
                             temp_repair.append(user)
-                repair_text = "" if not loss_list else _("{} to repair their gear.").format(humanize_list(loss_list))
+                    if loss_list:
+                        self._loss_message[ctx.message.id] = humanize_list(loss_list)
                 options = [
-                    _("No amount of diplomacy or valiant fighting could save you.\n{}").format(repair_text),
-                    _("This challenge was too much for the group.\n{}").format(repair_text),
-                    _("You tried your best, but couldn't succeed.\n{}").format(repair_text),
+                    _("No amount of diplomacy or valiant fighting could save you."),
+                    _("This challenge was too much for the group."),
+                    _("You tried your best, but couldn't succeed."),
                 ]
                 text = random.choice(options)
 
