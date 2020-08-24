@@ -6320,9 +6320,11 @@ class Adventure(commands.Cog):
             attack, diplomacy, magic, run_msg = await self.handle_run(
                 ctx.guild.id, attack, diplomacy, magic, shame=True
             )
+            if run_msg:
+                run_msg = _("It's a shame for the following adventurers\n{run_msg}\n").format(run_msg=run_msg)
 
             output = _(
-                "All adventures prepared for an epic adventure, but they soon realise all this treasure was unprotected!\nIt's a shame for the following adventurers\n{run_msg}\n{text}"
+                "All adventures prepared for an epic adventure, but they soon realise all this treasure was unprotected!\n{run_msg}{text}"
             ).format(text=text, run_msg=run_msg,)
             output = pagify(output, page_length=1900)
             await calc_msg.delete()
