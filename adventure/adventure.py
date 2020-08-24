@@ -6901,7 +6901,7 @@ class Adventure(commands.Cog):
                     critlist.append(user)
                     crit_bonus = (random.randint(5, 20)) + (rebirths * 2)
                     crit_str = f"{self.emojis.crit} {humanize_number(crit_bonus)}"
-                if c.heroclass["ability"]:
+                if c.heroclass["name"] == "Berserker" and c.heroclass["ability"]:
                     base_bonus = (random.randint(1, 10) + 5) * (rebirths // 2)
                 base_str = f"{self.emojis.crit}️ {humanize_number(base_bonus)}"
                 attack += int((roll + base_bonus + crit_bonus + att_value) / pdef)
@@ -6977,7 +6977,7 @@ class Adventure(commands.Cog):
                     critlist.append(user)
                     crit_bonus = (random.randint(5, 20)) + (rebirths * 2)
                     crit_str = f"{self.emojis.crit} {humanize_number(crit_bonus)}"
-                if c.heroclass["ability"]:
+                if c.heroclass["name"] == "Wizard" and c.heroclass["ability"]:
                     base_bonus = (random.randint(1, 10) + 5) * (rebirths // 2)
                     base_str = f"{self.emojis.magic_crit}️ {humanize_number(base_bonus)}"
                 magic += int((roll + base_bonus + crit_bonus + int_value) / mdef)
@@ -7220,7 +7220,7 @@ class Adventure(commands.Cog):
                     crit_bonus = (random.randint(5, 20)) + (rebirths * 2)
                     crit_str = f"{self.emojis.crit} {crit_bonus}"
 
-                if c.heroclass["ability"]:
+                if c.heroclass["name"] == "Bard" and c.heroclass["ability"]:
                     base_bonus = (random.randint(1, 10) + 5) * (rebirths // 2)
                 base_str = f"🎵 {humanize_number(base_bonus)}"
                 diplomacy += int((roll + base_bonus + crit_bonus + dipl_value) / cdef)
