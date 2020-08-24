@@ -6591,6 +6591,31 @@ class Adventure(commands.Cog):
                 ]
                 text = random.choice(options)
         else:
+            if run_list:
+                users = run_list
+                for user in users:
+                    try:
+                        c = await Character.from_json(self.config, user, self._daily_bonus)
+                    except Exception as exc:
+                        log.exception("Error with the new character sheet", exc_info=exc)
+                        continue
+                    if c.bal > 0:
+                        multiplier = 1 / 3
+                        if c._dex < 0:
+                            dex = min(1 / abs(c._dex), 1)
+                        else:
+                            dex = max(c._dex // 10, 1)
+                        multiplier = multiplier / dex
+                        loss = round(c.bal * multiplier)
+                        if loss > c.bal:
+                            loss = c.bal
+                        if user not in [u for u, t in repair_list]:
+                            repair_list.append([user, loss])
+                            if user not in [u for u, t in repair_list]:
+                                if c.bal > loss:
+                                    await bank.withdraw_credits(user, loss)
+                                else:
+                                    await bank.set_balance(user, 0)
             if slain and persuaded:
                 if len(pray_list) > 0:
                     god = await self.config.god_name()
@@ -6731,51 +6756,25 @@ class Adventure(commands.Cog):
                                 await bank.withdraw_credits(user, loss)
                             else:
                                 await bank.set_balance(user, 0)
-                if run_list:
-                    users = run_list
-                    for user in users:
-                        try:
-                            c = await Character.from_json(self.config, user, self._daily_bonus)
-                        except Exception as exc:
-                            log.exception("Error with the new character sheet", exc_info=exc)
-                            continue
-                        if c.bal > 0:
-                            multiplier = 1 / 3
-                            if c._dex < 0:
-                                dex = min(1 / abs(c._dex), 1)
-                            else:
-                                dex = max(c._dex // 10, 1)
-                            multiplier = multiplier / dex
-                            loss = round(c.bal * multiplier)
-                            if loss > c.bal:
-                                loss = c.bal
-                            if user not in [u for u, t in repair_list]:
-                                repair_list.append([user, loss])
-                                if user not in [u for u, t in repair_list]:
-                                    if c.bal > loss:
-                                        await bank.withdraw_credits(user, loss)
-                                    else:
-                                        await bank.set_balance(user, 0)
-                loss_list = []
-                if len(repair_list) > 0:
-                    temp_repair = []
-                    for (user, loss) in repair_list:
-                        if user not in temp_repair:
-                            loss_list.append(
-                                _("\n{user} used {loss} {currency_name}").format(
-                                    user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
-                                )
-                            )
-                            temp_repair.append(user)
-                    if loss_list:
-                        self._loss_message[ctx.message.id] = humanize_list(loss_list).strip()
                 options = [
                     _("No amount of diplomacy or valiant fighting could save you."),
                     _("This challenge was too much for the group."),
                     _("You tried your best, but couldn't succeed."),
                 ]
                 text = random.choice(options)
-
+        loss_list = []
+        if len(repair_list) > 0:
+            temp_repair = []
+            for (user, loss) in repair_list:
+                if user not in temp_repair:
+                    loss_list.append(
+                        _("\n{user} used {loss} {currency_name}").format(
+                            user=user.mention, loss=humanize_number(loss), currency_name=currency_name,
+                        )
+                    )
+                    temp_repair.append(user)
+            if loss_list:
+                self._loss_message[ctx.message.id] = humanize_list(loss_list).strip()
         output = f"{result_msg}\n{text}"
         output = pagify(output, page_length=1900)
         img_sent = session.monster["image"] if not session.easy_mode else None
