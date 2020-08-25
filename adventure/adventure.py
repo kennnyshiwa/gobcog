@@ -892,8 +892,11 @@ class Adventure(commands.Cog):
         **--set** - Accepts multiple sets (use quotes if there are spaces in the set name).
         **--equip** - If used will only show equippable items.
         **--diff** - If used will show the stat delta compared to what you currently have equipped.
+        **--except** - If used will show everything that does not match the specified query.
         **--match** - Accepts a string, no quotes are needed. Will attempt to match items to this string.
         ​ ​ ​  ​**--icase** - If `--match` and `--icase` are used, matches will not be case sensitive.
+        **--no-match** - Accepts a string, no quotes are needed. Will not match items to this string.
+        ​ ​ ​  ​**--icase** - If `--no-match` and `--icase` are used, matches will not be case sensitive.
         For the following arguments:
         ​ ​ These arguments accept 1 or 2 numbers. If 1 is passed it is treated as an equal match, if 2 then it is a range.
         ​ ​ ​ ​ **--str**
@@ -2444,7 +2447,7 @@ class Adventure(commands.Cog):
 
     @adventureset.command(name="clear")
     @commands.is_owner()
-    async def clear_user(self, ctx: commands.Context, *, users: commands.Greedy[discord.User]):
+    async def clear_user(self, ctx: commands.Context, users: commands.Greedy[discord.User]):
         """[Owner] Lets you clear multiple users character sheets."""
         for user in users:
             await self.config.user(user).clear()
@@ -5514,7 +5517,7 @@ class Adventure(commands.Cog):
         You play by reacting with the offered emojis.
         """
 
-        if ctx.guild.id in self._sessions:
+        if ctx.guild.id in self._sessions and self._sessions[ctx.guild.id].finished is False:
             adventure_obj = self._sessions[ctx.guild.id]
             link = adventure_obj.message.jump_url
 
@@ -5562,7 +5565,9 @@ class Adventure(commands.Cog):
         try:
             reward, participants = await self._simple(ctx, adventure_msg, challenge)
             await self.config.guild(ctx.guild).cooldown.set(time.time())
+            self._sessions[ctx.guild.id].finished = True
         except Exception as exc:
+            self._sessions[ctx.guild.id].finished = True
             await self.config.guild(ctx.guild).cooldown.set(0)
             log.exception("Something went wrong controlling the game", exc_info=exc)
             while ctx.guild.id in self._sessions:
@@ -5623,6 +5628,8 @@ class Adventure(commands.Cog):
             error,
             (commands.CheckFailure, commands.UserInputError, commands.DisabledCommand, commands.CommandOnCooldown,),
         ):
+            if ctx.guild.id in self._sessions:
+                self._sessions[ctx.guild.id].finished = True
             while ctx.guild.id in self._sessions:
                 del self._sessions[ctx.guild.id]
             handled = False
