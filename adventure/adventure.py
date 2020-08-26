@@ -1010,7 +1010,7 @@ class Adventure(commands.Cog):
     async def commands_cbackpack_sell(self, ctx: commands.Context, *, query: BackpackFilterParser):
         """Sell items from your backpack.
 
-        Forged cannot be sold using this command.
+        Forged items cannot be sold using this command.
 
         Please read the usage instructions [here](https://github.com/aikaterna/gobcog/blob/master/docs/cbackpack.md)
         """
@@ -1401,7 +1401,7 @@ class Adventure(commands.Cog):
                 return
             total_price = 0
             async with ctx.typing():
-                items = [i for n, i in c.backpack.items() if i.rarity not in ["forged", "set", "patreon"]]
+                items = [i for n, i in c.backpack.items() if i.rarity not in ["forged", "patreon"]]
                 count = 0
                 async for item in AsyncIter(items, steps=100):
                     if rarity and item.rarity != rarity:
@@ -4342,7 +4342,6 @@ class Adventure(commands.Cog):
                 )
                 with contextlib.suppress(Exception):
                     lock.release()
-
                 msg = await self._add_rewards(ctx, ctx.author, xp_won, offering, False)
                 xp_won_final += xp_won
                 offering_value += offering
@@ -5485,7 +5484,6 @@ class Adventure(commands.Cog):
         for page in pagify(msg, delims=["\n"], page_length=1000):
             embed = discord.Embed(description=page)
             embed_list.append(embed)
-
         await BaseMenu(
             source=SimpleSource(embed_list), delete_message_after=True, clear_reactions_after=True, timeout=60,
         ).start(ctx=ctx)
@@ -6057,11 +6055,6 @@ class Adventure(commands.Cog):
                 return
         else:
             return
-        if (guild := getattr(user, "guild", None)) is not None:
-            if await self.bot.cog_disabled_in_guild(self, guild):
-                return
-        else:
-            return
         if not await self.has_perm(user):
             return
         if guild.id in self._sessions:
@@ -6324,7 +6317,7 @@ class Adventure(commands.Cog):
                 ctx.guild.id, attack, diplomacy, magic, shame=True
             )
             if run_msg:
-                run_msg = _("It's a shame for the following adventurers\n{run_msg}\n").format(run_msg=run_msg)
+                run_msg = _("It's a shame for the following adventurers...\n{run_msg}\n").format(run_msg=run_msg)
 
             output = _(
                 "All adventures prepared for an epic adventure, but they soon realise all this treasure was unprotected!\n{run_msg}{text}"
