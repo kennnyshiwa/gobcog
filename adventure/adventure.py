@@ -887,34 +887,17 @@ class Adventure(commands.Cog):
     ):
         """Complex backpack management tools.
 
-        **--slot** - Accepts multiple slots (use quotes if there are spaces in a slot name).
-        **--rarity** - Accepts multiple rarities (use quotes if there are spaces in a rarity name).
-        **--set** - Accepts multiple sets (use quotes if there are spaces in the set name).
-        **--equip** - If used will only show equippable items.
-        **--diff** - If used will show the stat delta compared to what you currently have equipped.
-        **--except** - If used will show everything that does not match the specified query.
-        **--match** - Accepts a string, no quotes are needed. Will attempt to match items to this string.
-        ​ ​ ​  ​**--icase** - If `--match` and `--icase` are used, matches will not be case sensitive.
-        **--no-match** - Accepts a string, no quotes are needed. Will not match items to this string.
-        ​ ​ ​  ​**--icase** - If `--no-match` and `--icase` are used, matches will not be case sensitive.
-        For the following arguments:
-        ​ ​ These arguments accept 1 or 2 numbers. If 1 is passed it is treated as an equal match, if 2 then it is a range.
-        ​ ​ ​ ​ **--str**
-        ​ ​ ​ ​ **--int**
-        ​ ​ ​ ​ **--cha**
-        ​ ​ ​ ​ **--luc**
-        ​ ​ ​ ​ **--dex**
-        ​ ​ ​ ​ **--lvl**
-        ​ ​ ​ ​ **--deg** (Only works on `[p]cbackpack show`)
-
-        Subcommands: These take the same arguments listed above.
+        Please read the usage instructions [here](https://github.com/aikaterna/gobcog/blob/master/docs/cbackpack.md)
         """
 
     @commands_cbackpack.command(name="show")
     async def commands_cbackpack_show(
         self, ctx: commands.Context, *, query: BackpackFilterParser,
     ):
-        """This shows the contents of your backpack."""
+        """This shows the contents of your backpack.
+
+        Please read the usage instructions [here](https://github.com/aikaterna/gobcog/blob/master/docs/cbackpack.md)
+        """
         if not await self.allow_in_dm(ctx):
             return await smart_embed(ctx, _("This command is not available in DM's on this bot."))
         try:
@@ -941,6 +924,8 @@ class Adventure(commands.Cog):
 
         This will provide a chance for a chest,
         or the item might break while you are handling it...
+
+        Please read the usage instructions [here](https://github.com/aikaterna/gobcog/blob/master/docs/cbackpack.md)
         """
         if self.in_adventure(ctx):
             return await smart_embed(
@@ -1025,7 +1010,9 @@ class Adventure(commands.Cog):
     async def commands_cbackpack_sell(self, ctx: commands.Context, *, query: BackpackFilterParser):
         """Sell items from your backpack.
 
-        Forged, Set and Event items cannot be sold using this command.
+        Forged items cannot be sold using this command.
+
+        Please read the usage instructions [here](https://github.com/aikaterna/gobcog/blob/master/docs/cbackpack.md)
         """
 
         if self.in_adventure(ctx):
@@ -1414,7 +1401,7 @@ class Adventure(commands.Cog):
                 return
             total_price = 0
             async with ctx.typing():
-                items = [i for n, i in c.backpack.items() if i.rarity not in ["forged", "set", "patreon"]]
+                items = [i for n, i in c.backpack.items() if i.rarity not in ["forged", "patreon"]]
                 count = 0
                 async for item in AsyncIter(items, steps=100):
                     if rarity and item.rarity != rarity:
@@ -3321,11 +3308,17 @@ class Adventure(commands.Cog):
         modifier_penalty_cha = -0.01 * base_cha // 10
         modifier = sum([modifier_bonus_int, modifier_bonus_luck, modifier_penalty_cha, modifier_penalty_str, modifier])
         modifier = max(0.001, modifier)
-        newatt = round((int(item1.att) + int(item2.att)) * modifier)
-        newdip = round((int(item1.cha) + int(item2.cha)) * modifier)
-        newint = round((int(item1.int) + int(item2.int)) * modifier)
-        newdex = round((int(item1.dex) + int(item2.dex)) * modifier)
-        newluck = round((int(item1.luck) + int(item2.luck)) * modifier)
+
+        base_int = int(item1.int) + int(item2.int)
+        base_cha = int(item1.cha) + int(item2.cha)
+        base_att = int(item1.att) + int(item2.att)
+        base_dex = int(item1.dex) + int(item2.dex)
+        base_luck = int(item1.luck) + int(item2.luck)
+        newatt = int((base_att * modifier) + base_att)
+        newdip = int((base_cha * modifier) + base_cha)
+        newint = int((base_int * modifier) + base_int)
+        newdex = int((base_dex * modifier) + base_dex)
+        newluck = int((base_luck * modifier) + base_luck)
         newslot = random.choice(ORDER)
         if newslot == "two handed":
             newslot = ["right", "left"]
@@ -4349,7 +4342,6 @@ class Adventure(commands.Cog):
                 )
                 with contextlib.suppress(Exception):
                     lock.release()
-
                 msg = await self._add_rewards(ctx, ctx.author, xp_won, offering, False)
                 xp_won_final += xp_won
                 offering_value += offering
@@ -5492,7 +5484,6 @@ class Adventure(commands.Cog):
         for page in pagify(msg, delims=["\n"], page_length=1000):
             embed = discord.Embed(description=page)
             embed_list.append(embed)
-
         await BaseMenu(
             source=SimpleSource(embed_list), delete_message_after=True, clear_reactions_after=True, timeout=60,
         ).start(ctx=ctx)
@@ -6064,11 +6055,6 @@ class Adventure(commands.Cog):
                 return
         else:
             return
-        if (guild := getattr(user, "guild", None)) is not None:
-            if await self.bot.cog_disabled_in_guild(self, guild):
-                return
-        else:
-            return
         if not await self.has_perm(user):
             return
         if guild.id in self._sessions:
@@ -6331,7 +6317,7 @@ class Adventure(commands.Cog):
                 ctx.guild.id, attack, diplomacy, magic, shame=True
             )
             if run_msg:
-                run_msg = _("It's a shame for the following adventurers\n{run_msg}\n").format(run_msg=run_msg)
+                run_msg = _("It's a shame for the following adventurers...\n{run_msg}\n").format(run_msg=run_msg)
 
             output = _(
                 "All adventures prepared for an epic adventure, but they soon realise all this treasure was unprotected!\n{run_msg}{text}"
